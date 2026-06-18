@@ -204,7 +204,7 @@ document.getElementById('btn-ms-login').addEventListener('click', async () => {
 document.getElementById('btn-logout').addEventListener('click', () => SRAuth.logout());
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=2').then(reg => reg.update()).catch(() => {});
 }
 </script>
 </body>

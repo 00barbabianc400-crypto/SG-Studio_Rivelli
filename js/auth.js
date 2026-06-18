@@ -146,6 +146,26 @@
     }
   }
 
+  async function ensureSession() {
+    if (isAuthenticated()) return true;
+
+    try {
+      await initMsal();
+      const redirectResult = await msalInstance.handleRedirectPromise();
+      if (redirectResult && redirectResult.accessToken) {
+        await exchangeAzureToken(
+          redirectResult.accessToken,
+          redirectResult.tenantId || C.AZURE_TENANT_ID
+        );
+        return isAuthenticated();
+      }
+      await trySilentLogin();
+      return isAuthenticated();
+    } catch {
+      return false;
+    }
+  }
+
   async function loginWithMicrosoft(useRedirect) {
     await initMsal();
     const request = {
@@ -187,7 +207,7 @@
     const opts = { ...(options || {}) };
     opts.headers = authHeaders(opts.headers);
     const resp = await global.fetch(url, opts);
-    if (resp.status === 401 || resp.status === 403) {
+    if (resp.status === 401) {
       clearSession();
       redirectToLogin();
       throw new Error('Sessione scaduta — accedi di nuovo');
@@ -198,6 +218,15 @@
   function redirectToLogin() {
     const base = global.location.pathname.replace(/[^/]+$/, '');
     global.location.replace(base + 'index.html');
+  }
+
+  async function requireAuthAsync() {
+    const ok = await ensureSession();
+    if (!ok) {
+      redirectToLogin();
+      return false;
+    }
+    return true;
   }
 
   function requireAuth() {
@@ -224,6 +253,7 @@
 
   global.SRAuth = {
     init,
+    ensureSession,
     loginWithMicrosoft,
     logout,
     fetch,
@@ -231,7 +261,9 @@
     getUser,
     isAuthenticated,
     requireAuth,
+    requireAuthAsync,
     clearSession,
-    getRedirectUri
+    getRedirectUri,
+    redirectToLogin
   };
 })(window);

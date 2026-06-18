@@ -548,6 +548,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script>
@@ -1208,10 +1209,11 @@ document.getElementById('edit-cancel').addEventListener('click', () => document.
 document.getElementById('edit-save').addEventListener('click', salvaEdit);
 document.getElementById('edit-delete').addEventListener('click', eliminaEdit);
 
-if (SRAuth.requireAuth()) {
+(async function startMacchina() {
+  if (!(await SRAuth.requireAuthAsync())) return;
   popolaSelectOperatori();
   caricaPrenotazioni().catch(() => hideAppLoader());
-}
+})();
 </script>
 </body>
 </html>
