@@ -16,7 +16,7 @@
   --r2: 8px; --r3: 12px; --shadow-sm: 0 1px 4px rgba(10,22,40,.06);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
 .hidden { display: none !important; }
 .topbar {
   background: linear-gradient(135deg, #0a1628, #1a3a6b 60%, #1e4fa3);
@@ -54,24 +54,61 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 }
 .field input[type="text"], .field input[type="number"], .field input[type="date"], .field input[readonly] {
   width: 100%; max-width: 100%; min-width: 0; border: 1.5px solid var(--border); border-radius: var(--r2);
-  padding: 10px 12px; font-family: inherit; font-size: 14px; box-sizing: border-box;
+  padding: 10px 12px; font-family: inherit; font-size: 16px; box-sizing: border-box;
+  background: var(--surface); color: var(--text);
 }
 .field input[type="date"] {
   display: block;
   -webkit-min-logical-width: 0;
   min-height: 44px;
 }
-.field input[type="date"]::-webkit-date-and-time-value {
-  text-align: left;
+.date-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 18px;
+  width: 100%;
   min-width: 0;
 }
-.date-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
+.date-row .field { margin-bottom: 18px; width: 100%; }
+.date-row .field:last-child { margin-bottom: 0; }
+.date-input-shell {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r2);
+  background: var(--surface);
 }
-.date-row .field { margin-bottom: 0; }
+.date-input-shell input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 10px 12px;
+  font-size: 16px;
+  min-height: 44px;
+  display: block;
+  -webkit-appearance: none;
+  appearance: none;
+  color: var(--text);
+}
+.date-input-shell input:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(45,110,240,.25);
+}
+.date-input-shell input::placeholder { color: var(--text-3); }
+@media (min-width: 560px) {
+  .date-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .date-row .field { margin-bottom: 0; }
+}
 .field input[readonly] { background: #f4f6fa; color: var(--text-2); }
 .req { color: var(--blue-lt); }
 .scale-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); margin-bottom: 6px; }
@@ -135,13 +172,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   .card { padding: 16px; }
   .page-title { font-size: 18px; }
   .topbar-name span { display: none; }
-  .date-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-  }
-  .date-row .field { margin-bottom: 18px; }
-  .date-row .field:last-child { margin-bottom: 0; }
-  .field input[type="date"] { font-size: 16px; padding: 10px; }
+  .field input[type="text"], .field input[type="number"], .field input[readonly] { font-size: 16px; }
   .scale-btns { gap: 6px; }
   .scale-btns label { min-width: 0; flex: 1 1 calc(20% - 6px); padding: 10px 4px; }
   .toast {
@@ -192,11 +223,15 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
         <div class="date-row">
           <div class="field">
             <label>Data prelievo chiavi <span class="req">*</span></label>
-            <input type="date" id="f-prelievo" required>
+            <div class="date-input-shell">
+              <input type="date" id="f-prelievo" required>
+            </div>
           </div>
           <div class="field">
             <label>Data restituzione chiavi <span class="req">*</span></label>
-            <input type="date" id="f-restituzione" required>
+            <div class="date-input-shell">
+              <input type="date" id="f-restituzione" required>
+            </div>
           </div>
         </div>
         <div class="field">

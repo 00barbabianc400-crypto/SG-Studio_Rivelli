@@ -13,6 +13,56 @@
 
   const $ = id => document.getElementById(id);
 
+  function isTouchDevice() {
+    return window.matchMedia('(hover: none) and (pointer: coarse)').matches
+      || /iPhone|iPad|iPod/i.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
+  function parseDateText(val) {
+    const s = String(val || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!m) return '';
+    const d = Number(m[1]);
+    const mo = Number(m[2]);
+    const y = Number(m[3]);
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return '';
+    return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+
+  function readDateInput(id) {
+    const el = $(id);
+    if (!el) return '';
+    const raw = el.value.trim();
+    if (!raw) return '';
+    if (el.type === 'date') return raw;
+    return parseDateText(raw);
+  }
+
+  function formatDateTextInput(e) {
+    let v = e.target.value.replace(/\D/g, '').slice(0, 8);
+    if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2);
+    if (v.length > 5) v = v.slice(0, 5) + '/' + v.slice(5);
+    e.target.value = v;
+  }
+
+  function setupDateInputs() {
+    if (!isTouchDevice()) return;
+    ['f-prelievo', 'f-restituzione'].forEach(id => {
+      const el = $(id);
+      el.type = 'text';
+      el.placeholder = 'gg/mm/aaaa';
+      el.setAttribute('inputmode', 'numeric');
+      el.setAttribute('autocomplete', 'off');
+      el.maxLength = 10;
+      if (!el.dataset.dateBound) {
+        el.dataset.dateBound = '1';
+        el.addEventListener('input', formatDateTextInput);
+      }
+    });
+  }
+
   function toast(msg, type) {
     const el = $('toast');
     el.textContent = msg;
@@ -54,8 +104,18 @@
       }
     }
     if (n === 1) {
-      const pre = $('f-prelievo').value;
-      const res = $('f-restituzione').value;
+      const preRaw = $('f-prelievo').value.trim();
+      const resRaw = $('f-restituzione').value.trim();
+      const pre = readDateInput('f-prelievo');
+      const res = readDateInput('f-restituzione');
+      if (preRaw && !pre) {
+        toast('Data prelievo non valida (gg/mm/aaaa)', 'err');
+        return false;
+      }
+      if (resRaw && !res) {
+        toast('Data restituzione non valida (gg/mm/aaaa)', 'err');
+        return false;
+      }
       if (res && pre && res < pre) {
         toast('La data restituzione non può precedere il prelievo', 'err');
         return false;
@@ -151,8 +211,8 @@
       email: userEmail,
       nome: $('f-nome').value.trim(),
       km: $('f-km').value.trim(),
-      dataPrelievo: $('f-prelievo').value,
-      dataRestituzione: $('f-restituzione').value,
+      dataPrelievo: readDateInput('f-prelievo'),
+      dataRestituzione: readDateInput('f-restituzione'),
       carburante: document.querySelector('input[name="carburante"]:checked')?.value,
       igieniche: document.querySelector('input[name="igieniche"]:checked')?.value,
       carrozzeria: document.querySelector('input[name="carrozzeria"]:checked')?.value,
@@ -167,6 +227,7 @@
     renderPhotos();
     $('modulo-form').reset();
     $('f-nome').value = userName;
+    setupDateInputs();
     showStep(1);
     $('form-wrap').classList.remove('hidden');
     $('success-wrap').classList.add('hidden');
@@ -233,5 +294,10 @@
 
   $('btn-nuovo').addEventListener('click', resetForm);
 
-  initUser().then(ok => { if (ok) showStep(1); });
+  initUser().then(ok => {
+    if (ok) {
+      setupDateInputs();
+      showStep(1);
+    }
+  });
 })();
