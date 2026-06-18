@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1e4fa3">
+<title>Modulo utilizzo 3008 — Studio Rivelli</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #0a1628; --blue: #1e4fa3; --blue-lt: #2d6ef0;
+  --surface: #fff; --bg: #f7f9fc; --border: #e2e7f4;
+  --text: #1e3050; --text-2: #4a6180; --text-3: #8fa3be;
+  --ok: #1aaa6b; --warn: #b86e00; --danger: #d93025;
+  --r2: 8px; --r3: 12px; --shadow-sm: 0 1px 4px rgba(10,22,40,.06);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+.hidden { display: none !important; }
+.topbar {
+  background: linear-gradient(135deg, #0a1628, #1a3a6b 60%, #1e4fa3);
+  padding: 0 20px; height: 56px; display: flex; align-items: center;
+  box-shadow: 0 4px 20px rgba(10,22,40,.25); position: sticky; top: 0; z-index: 100;
+}
+.topbar-brand { display: flex; align-items: center; gap: 12px; }
+.topbar-home { color: rgba(255,255,255,.85); text-decoration: none; font-size: 13px; padding: 6px 10px; border-radius: 6px; }
+.topbar-home:hover { background: rgba(255,255,255,.1); color: #fff; }
+.topbar-logo { width: 36px; height: 36px; background: var(--blue-lt); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.topbar-name { color: #fff; font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+.topbar-name span { font-weight: 400; opacity: .75; }
+.shell { max-width: min(640px, calc(100vw - 32px)); margin: 0 auto; padding: 24px 16px 48px; }
+.page-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+.page-sub { font-size: 13px; color: var(--text-2); line-height: 1.5; margin-bottom: 20px; }
+.notice {
+  background: #fff8e6; border: 1px solid #f0d080; border-radius: var(--r2);
+  padding: 12px 14px; font-size: 13px; color: #6b4e00; line-height: 1.45; margin-bottom: 20px;
+}
+.progress { display: flex; gap: 8px; margin-bottom: 20px; }
+.progress-step {
+  flex: 1; height: 4px; border-radius: 99px; background: var(--border);
+}
+.progress-step.is-active, .progress-step.is-done { background: var(--blue-lt); }
+.step-label { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 16px; }
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3);
+  box-shadow: var(--shadow-sm); padding: 22px; margin-bottom: 16px;
+}
+.field { margin-bottom: 18px; }
+.field label {
+  display: block; font-size: 11px; font-weight: 600; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px;
+}
+.field input[type="text"], .field input[type="number"], .field input[type="date"], .field input[readonly] {
+  width: 100%; border: 1.5px solid var(--border); border-radius: var(--r2);
+  padding: 10px 12px; font-family: inherit; font-size: 14px;
+}
+.field input[readonly] { background: #f4f6fa; color: var(--text-2); }
+.req { color: var(--blue-lt); }
+.scale-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); margin-bottom: 6px; }
+.scale-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.scale-btns label {
+  flex: 1; min-width: 44px; text-align: center; cursor: pointer;
+  border: 1.5px solid var(--border); border-radius: var(--r2); padding: 10px 0;
+  font-size: 14px; font-weight: 600; transition: all .15s;
+}
+.scale-btns input { display: none; }
+.scale-btns input:checked + span { display: block; }
+.scale-btns label:has(input:checked) {
+  border-color: var(--blue-lt); background: #eef3ff; color: var(--blue);
+}
+.radio-group { display: flex; flex-direction: column; gap: 10px; }
+.radio-opt {
+  display: flex; gap: 10px; align-items: flex-start; cursor: pointer;
+  border: 1.5px solid var(--border); border-radius: var(--r2); padding: 12px 14px;
+  font-size: 13px; line-height: 1.45; transition: border-color .15s;
+}
+.radio-opt:has(input:checked) { border-color: var(--blue-lt); background: #f8faff; }
+.radio-opt input { margin-top: 3px; flex-shrink: 0; }
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 10px; margin-top: 12px; }
+.photo-thumb {
+  position: relative; aspect-ratio: 1; border-radius: var(--r2); overflow: hidden;
+  border: 1px solid var(--border); background: #f4f6fa;
+}
+.photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.photo-thumb button {
+  position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: none;
+  border-radius: 50%; background: rgba(0,0,0,.65); color: #fff; cursor: pointer; font-size: 14px; line-height: 1;
+}
+.photo-drop {
+  border: 2px dashed var(--border); border-radius: var(--r2); padding: 24px; text-align: center;
+  cursor: pointer; transition: border-color .15s; font-size: 13px; color: var(--text-2);
+}
+.photo-drop:hover { border-color: var(--blue-lt); }
+.photo-hint { font-size: 12px; color: var(--text-3); margin-top: 8px; }
+.btn {
+  padding: 11px 20px; border-radius: var(--r2); font-family: inherit; font-size: 14px;
+  font-weight: 600; cursor: pointer; border: none;
+}
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-primary { background: var(--blue-lt); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--blue); }
+.btn-ghost { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+.nav-bar { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; }
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+  background: var(--navy); color: #fff; padding: 12px 20px; border-radius: var(--r2);
+  font-size: 14px; opacity: 0; transition: all .25s; z-index: 200; max-width: min(90vw, 400px); text-align: center;
+}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+.toast.ok { background: var(--ok); }
+.toast.err { background: var(--danger); }
+.success-panel { text-align: center; padding: 40px 20px; }
+.success-panel h2 { font-family: 'Syne', sans-serif; color: var(--navy); margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <a class="topbar-home" href="index.html">← Home</a>
+    <div class="topbar-logo">📋</div>
+    <span class="topbar-name">Modulo 3008 <span>· Studio Rivelli</span></span>
+  </div>
+</div>
+
+<div class="shell">
+  <div id="form-wrap">
+    <h1 class="page-title">Modulo utilizzo macchina aziendale</h1>
+    <p class="page-sub">Compilare <strong>prima</strong> di prelevare il mezzo. Restituire con pieno o minimo ¾ tank e in condizioni igieniche ottimali.</p>
+
+    <div class="notice">
+      In caso di danni evidenti: carica la foto nella sezione 3 e segnala nella chat aziendale.
+    </div>
+
+    <div class="progress" aria-hidden="true">
+      <div class="progress-step is-active" data-step="1"></div>
+      <div class="progress-step" data-step="2"></div>
+      <div class="progress-step" data-step="3"></div>
+    </div>
+    <p class="step-label" id="step-label">Sezione 1 di 3</p>
+
+    <form id="modulo-form" novalidate>
+      <!-- SEZIONE 1 -->
+      <div class="card step-panel" data-step="1">
+        <div class="field">
+          <label>Nome e Cognome <span class="req">*</span></label>
+          <input type="text" id="f-nome" readonly required>
+        </div>
+        <div class="field">
+          <label>KM contachilometri <span class="req">*</span></label>
+          <input type="number" id="f-km" min="0" step="1" required inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>Data prelievo chiavi <span class="req">*</span></label>
+          <input type="date" id="f-prelievo" required>
+        </div>
+        <div class="field">
+          <label>Data restituzione chiavi <span class="req">*</span></label>
+          <input type="date" id="f-restituzione" required>
+        </div>
+        <div class="field">
+          <label>Situazione carburante <span class="req">*</span></label>
+          <div class="scale-row"><span>Riserva</span><span>Pieno</span></div>
+          <div class="scale-btns" id="scale-carburante">
+            <label><input type="radio" name="carburante" value="1" required><span>1</span></label>
+            <label><input type="radio" name="carburante" value="2"><span>2</span></label>
+            <label><input type="radio" name="carburante" value="3"><span>3</span></label>
+            <label><input type="radio" name="carburante" value="4"><span>4</span></label>
+            <label><input type="radio" name="carburante" value="5"><span>5</span></label>
+          </div>
+        </div>
+        <div class="field">
+          <label>Condizioni igieniche <span class="req">*</span></label>
+          <div class="scale-row"><span>Pessime</span><span>Ottime</span></div>
+          <div class="scale-btns" id="scale-igieniche">
+            <label><input type="radio" name="igieniche" value="1" required><span>1</span></label>
+            <label><input type="radio" name="igieniche" value="2"><span>2</span></label>
+            <label><input type="radio" name="igieniche" value="3"><span>3</span></label>
+            <label><input type="radio" name="igieniche" value="4"><span>4</span></label>
+            <label><input type="radio" name="igieniche" value="5"><span>5</span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEZIONE 2 -->
+      <div class="card step-panel hidden" data-step="2">
+        <p class="page-sub" style="margin-bottom:16px">Indica lo stato di ogni area. In caso di incidente o danno segnala tempestivamente a Claudia.</p>
+        <div class="field">
+          <label>Carrozzeria <span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-opt">
+              <input type="radio" name="carrozzeria" value="Buone condizioni o graffi leggeri  e/o Nessuna variazione rispetto al prelievo precedente." required>
+              Buone condizioni o graffi leggeri e/o nessuna variazione rispetto al prelievo precedente.
+            </label>
+            <label class="radio-opt">
+              <input type="radio" name="carrozzeria" value="Ammaccature o Danni evidenti (Inserire la foto nella sezione relativa.)">
+              Ammaccature o danni evidenti (inserire foto in sezione 3).
+            </label>
+          </div>
+        </div>
+        <div class="field">
+          <label>Gomme e cerchi <span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-opt">
+              <input type="radio" name="gomme" value="Buone condizioni o graffi leggeri e/o Nessuna variazione rispetto al prelievo precedente." required>
+              Buone condizioni o graffi leggeri e/o nessuna variazione rispetto al prelievo precedente.
+            </label>
+            <label class="radio-opt">
+              <input type="radio" name="gomme" value="Danni evidenti (Inserire la foto nella sezione relativa.)">
+              Danni evidenti (inserire foto in sezione 3).
+            </label>
+          </div>
+        </div>
+        <div class="field">
+          <label>Interni e sistemi elettrici <span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-opt">
+              <input type="radio" name="interni" value="Buone condizioni e/o Nessuna variazione rispetto al prelievo precedente" required>
+              Buone condizioni e/o nessuna variazione rispetto al prelievo precedente.
+            </label>
+            <label class="radio-opt">
+              <input type="radio" name="interni" value="Danni o malfunzionamenti evidenti (Inserire la foto nella sezione relativa.)">
+              Danni o malfunzionamenti evidenti (inserire foto in sezione 3).
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEZIONE 3 -->
+      <div class="card step-panel hidden" data-step="3">
+        <p class="page-sub" style="margin-bottom:16px">Usa questa sezione <strong>solo</strong> per anomalie gravi. Se il danno è già in chat aziendale, non ripetere.</p>
+        <div class="photo-drop" id="photo-drop">
+          <p>Tocca per aggiungere foto</p>
+          <p class="photo-hint">Max 5 foto · 10 MB ciascuna · JPG/PNG/WebP</p>
+        </div>
+        <input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple class="hidden">
+        <div class="photo-grid" id="photo-grid"></div>
+      </div>
+
+      <div class="nav-bar">
+        <button type="button" class="btn btn-ghost hidden" id="btn-prev">Indietro</button>
+        <button type="button" class="btn btn-primary" id="btn-next">Avanti</button>
+        <button type="submit" class="btn btn-primary hidden" id="btn-submit">Invia modulo</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="success-wrap" class="card success-panel hidden">
+    <h2>Modulo inviato</h2>
+    <p class="page-sub">I dati sono stati registrati sul foglio Google.</p>
+    <button type="button" class="btn btn-primary" id="btn-nuovo">Compila un altro modulo</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/modulo-macchina.js"></script>
+</body>
+</html>

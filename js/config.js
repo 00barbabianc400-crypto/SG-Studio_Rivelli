@@ -14,5 +14,8 @@ window.SR_CONFIG = {
   TOKEN_KEY: 'sr_jwt',
   TOKEN_EXP_KEY: 'sr_jwt_exp',
   USER_KEY: 'sr_user',
-  RATE_KEY: 'sr_auth_rate'
+  RATE_KEY: 'sr_auth_rate',
+
+  /** Google Apps Script — Deploy as Web App → URL ending in /exec */
+  GOOGLE_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyWzTxNMwCGV8mJY9bdNIZwwpSlVFysI7hHlqdd9qb5KBo89skYRkmmNoFp_WYWag8anw/exec'
 };
