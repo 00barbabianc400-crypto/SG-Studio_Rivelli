@@ -124,7 +124,9 @@
     try { data = JSON.parse(text); } catch {
       throw new Error('Risposta non valida dallo script Google');
     }
-    if (!data.ok) throw new Error(data.message || 'Errore server');
+    if (!data.ok) {
+      throw new Error(data.message || ('Errore server (' + resp.status + ')'));
+    }
     return data;
   }
 

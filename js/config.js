@@ -17,5 +17,5 @@ window.SR_CONFIG = {
   RATE_KEY: 'sr_auth_rate',
 
   /** Google Apps Script — Deploy as Web App → URL ending in /exec */
-  GOOGLE_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyWzTxNMwCGV8mJY9bdNIZwwpSlVFysI7hHlqdd9qb5KBo89skYRkmmNoFp_WYWag8anw/exec'
+  GOOGLE_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxbiATbcWjYVCKRQsM4mBGCv8r9bvvgaS-9QNaummPYkYz7wwur7-WsKZimPIGSRLRFkg/exec'
 };
