@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1e4fa3">
+<title>Auto Aziendale — Studio Rivelli</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #0a1628; --blue: #1e4fa3; --blue-lt: #2d6ef0;
+  --surface: #fff; --bg: #f7f9fc; --border: #e2e7f4;
+  --text: #1e3050; --text-2: #4a6180; --text-3: #8fa3be;
+  --ok: #1aaa6b; --warn: #b86e00; --danger: #d93025;
+  --r2: 8px; --r3: 12px; --shadow-sm: 0 1px 4px rgba(10,22,40,.06);
+  --shadow-md: 0 4px 20px rgba(10,22,40,.10);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+.topbar {
+  background: linear-gradient(135deg, #0a1628, #1a3a6b 60%, #1e4fa3);
+  padding: 0 28px; height: 56px; display: flex; align-items: center; justify-content: space-between;
+  box-shadow: 0 4px 20px rgba(10,22,40,.25); position: sticky; top: 0; z-index: 100;
+}
+.topbar-brand { display: flex; align-items: center; gap: 12px; }
+.topbar-logo {
+  width: 36px; height: 36px; background: var(--blue-lt); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+.topbar-name { color: #fff; font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+.topbar-name span { font-weight: 400; opacity: .75; }
+.topbar-right { display: flex; align-items: center; gap: 16px; }
+.topbar-nav-group { display: flex; gap: 4px; background: rgba(255,255,255,.08); border-radius: 10px; padding: 4px; }
+.topbar-nav {
+  border: none; background: transparent; color: rgba(255,255,255,.7);
+  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600;
+  padding: 7px 14px; border-radius: 7px; cursor: pointer; transition: all .15s;
+}
+.topbar-nav:hover { color: #fff; }
+.topbar-nav.is-active { background: rgba(255,255,255,.15); color: #fff; }
+.topbar-home {
+  color: rgba(255,255,255,.85); text-decoration: none; font-size: 13px; font-weight: 500;
+  padding: 6px 10px; border-radius: 6px; transition: background .15s;
+}
+.topbar-home:hover { background: rgba(255,255,255,.1); color: #fff; }
+
+.shell { max-width: min(1280px, calc(100vw - 40px)); margin: 0 auto; padding: 28px 20px 60px; }
+.hidden { display: none !important; }
+.view-panel.hidden { display: none; }
+.page-head { margin-bottom: 22px; }
+.page-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: var(--navy); }
+.page-sub { font-size: 13px; color: var(--text-2); margin-top: 4px; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3);
+  box-shadow: var(--shadow-sm); margin-bottom: 20px; overflow: hidden;
+}
+.card-head {
+  background: #f0f4ff; border-bottom: 1px solid var(--border); padding: 14px 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.card-icon {
+  width: 28px; height: 28px; background: var(--blue); border-radius: 7px;
+  display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff;
+}
+.card-title { font-size: 12px; font-weight: 600; color: var(--blue); text-transform: uppercase; letter-spacing: .04em; }
+.card-body { padding: 22px; }
+
+.field-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
+.field { flex: 1; min-width: 180px; }
+.field label {
+  display: block; font-size: 11px; font-weight: 600; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px;
+}
+.field select, .field input, .field textarea {
+  width: 100%; border: 1.5px solid var(--border); border-radius: var(--r2);
+  padding: 9px 12px; font-family: inherit; font-size: 14px; color: var(--text);
+  background: var(--surface); outline: none; transition: border-color .15s, box-shadow .15s;
+}
+.field select:focus, .field input:focus, .field textarea:focus {
+  border-color: var(--blue-lt); box-shadow: 0 0 0 3px rgba(45,110,240,.12);
+}
+.req { color: var(--blue-lt); }
+
+.btn {
+  padding: 10px 20px; border-radius: var(--r2); font-family: inherit; font-size: 14px;
+  font-weight: 500; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 8px;
+  transition: all .15s;
+}
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-primary { background: var(--blue-lt); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--blue); }
+.btn-secondary { background: var(--border); color: var(--text); }
+.btn-outline { background: transparent; border: 1.5px solid var(--blue-lt); color: var(--blue-lt); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-ghost { background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 13px; padding: 8px 14px; }
+.action-bar { display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap; padding-top: 8px; }
+
+/* Range picker (stile timesheet monitoraggio) */
+.range-trigger {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  border: 1.5px solid var(--border); background: var(--surface); color: var(--navy);
+  font-family: 'DM Mono', monospace; font-size: 13px; padding: 9px 12px; border-radius: var(--r2);
+  cursor: pointer; text-align: left; transition: border-color .15s, box-shadow .15s;
+}
+.range-trigger:hover { border-color: var(--blue-lt); box-shadow: var(--shadow-sm); }
+.range-trigger svg { flex-shrink: 0; color: var(--blue-lt); }
+
+.mon-cal-nav {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+}
+.mon-cal-nav button {
+  border: 1px solid var(--border); background: var(--surface); border-radius: 6px;
+  width: 32px; height: 32px; cursor: pointer; font-size: 16px; color: var(--navy);
+}
+.mon-cal-nav span { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: var(--navy); }
+.mon-cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 6px; }
+.mon-cal-weekdays span {
+  text-align: center; font-size: 10px; font-weight: 600; text-transform: uppercase;
+  color: var(--text-3); padding: 4px 0;
+}
+.mon-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.mon-cal-day {
+  aspect-ratio: 1; border: 1px solid transparent; border-radius: 8px; background: transparent;
+  font-family: 'DM Mono', monospace; font-size: 12px; color: var(--navy); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  transition: background .12s; touch-action: none;
+}
+.mon-cal-day.is-empty { visibility: hidden; pointer-events: none; }
+.mon-cal-day.is-other { opacity: .35; }
+.mon-cal-day:hover:not(.is-empty) { background: #f0f4ff; border-color: var(--border); }
+.mon-cal-day.in-range { background: #e8f0fe; border-color: #c5d9f7; }
+.mon-cal-day.range-start, .mon-cal-day.range-end { background: var(--navy); color: #fff; border-color: var(--navy); }
+.mon-cal-day.is-weekend { color: #b45309; }
+
+/* Monitoraggio */
+.kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+@media (max-width: 700px) { .kpi-grid { grid-template-columns: 1fr; } }
+.kpi {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3);
+  padding: 16px 18px; box-shadow: var(--shadow-sm);
+}
+.kpi-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; color: var(--text-3); }
+.kpi-val { font-family: 'DM Mono', monospace; font-size: 24px; font-weight: 500; color: var(--navy); margin-top: 6px; }
+
+.tag {
+  display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600;
+}
+.tag-trasferta { background: #e8f0fe; color: #1e4fa3; }
+.tag-roma { background: #fef3e2; color: #b45309; }
+.empty-msg { padding: 32px; text-align: center; color: var(--text-3); font-size: 14px; }
+
+/* Calendario occupazione (vista mensile classica) */
+.cal-nav {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 14px 18px; border-bottom: 1px solid var(--border); background: #fafbfc;
+}
+.cal-nav-center { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.cal-nav span#tim-month-label { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 20px; color: var(--navy); }
+.cal-nav-btns { display: flex; gap: 8px; align-items: center; }
+.cal-nav-btns button {
+  border: 1px solid var(--border); background: var(--surface); border-radius: 8px;
+  width: 44px; height: 44px; cursor: pointer; font-size: 22px; color: var(--navy);
+}
+.cal-zoom {
+  display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2);
+}
+.cal-zoom button {
+  border: 1px solid var(--border); background: var(--surface); border-radius: 8px;
+  width: 38px; height: 38px; cursor: pointer; font-size: 18px; font-weight: 600; color: var(--navy);
+}
+.cal-zoom button:disabled { opacity: .35; cursor: not-allowed; }
+.cal-zoom-val {
+  min-width: 52px; text-align: center; font-family: 'DM Mono', monospace;
+  font-size: 13px; font-weight: 500; color: var(--navy);
+}
+.oc-wrap { padding: 16px 18px 20px; }
+.oc-cal {
+  --oc-week-min: 120px;
+  --oc-day-num: 16px;
+  --oc-bar-h: 24px;
+  --oc-bar-top: 38px;
+  border: 1px solid var(--border); border-radius: var(--r3); overflow: hidden; background: var(--surface);
+}
+.oc-wd-head {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  background: var(--navy); color: rgba(255,255,255,.88);
+}
+.oc-wd-head span {
+  text-align: center; font-size: 12px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .05em; padding: 12px 4px;
+}
+.oc-wd-head span.is-wknd { color: rgba(255,200,140,.95); }
+.oc-week {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  position: relative; min-height: var(--oc-week-min);
+  border-top: 1px solid var(--border);
+}
+.oc-day {
+  border-right: 1px solid #eef1f7; min-height: var(--oc-week-min); padding: 8px 6px 6px;
+  background: var(--surface);
+}
+.oc-day:last-child { border-right: none; }
+.oc-day.is-out { background: #f8fafc; }
+.oc-day.is-wknd:not(.is-out) { background: #fafbfd; }
+.oc-day.is-today .oc-day-num {
+  background: var(--blue-lt); color: #fff; border-radius: 99px;
+  width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+}
+.oc-day-num {
+  font-family: 'DM Mono', monospace; font-size: var(--oc-day-num); font-weight: 600;
+  color: var(--navy); line-height: 1; margin-bottom: 4px;
+}
+.oc-day.is-out .oc-day-num { color: var(--text-3); font-weight: 500; }
+.oc-week-bars {
+  position: absolute; left: 0; right: 0; top: var(--oc-bar-top);
+  bottom: 8px; pointer-events: none;
+}
+.oc-bar {
+  position: absolute; height: var(--oc-bar-h); border: none; cursor: pointer;
+  font-size: 11px; font-weight: 600; color: #fff; font-family: inherit;
+  display: flex; align-items: center; padding: 0 8px; overflow: hidden;
+  white-space: nowrap; text-overflow: ellipsis; pointer-events: auto;
+  box-shadow: 0 2px 5px rgba(10,22,40,.16); transition: transform .1s, box-shadow .1s;
+}
+.oc-bar:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(10,22,40,.22); z-index: 2; }
+.oc-bar.round-l { border-radius: 6px 0 0 6px; }
+.oc-bar.round-r { border-radius: 0 6px 6px 0; }
+.oc-bar.round-l.round-r { border-radius: 6px; }
+.detail-card {
+  border: 1px solid var(--border); border-radius: var(--r2); padding: 14px 16px;
+  background: #fafbfc; font-size: 13px; line-height: 1.55;
+}
+.detail-card dt { font-size: 10px; font-weight: 600; text-transform: uppercase; color: var(--text-3); margin-top: 10px; }
+.detail-card dt:first-child { margin-top: 0; }
+.detail-card dd { margin: 4px 0 0; color: var(--text); }
+.detail-op-badge {
+  display: inline-flex; align-items: center; gap: 8px; font-family: 'Syne', sans-serif;
+  font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 4px;
+}
+.detail-op-dot { width: 12px; height: 12px; border-radius: 99px; flex-shrink: 0; }
+
+/* Modifica */
+.edit-list { display: flex; flex-direction: column; gap: 10px; }
+.edit-item {
+  border: 1px solid var(--border); border-radius: var(--r2); padding: 14px 16px;
+  display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start;
+  background: #fafbfc;
+}
+.edit-item-meta { font-size: 13px; color: var(--text-2); line-height: 1.5; }
+.edit-item-meta strong { color: var(--navy); font-size: 14px; }
+.edit-item-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+/* Modals */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(10,22,40,.45); z-index: 1000;
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-backdrop.open { display: flex; }
+/* Calendario periodo: sopra modali edit/auth/conflict quando aperti insieme */
+#range-backdrop { z-index: 1100; }
+.modal-backdrop-locked { z-index: 1050; }
+.modal {
+  background: var(--surface); border-radius: var(--r3); box-shadow: var(--shadow-md);
+  border: 1px solid var(--border); width: min(420px, calc(100vw - 32px));
+  transform: translateY(10px); transition: transform .2s;
+}
+.modal-backdrop.open .modal { transform: none; }
+.modal-lg { width: min(380px, calc(100vw - 32px)); }
+.modal-head { padding: 18px 20px 12px; border-bottom: 1px solid var(--border); }
+.modal-head h2 { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; color: var(--navy); }
+.modal-head p { font-size: 13px; color: var(--text-2); margin-top: 6px; line-height: 1.45; }
+.modal-body { padding: 16px 20px; }
+.modal-foot {
+  padding: 12px 20px 18px; border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;
+}
+.conflict-box {
+  background: #fff8f0; border: 1px solid #fed7aa; border-radius: var(--r2);
+  padding: 16px; margin: 12px 0; font-size: 13px; color: #7c2d12;
+}
+.conflict-lbl {
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+  color: #9a3412; margin-bottom: 8px;
+}
+.conflict-name {
+  font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; color: var(--navy);
+  margin-bottom: 8px;
+}
+.conflict-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.conflict-dates {
+  font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text);
+  background: rgba(255,255,255,.7); border: 1px solid #fed7aa; border-radius: var(--r2);
+  padding: 10px 12px; line-height: 1.4;
+}
+.conflict-dates .conflict-arrow { color: var(--text-3); margin: 0 6px; }
+.conflict-note { margin-top: 10px; font-size: 12px; color: var(--text-2); font-style: italic; }
+
+.toast {
+  position: fixed; bottom: 24px; right: 24px; background: var(--navy); color: #fff;
+  padding: 12px 18px; border-radius: 10px; font-size: 14px; box-shadow: var(--shadow-md);
+  display: none; z-index: 2000; max-width: min(400px, calc(100vw - 32px));
+}
+.toast.show { display: block; }
+.toast.success { background: var(--ok); }
+.toast.error { background: var(--danger); }
+.toast.warn { background: var(--warn); }
+
+.app-loader {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(247, 249, 252, .94);
+  backdrop-filter: blur(6px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  transition: opacity .35s ease, visibility .35s ease;
+}
+.app-loader.is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.app-loader-spinner {
+  width: 46px; height: 46px; border-radius: 50%;
+  border: 3px solid #e2e7f4; border-top-color: var(--blue-lt);
+  animation: app-spin .7s linear infinite;
+}
+.app-loader-text {
+  font-size: 14px; color: var(--text-2); letter-spacing: .01em;
+}
+@keyframes app-spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="app-loader" id="app-loader" aria-live="polite" aria-busy="true">
+  <div class="app-loader-spinner" role="status" aria-label="Caricamento in corso"></div>
+  <p class="app-loader-text">Caricamento prenotazioni…</p>
+</div>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <a class="topbar-home" href="index.html">← Home</a>
+    <div class="topbar-logo">🚗</div>
+    <span class="topbar-name">Auto Aziendale <span>· Studio Rivelli</span></span>
+  </div>
+  <nav class="topbar-nav-group" aria-label="Sezioni">
+    <button type="button" class="topbar-nav is-active" data-section="inserimento">Prenota</button>
+    <button type="button" class="topbar-nav" data-section="monitoraggio">Monitoraggio</button>
+    <button type="button" class="topbar-nav" data-section="modifica">Modifica</button>
+  </nav>
+</div>
+
+<div class="shell">
+
+  <!-- INSERIMENTO -->
+  <div id="view-inserimento" class="view-panel">
+    <div class="page-head">
+      <h1 class="page-title">Nuova prenotazione</h1>
+      <p class="page-sub">Prenota l'auto aziendale per il periodo indicato</p>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-icon">📅</div>
+        <span class="card-title">Dettagli prenotazione</span>
+      </div>
+      <div class="card-body">
+        <div class="field-row">
+          <div class="field">
+            <label>Operatore <span class="req">*</span></label>
+            <select id="ins-operatore">
+              <option value="">— seleziona —</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Tipo utilizzo <span class="req">*</span></label>
+            <select id="ins-tipo">
+              <option value="">— seleziona —</option>
+              <option value="Trasferta">Trasferta</option>
+              <option value="Roma e dintorni">Roma e dintorni</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field" style="flex:2">
+            <label>Periodo prenotazione <span class="req">*</span></label>
+            <button type="button" class="range-trigger" id="ins-range-trigger">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3"/></svg>
+              <span id="ins-range-label">Seleziona periodo</span>
+            </button>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Note (opzionale)</label>
+            <textarea id="ins-note" rows="2" placeholder="es. Destinazione, cliente…"></textarea>
+          </div>
+        </div>
+        <div class="action-bar">
+          <button type="button" class="btn btn-primary" id="btn-prenota">Prenota auto</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MONITORAGGIO -->
+  <div id="view-monitoraggio" class="view-panel hidden">
+    <div class="page-head">
+      <h1 class="page-title">Monitoraggio prenotazioni</h1>
+      <p class="page-sub">Calendario occupazione auto aziendale</p>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-lbl">Prenotazioni attive</div><div class="kpi-val" id="kpi-tot">—</div></div>
+      <div class="kpi"><div class="kpi-lbl">Trasferte</div><div class="kpi-val" id="kpi-trasf">—</div></div>
+      <div class="kpi"><div class="kpi-lbl">Roma e dintorni</div><div class="kpi-val" id="kpi-roma">—</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-icon">📅</div>
+        <span class="card-title">Calendario occupazione</span>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="cal-nav">
+          <div class="cal-nav-btns">
+            <button type="button" id="tim-prev" aria-label="Mese precedente">‹</button>
+            <button type="button" id="tim-next" aria-label="Mese successivo">›</button>
+          </div>
+          <div class="cal-nav-center">
+            <span id="tim-month-label">—</span>
+          </div>
+          <div class="cal-zoom">
+            <button type="button" id="tim-zoom-out" aria-label="Riduci calendario" title="Riduci">−</button>
+            <span class="cal-zoom-val" id="tim-zoom-label">125%</span>
+            <button type="button" id="tim-zoom-in" aria-label="Ingrandisci calendario" title="Ingrandisci">+</button>
+          </div>
+        </div>
+        <div class="oc-wrap">
+          <div id="mon-cal-grid" class="oc-cal"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODIFICA -->
+  <div id="view-modifica" class="view-panel hidden">
+    <div class="page-head">
+      <h1 class="page-title">Modifica prenotazioni</h1>
+      <p class="page-sub">Accesso riservato — richiede credenziali</p>
+    </div>
+    <div class="card" id="mod-panel">
+      <div class="card-head">
+        <div class="card-icon">✏️</div>
+        <span class="card-title">Gestione prenotazioni</span>
+      </div>
+      <div class="card-body">
+        <div class="field-row">
+          <div class="field">
+            <label>Filtra per operatore</label>
+            <select id="mod-filtro-op"><option value="">— seleziona operatore —</option></select>
+          </div>
+        </div>
+        <div class="edit-list" id="mod-list"></div>
+        <div class="empty-msg" id="mod-empty">Seleziona un operatore per visualizzare le prenotazioni</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal calendario periodo -->
+<div class="modal-backdrop" id="range-backdrop" aria-hidden="true">
+  <div class="modal modal-lg" role="dialog">
+    <div class="modal-head">
+      <h2 id="range-modal-title">Seleziona periodo</h2>
+      <p>Clicca il giorno di inizio, poi il giorno di fine (anche mesi diversi)</p>
+    </div>
+    <div class="modal-body">
+      <div class="mon-cal-nav">
+        <button type="button" id="cal-prev" aria-label="Mese precedente">‹</button>
+        <span id="cal-month-label">—</span>
+        <button type="button" id="cal-next" aria-label="Mese successivo">›</button>
+      </div>
+      <div class="mon-cal-weekdays" id="cal-weekdays"></div>
+      <div class="mon-cal-grid" id="cal-grid"></div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" id="range-cancel">Annulla</button>
+      <button type="button" class="btn btn-primary" id="range-applica">Applica</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal conflitto -->
+<div class="modal-backdrop" id="conflict-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog">
+    <div class="modal-head">
+      <h2>⚠️ Conflitto prenotazione</h2>
+      <p>L'auto è già prenotata nel periodo selezionato.</p>
+    </div>
+    <div class="modal-body">
+      <div class="conflict-box" id="conflict-detail"></div>
+      <button type="button" class="btn btn-outline" id="btn-richiedi-modifica" style="width:100%;justify-content:center">
+        📧 Richiedi modifica ai responsabili
+      </button>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-secondary" id="conflict-chiudi">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal dettaglio prenotazione (solo lettura) -->
+<div class="modal-backdrop" id="detail-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" style="width:min(440px,calc(100vw - 32px))">
+    <div class="modal-head"><h2>Dettaglio prenotazione</h2></div>
+    <div class="modal-body" id="detail-body"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-secondary" id="detail-chiudi">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal edit singola -->
+<div class="modal-backdrop" id="edit-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" style="width:min(480px,calc(100vw - 32px))">
+    <div class="modal-head"><h2>Modifica prenotazione</h2></div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-id">
+      <div class="field-row">
+        <div class="field"><label>Operatore <span class="req">*</span></label><select id="edit-operatore" required></select></div>
+        <div class="field"><label>Tipo <span class="req">*</span></label><select id="edit-tipo" required><option value="">— seleziona —</option><option value="Trasferta">Trasferta</option><option value="Roma e dintorni">Roma e dintorni</option></select></div>
+      </div>
+      <div class="field-row">
+        <div class="field" style="flex:2">
+          <label>Periodo <span class="req">*</span></label>
+          <button type="button" class="range-trigger" id="edit-range-trigger">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3"/></svg>
+            <span id="edit-range-label">Seleziona periodo</span>
+          </button>
+        </div>
+      </div>
+      <div class="field"><label>Note</label><textarea id="edit-note" rows="2"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-danger" id="edit-delete">Elimina</button>
+      <button type="button" class="btn btn-ghost" id="edit-cancel">Annulla</button>
+      <button type="button" class="btn btn-primary" id="edit-save">Salva</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+const WEBHOOK_CRUD = SR_CONFIG.WEBHOOK_CRUD;
+const WEBHOOK_RICHIESTA = SR_CONFIG.WEBHOOK_RICHIESTA;
+const WEBHOOK_UPDATE = SR_CONFIG.WEBHOOK_UPDATE;
+
+const OPERATORI = [
+  'Javier Migliazza',
+  'Alessandro Lambiase',
+  'Simone Rocca',
+  'Luca Figliolini',
+  "Simone D'Innocenzo",
+  'Costanza Arvigo',
+  'Francesco Catracchia',
+  'Luca Rivelli',
+  'Andrea Castellan'
+];
+
+const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+const WD = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+const OP_PALETTE = ['#1e4fa3','#0d9488','#7c3aed','#b45309','#db2777','#0891b2','#059669','#6366f1','#ea580c'];
+const TL_ZOOM_STEPS = [0.85, 1, 1.25, 1.5, 1.75, 2];
+let timZoomIdx = 2;
+
+let prenotazioni = [];
+let sessionLoaded = false;
+let conflictPending = null;
+
+let rangeCtx = 'insert';
+let rangeStart = null;
+let rangeEnd = null;
+let editRangeStart = null;
+let editRangeEnd = null;
+let editBookingSnapshot = null;
+let timYear = new Date().getFullYear();
+let timMonth = new Date().getMonth();
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let calPickPhase = 0;
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showToast(msg, type, ms) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove('show'), ms || 3200);
+}
+
+function normalizeDateStr(val) {
+  if (val == null || val === '') return '';
+  const s = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const it = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/);
+  if (it) {
+    return `${it[3]}-${String(it[2]).padStart(2, '0')}-${String(it[1]).padStart(2, '0')}`;
+  }
+  const d = new Date(s);
+  if (isNaN(d)) return '';
+  return d.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
+}
+
+function pickDateField(row, keys) {
+  for (const k of keys) {
+    if (row[k] != null && row[k] !== '') return normalizeDateStr(row[k]);
+  }
+  return '';
+}
+
+function fmtDateIt(val) {
+  const iso = normalizeDateStr(val);
+  if (!iso) return '—';
+  const d = new Date(iso + 'T12:00:00');
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString('it-IT', {
+    weekday: 'short', day: 'numeric', month: 'long', year: 'numeric'
+  });
+}
+
+function fmtPeriodoIt(da, a) {
+  const d1 = normalizeDateStr(da);
+  const d2 = normalizeDateStr(a);
+  if (!d1 && !d2) return '—';
+  if (!d2 || d1 === d2) return fmtDateIt(d1);
+  return `${fmtDateIt(d1)}<span class="conflict-arrow">→</span>${fmtDateIt(d2)}`;
+}
+
+function toISO(y, m, d) {
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+function parseRows(data) {
+  if (!data) return [];
+  let rows = [];
+  if (Array.isArray(data)) rows = data;
+  else if (Array.isArray(data.body)) rows = data.body;
+  else if (Array.isArray(data.data)) rows = data.data;
+  else if (data.json) return parseRows(data.json);
+  else rows = [data];
+  return rows.filter(r => r && (r.id != null || r.operatore)).map(r => ({
+    ...r,
+    data_da: pickDateField(r, ['data_da', 'dataDa', 'Data_da', 'dal', 'data_inizio']),
+    data_a: pickDateField(r, ['data_a', 'dataA', 'Data_a', 'al', 'data_fine'])
+  }));
+}
+
+function rangesOverlap(a1, a2, b1, b2) {
+  return a1 <= b2 && b1 <= a2;
+}
+
+function trovaConflitto(dataDa, dataA, excludeId) {
+  return prenotazioni.find(p => {
+    if (excludeId && Number(p.id) === Number(excludeId)) return false;
+    return rangesOverlap(dataDa, dataA, p.data_da, p.data_a);
+  }) || null;
+}
+
+function popolaSelectOperatori() {
+  ['ins-operatore','mod-filtro-op','edit-operatore'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const placeholder = id === 'mod-filtro-op' ? '— seleziona operatore —' : '— seleziona —';
+    el.innerHTML = `<option value="">${placeholder}</option>`
+      + OPERATORI.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+  });
+}
+
+async function apiCrud(payload) {
+  const resp = await SRAuth.fetch(WEBHOOK_CRUD, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const data = await resp.json().catch(() => ({}));
+  return data;
+}
+
+async function caricaPrenotazioni(force) {
+  if (sessionLoaded && !force) return prenotazioni;
+  const initial = !sessionLoaded;
+  try {
+    const data = await apiCrud({ action: 'get' });
+    prenotazioni = parseRows(data).filter(r => r.id != null || r.operatore);
+    sessionLoaded = true;
+    return prenotazioni;
+  } catch (e) {
+    showToast('Caricamento fallito: ' + (e.message || e), 'error');
+    throw e;
+  } finally {
+    if (initial) hideAppLoader();
+  }
+}
+
+function hideAppLoader() {
+  const el = document.getElementById('app-loader');
+  if (!el) return;
+  el.classList.add('is-hidden');
+  el.setAttribute('aria-busy', 'false');
+}
+
+function formatRangeLabel(start, end) {
+  if (!start) return 'Seleziona periodo';
+  if (!end || start === end) return fmtDateIt(start);
+  return fmtDateIt(start) + ' → ' + fmtDateIt(end);
+}
+
+function aggiornaRangeLabel() {
+  const labelId = rangeCtx === 'edit' ? 'edit-range-label' : 'ins-range-label';
+  document.getElementById(labelId).textContent = formatRangeLabel(rangeStart, rangeEnd);
+}
+
+function aggiornaEditRangeLabel() {
+  document.getElementById('edit-range-label').textContent = formatRangeLabel(editRangeStart, editRangeEnd);
+}
+
+function renderCalendario() {
+  document.getElementById('cal-month-label').textContent = MESI[calMonth] + ' ' + calYear;
+  document.getElementById('cal-weekdays').innerHTML = WD.map((w,i) =>
+    `<span class="${i>=5?'is-weekend':''}">${w}</span>`).join('');
+
+  const first = new Date(calYear, calMonth, 1);
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const pad = (first.getDay() + 6) % 7;
+  let html = '';
+  for (let i = 0; i < pad; i++) html += '<span class="mon-cal-day is-empty"></span>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = toISO(calYear, calMonth, d);
+    const dow = new Date(calYear, calMonth, d).getDay();
+    const isWk = dow === 0 || dow === 6;
+    let cls = 'mon-cal-day' + (isWk ? ' is-weekend' : '');
+    if (rangeStart && rangeEnd) {
+      if (iso >= rangeStart && iso <= rangeEnd) cls += ' in-range';
+      if (iso === rangeStart) cls += ' range-start';
+      if (iso === rangeEnd) cls += ' range-end';
+    } else if (rangeStart && iso === rangeStart) {
+      cls += ' range-start range-end';
+    }
+    html += `<button type="button" class="${cls}" data-iso="${iso}">${d}</button>`;
+  }
+  document.getElementById('cal-grid').innerHTML = html;
+}
+
+function apriRangeModal(ctx) {
+  rangeCtx = ctx || 'insert';
+  if (rangeCtx === 'edit') {
+    rangeStart = editRangeStart;
+    rangeEnd = editRangeEnd;
+  }
+  const anchor = rangeStart ? new Date(rangeStart + 'T12:00:00') : new Date();
+  calYear = anchor.getFullYear();
+  calMonth = anchor.getMonth();
+  calPickPhase = 0;
+  renderCalendario();
+  aggiornaRangeLabel();
+  document.getElementById('range-backdrop').classList.add('open');
+}
+
+function chiudiRangeModal(apply) {
+  if (apply && rangeCtx === 'edit') {
+    editRangeStart = rangeStart;
+    editRangeEnd = rangeEnd;
+    aggiornaEditRangeLabel();
+  } else if (!apply && rangeCtx === 'edit') {
+    rangeStart = editRangeStart;
+    rangeEnd = editRangeEnd;
+    aggiornaRangeLabel();
+  }
+  document.getElementById('range-backdrop').classList.remove('open');
+}
+
+function onCalDayClick(iso) {
+  if (!rangeStart || calPickPhase === 0) {
+    rangeStart = iso;
+    rangeEnd = iso;
+    calPickPhase = 1;
+  } else {
+    rangeEnd = iso;
+    if (rangeEnd < rangeStart) [rangeStart, rangeEnd] = [rangeEnd, rangeStart];
+    calPickPhase = 0;
+  }
+  renderCalendario();
+  aggiornaRangeLabel();
+}
+
+function applyCalendarMetrics(wrap) {
+  const z = TL_ZOOM_STEPS[timZoomIdx];
+  wrap.style.setProperty('--oc-week-min', Math.round(120 * z) + 'px');
+  wrap.style.setProperty('--oc-day-num', Math.round(16 * z) + 'px');
+  wrap.style.setProperty('--oc-bar-h', Math.round(24 * z) + 'px');
+  wrap.style.setProperty('--oc-bar-top', Math.round(38 * z) + 'px');
+}
+
+function updateZoomControls() {
+  const pct = Math.round(TL_ZOOM_STEPS[timZoomIdx] * 100) + '%';
+  document.getElementById('tim-zoom-label').textContent = pct;
+  document.getElementById('tim-zoom-out').disabled = timZoomIdx <= 0;
+  document.getElementById('tim-zoom-in').disabled = timZoomIdx >= TL_ZOOM_STEPS.length - 1;
+}
+
+function buildMonthWeeks(year, month) {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const padStart = (new Date(year, month, 1).getDay() + 6) % 7;
+  const cells = [];
+  for (let i = 0; i < padStart; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(toISO(year, month, d));
+  while (cells.length % 7) cells.push(null);
+  const weeks = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+  return weeks;
+}
+
+function barSegmentInWeek(p, weekDays) {
+  let colStart = -1, colEnd = -1;
+  weekDays.forEach((iso, idx) => {
+    if (!iso || iso < p.data_da || iso > p.data_a) return;
+    if (colStart < 0) colStart = idx;
+    colEnd = idx;
+  });
+  if (colStart < 0) return null;
+  const roundL = weekDays[colStart] === p.data_da;
+  const roundR = weekDays[colEnd] === p.data_a;
+  return { colStart, colEnd, roundL, roundR };
+}
+
+function segmentsOverlap(a, b) {
+  return a.colStart <= b.colEnd && b.colStart <= a.colEnd;
+}
+
+function assignBarLanes(bookings, weekDays) {
+  const items = bookings
+    .map(p => ({ p, seg: barSegmentInWeek(p, weekDays) }))
+    .filter(x => x.seg)
+    .sort((a, b) => (a.p.data_da || '').localeCompare(b.p.data_da || '') || Number(a.p.id) - Number(b.p.id));
+  const laneEnds = [];
+  items.forEach(item => {
+    let lane = 0;
+    while (laneEnds[lane]?.some(seg => segmentsOverlap(item.seg, seg))) lane++;
+    if (!laneEnds[lane]) laneEnds[lane] = [];
+    laneEnds[lane].push(item.seg);
+    item.lane = lane;
+  });
+  return items;
+}
+
+function colorOperatore(name) {
+  const i = OPERATORI.indexOf(name);
+  return OP_PALETTE[i >= 0 ? i % OP_PALETTE.length : 0];
+}
+
+function cognomeOperatore(name) {
+  if (!name) return '—';
+  const parts = String(name).trim().split(/\s+/);
+  return parts.length > 1 ? parts[parts.length - 1] : parts[0];
+}
+
+function resetFormInserimento() {
+  document.getElementById('ins-operatore').value = '';
+  document.getElementById('ins-tipo').value = '';
+  document.getElementById('ins-note').value = '';
+  rangeStart = rangeEnd = null;
+  aggiornaRangeLabel();
+}
+
+function apriDettaglioPrenotazione(id) {
+  const p = prenotazioni.find(x => Number(x.id) === Number(id));
+  if (!p) return;
+  const col = colorOperatore(p.operatore);
+  const tagCls = p.tipo_utilizzo === 'Roma e dintorni' ? 'tag-roma' : 'tag-trasferta';
+  document.getElementById('detail-body').innerHTML = `
+    <div class="detail-card">
+      <div class="detail-op-badge">
+        <span class="detail-op-dot" style="background:${col}"></span>
+        ${esc(p.operatore)}
+      </div>
+      <dl>
+        <dt>Tipo utilizzo</dt>
+        <dd><span class="tag ${tagCls}">${esc(p.tipo_utilizzo)}</span></dd>
+        <dt>Periodo</dt>
+        <dd>${fmtPeriodoIt(p.data_da, p.data_a)}</dd>
+        <dt>Note</dt>
+        <dd>${esc(p.note || '—')}</dd>
+      </dl>
+    </div>`;
+  document.getElementById('detail-backdrop').classList.add('open');
+}
+
+function renderMonitoraggio() {
+  const wrap = document.getElementById('mon-cal-grid');
+  applyCalendarMetrics(wrap);
+  updateZoomControls();
+
+  const sorted = [...prenotazioni].sort((a, b) => (a.data_da || '').localeCompare(b.data_da || ''));
+  document.getElementById('kpi-tot').textContent = sorted.length;
+  document.getElementById('kpi-trasf').textContent = sorted.filter(p => p.tipo_utilizzo === 'Trasferta').length;
+  document.getElementById('kpi-roma').textContent = sorted.filter(p => p.tipo_utilizzo === 'Roma e dintorni').length;
+  document.getElementById('tim-month-label').textContent = MESI[timMonth] + ' ' + timYear;
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const weeks = buildMonthWeeks(timYear, timMonth);
+  const daysInMonth = new Date(timYear, timMonth + 1, 0).getDate();
+  const monthStart = toISO(timYear, timMonth, 1);
+  const monthEnd = toISO(timYear, timMonth, daysInMonth);
+  const inMonth = sorted.filter(p => rangesOverlap(p.data_da, p.data_a, monthStart, monthEnd));
+
+  const z = TL_ZOOM_STEPS[timZoomIdx];
+  const barH = Math.round(24 * z);
+  const barGap = Math.round(4 * z);
+
+  let wdHead = WD.map((w, i) =>
+    `<span class="${i >= 5 ? 'is-wknd' : ''}">${w}</span>`).join('');
+
+  let weeksHtml = '';
+  weeks.forEach(weekDays => {
+    const valid = weekDays.filter(Boolean);
+    const wStart = valid[0] || monthStart;
+    const wEnd = valid[valid.length - 1] || monthEnd;
+    const weekBookings = inMonth.filter(p => rangesOverlap(p.data_da, p.data_a, wStart, wEnd));
+    const barItems = assignBarLanes(weekBookings, weekDays);
+    const maxLane = barItems.reduce((m, x) => Math.max(m, x.lane), -1);
+    const weekMin = Math.round(120 * z) + Math.max(0, maxLane) * (barH + barGap);
+
+    let daysHtml = '';
+    weekDays.forEach(iso => {
+      if (!iso) {
+        daysHtml += '<div class="oc-day is-out"></div>';
+        return;
+      }
+      const d = Number(iso.slice(8, 10));
+      const dow = new Date(iso + 'T12:00:00').getDay();
+      const cls = (dow === 0 || dow === 6 ? ' is-wknd' : '') + (iso === todayIso ? ' is-today' : '');
+      daysHtml += `<div class="oc-day${cls}"><div class="oc-day-num">${d}</div></div>`;
+    });
+
+    let barsHtml = '';
+    barItems.forEach(({ p, seg, lane }) => {
+      const colW = 100 / 7;
+      const left = seg.colStart * colW;
+      const width = (seg.colEnd - seg.colStart + 1) * colW;
+      const top = lane * (barH + barGap);
+      const col = colorOperatore(p.operatore);
+      const rCls = (seg.roundL ? ' round-l' : '') + (seg.roundR ? ' round-r' : '');
+      const cognome = cognomeOperatore(p.operatore);
+      barsHtml += `<button type="button" class="oc-bar${rCls}" data-id="${p.id}"
+        style="left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${top}px;background:${col}"
+        title="${esc(p.operatore)}">${esc(cognome)}</button>`;
+    });
+
+    weeksHtml += `<div class="oc-week" style="min-height:${weekMin}px">${daysHtml}<div class="oc-week-bars">${barsHtml}</div></div>`;
+  });
+
+  wrap.innerHTML = `<div class="oc-wd-head">${wdHead}</div>${weeksHtml}`;
+
+  wrap.querySelectorAll('.oc-bar').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      apriDettaglioPrenotazione(Number(btn.dataset.id));
+    });
+  });
+}
+
+function renderModifica() {
+  const filtro = document.getElementById('mod-filtro-op').value;
+  const list = document.getElementById('mod-list');
+  const empty = document.getElementById('mod-empty');
+
+  if (!filtro) {
+    list.innerHTML = '';
+    empty.textContent = 'Seleziona un operatore per visualizzare le prenotazioni';
+    empty.style.display = 'block';
+    return;
+  }
+
+  const rows = [...prenotazioni]
+    .filter(p => p.operatore === filtro)
+    .sort((a, b) => (a.data_da || '').localeCompare(b.data_da || ''));
+
+  if (!rows.length) {
+    list.innerHTML = '';
+    empty.textContent = 'Nessuna prenotazione per questo operatore';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  list.innerHTML = rows.map(p => `
+    <div class="edit-item">
+      <div class="edit-item-meta">
+        <strong>${esc(p.operatore)}</strong> · ${esc(p.tipo_utilizzo)}<br>
+        ${fmtDateIt(p.data_da)} → ${fmtDateIt(p.data_a)}
+        ${p.note ? '<br><em>' + esc(p.note) + '</em>' : ''}
+      </div>
+      <div class="edit-item-actions">
+        <button type="button" class="btn btn-ghost btn-mod-edit" data-id="${p.id}">Modifica</button>
+      </div>
+    </div>`).join('');
+
+  list.querySelectorAll('.btn-mod-edit').forEach(btn => {
+    btn.addEventListener('click', () => apriEditModal(Number(btn.dataset.id)));
+  });
+}
+
+function apriConflictModal(conflitto, richiesta) {
+  conflictPending = {
+    conflitto: {
+      id: conflitto.id,
+      operatore: conflitto.operatore,
+      tipo_utilizzo: conflitto.tipo_utilizzo,
+      data_da: conflitto.data_da,
+      data_a: conflitto.data_a,
+      note: conflitto.note || ''
+    },
+    richiesta: {
+      operatore: richiesta.operatore,
+      tipo_utilizzo: richiesta.tipo_utilizzo,
+      data_da: richiesta.data_da,
+      data_a: richiesta.data_a,
+      note: richiesta.note || ''
+    }
+  };
+  const tagCls = conflitto.tipo_utilizzo === 'Roma e dintorni' ? 'tag-roma' : 'tag-trasferta';
+  const reqTagCls = richiesta.tipo_utilizzo === 'Roma e dintorni' ? 'tag-roma' : 'tag-trasferta';
+  document.getElementById('conflict-detail').innerHTML = `
+    <div class="conflict-lbl">La tua richiesta</div>
+    <div class="conflict-name">${esc(richiesta.operatore)}</div>
+    <div class="conflict-meta"><span class="tag ${reqTagCls}">${esc(richiesta.tipo_utilizzo)}</span></div>
+    <div class="conflict-dates">${fmtPeriodoIt(richiesta.data_da, richiesta.data_a)}</div>
+    ${richiesta.note ? `<div class="conflict-note">${esc(richiesta.note)}</div>` : ''}
+    <div class="conflict-lbl" style="margin-top:16px">In conflitto con</div>
+    <div class="conflict-name">${esc(conflitto.operatore)}</div>
+    <div class="conflict-meta">
+      <span class="tag ${tagCls}">${esc(conflitto.tipo_utilizzo)}</span>
+    </div>
+    <div class="conflict-dates">${fmtPeriodoIt(conflitto.data_da, conflitto.data_a)}</div>
+    ${conflitto.note ? `<div class="conflict-note">${esc(conflitto.note)}</div>` : ''}`;
+  document.getElementById('conflict-backdrop').classList.add('open');
+}
+
+async function inviaPrenotazione() {
+  const operatore = document.getElementById('ins-operatore').value;
+  const tipo_utilizzo = document.getElementById('ins-tipo').value;
+  const note = document.getElementById('ins-note').value.trim();
+  if (!operatore) return showToast('Seleziona operatore', 'warn');
+  if (!tipo_utilizzo) return showToast('Seleziona tipo utilizzo', 'warn');
+  if (!rangeStart || !rangeEnd) return showToast('Seleziona il periodo', 'warn');
+
+  const data_da = rangeStart;
+  const data_a = rangeEnd;
+  const conflitto = trovaConflitto(data_da, data_a);
+  if (conflitto) {
+    apriConflictModal(conflitto, { operatore, tipo_utilizzo, data_da, data_a, note });
+    return;
+  }
+
+  const btn = document.getElementById('btn-prenota');
+  btn.disabled = true;
+  try {
+    await apiCrud({ action: 'insert', operatore, tipo_utilizzo, data_da, data_a, note });
+    showToast('Prenotazione registrata', 'success');
+    await caricaPrenotazioni(true);
+    resetFormInserimento();
+  } catch (e) {
+    showToast('Errore: ' + (e.message || e), 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function richiediModifica() {
+  if (!conflictPending) return;
+  try {
+    await SRAuth.fetch(WEBHOOK_RICHIESTA, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        richiesta: conflictPending.richiesta,
+        conflitto: conflictPending.conflitto
+      })
+    });
+    showToast('Richiesta inviata ai responsabili', 'success');
+    document.getElementById('conflict-backdrop').classList.remove('open');
+  } catch (e) {
+    showToast('Invio richiesta fallito', 'error');
+  }
+}
+
+function apriEditModal(id) {
+  const p = prenotazioni.find(x => Number(x.id) === id);
+  if (!p) return;
+  editBookingSnapshot = {
+    id: Number(p.id),
+    operatore: p.operatore || '',
+    tipo_utilizzo: p.tipo_utilizzo || '',
+    data_da: pickDateField(p, ['data_da', 'dataDa', 'Data_da', 'dal', 'data_inizio']),
+    data_a: pickDateField(p, ['data_a', 'dataA', 'Data_a', 'al', 'data_fine']),
+    note: p.note != null ? String(p.note).trim() : ''
+  };
+  editRangeStart = editBookingSnapshot.data_da || null;
+  editRangeEnd = editBookingSnapshot.data_a || editBookingSnapshot.data_da || null;
+
+  document.getElementById('edit-id').value = editBookingSnapshot.id;
+  document.getElementById('edit-operatore').value = editBookingSnapshot.operatore;
+  document.getElementById('edit-tipo').value = editBookingSnapshot.tipo_utilizzo;
+  document.getElementById('edit-note').value = editBookingSnapshot.note;
+  aggiornaEditRangeLabel();
+  document.getElementById('edit-backdrop').classList.add('open');
+}
+
+async function salvaEdit() {
+  const id = Number(document.getElementById('edit-id').value);
+  const operatore = document.getElementById('edit-operatore').value.trim();
+  const tipo_utilizzo = document.getElementById('edit-tipo').value.trim();
+  const data_da = editRangeStart || editBookingSnapshot?.data_da || '';
+  const data_a = editRangeEnd || editRangeStart || editBookingSnapshot?.data_a || '';
+  const note = document.getElementById('edit-note').value.trim();
+
+  if (!operatore) return showToast('Seleziona operatore', 'warn');
+  if (!tipo_utilizzo) return showToast('Seleziona tipo utilizzo', 'warn');
+  if (!data_da || !data_a) return showToast('Seleziona il periodo', 'warn');
+  if (data_a < data_da) return showToast('La data fine non può precedere la data inizio', 'warn');
+
+  const payload = { id, operatore, tipo_utilizzo, data_da, data_a, note };
+  const conflitto = trovaConflitto(payload.data_da, payload.data_a, id);
+  if (conflitto) return showToast('Conflitto con ' + conflitto.operatore, 'warn');
+
+  const resp = await SRAuth.fetch(WEBHOOK_UPDATE, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!resp.ok) return showToast('Update fallito: ' + resp.status, 'error');
+  showToast('Prenotazione aggiornata', 'success');
+  document.getElementById('edit-backdrop').classList.remove('open');
+  await caricaPrenotazioni(true);
+  renderModifica();
+}
+
+async function eliminaEdit() {
+  const id = Number(document.getElementById('edit-id').value);
+  if (!confirm('Eliminare questa prenotazione?')) return;
+  await apiCrud({ action: 'delete', id });
+  showToast('Prenotazione eliminata', 'success');
+  document.getElementById('edit-backdrop').classList.remove('open');
+  await caricaPrenotazioni(true);
+  renderModifica();
+}
+
+function switchSection(name) {
+  document.querySelectorAll('.topbar-nav').forEach(b => b.classList.toggle('is-active', b.dataset.section === name));
+  document.getElementById('view-inserimento').classList.toggle('hidden', name !== 'inserimento');
+  document.getElementById('view-monitoraggio').classList.toggle('hidden', name !== 'monitoraggio');
+  document.getElementById('view-modifica').classList.toggle('hidden', name !== 'modifica');
+  if (name === 'monitoraggio') renderMonitoraggio();
+  if (name === 'modifica') renderModifica();
+}
+
+document.querySelectorAll('.topbar-nav').forEach(btn => {
+  btn.addEventListener('click', () => switchSection(btn.dataset.section));
+});
+
+document.getElementById('ins-range-trigger').addEventListener('click', () => apriRangeModal('insert'));
+document.getElementById('edit-range-trigger').addEventListener('click', () => apriRangeModal('edit'));
+document.getElementById('range-cancel').addEventListener('click', () => chiudiRangeModal(false));
+document.getElementById('range-applica').addEventListener('click', () => chiudiRangeModal(true));
+document.getElementById('cal-prev').addEventListener('click', () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendario(); });
+document.getElementById('cal-next').addEventListener('click', () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendario(); });
+document.getElementById('cal-grid').addEventListener('click', e => {
+  const btn = e.target.closest('[data-iso]');
+  if (btn) onCalDayClick(btn.dataset.iso);
+});
+document.getElementById('btn-prenota').addEventListener('click', inviaPrenotazione);
+document.getElementById('conflict-chiudi').addEventListener('click', () => document.getElementById('conflict-backdrop').classList.remove('open'));
+document.getElementById('btn-richiedi-modifica').addEventListener('click', richiediModifica);
+document.getElementById('mod-filtro-op').addEventListener('change', renderModifica);
+document.getElementById('tim-prev').addEventListener('click', () => {
+  timMonth--;
+  if (timMonth < 0) { timMonth = 11; timYear--; }
+  renderMonitoraggio();
+});
+document.getElementById('tim-next').addEventListener('click', () => {
+  timMonth++;
+  if (timMonth > 11) { timMonth = 0; timYear++; }
+  renderMonitoraggio();
+});
+document.getElementById('tim-zoom-out').addEventListener('click', () => {
+  if (timZoomIdx > 0) { timZoomIdx--; renderMonitoraggio(); }
+});
+document.getElementById('tim-zoom-in').addEventListener('click', () => {
+  if (timZoomIdx < TL_ZOOM_STEPS.length - 1) { timZoomIdx++; renderMonitoraggio(); }
+});
+document.getElementById('detail-chiudi').addEventListener('click', () => document.getElementById('detail-backdrop').classList.remove('open'));
+
+document.getElementById('edit-cancel').addEventListener('click', () => document.getElementById('edit-backdrop').classList.remove('open'));
+document.getElementById('edit-save').addEventListener('click', salvaEdit);
+document.getElementById('edit-delete').addEventListener('click', eliminaEdit);
+
+if (SRAuth.requireAuth()) {
+  popolaSelectOperatori();
+  caricaPrenotazioni().catch(() => hideAppLoader());
+}
+</script>
+</body>
+</html>
