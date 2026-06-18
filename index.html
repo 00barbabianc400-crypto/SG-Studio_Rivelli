@@ -75,7 +75,18 @@ body {
   padding: 20px 24px 28px; color: #fff;
 }
 .hub-top-inner { max-width: 560px; margin: 0 auto; }
-.hub-logo-sm { height: 40px; width: auto; margin-bottom: 12px; filter: brightness(1.05); }
+.hub-logo-sm {
+  display: block;
+  height: 44px;
+  width: auto;
+  max-width: 140px;
+  margin-bottom: 12px;
+  padding: 4px 8px;
+  border-radius: var(--r3);
+  background: rgba(255,255,255,.96);
+  object-fit: contain;
+  box-shadow: 0 2px 10px rgba(10,22,40,.18);
+}
 .hub-top h1 { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; }
 .hub-top p { font-size: 13px; opacity: .8; margin-top: 4px; }
 .hub-user { font-size: 12px; opacity: .75; margin-top: 6px; }
@@ -112,7 +123,6 @@ body {
 <div id="gate-screen">
   <div class="gate-card">
     <img class="gate-logo" src="assets/logo.jpg" alt="Studio Rivelli Consulting">
-    <p class="gate-tagline">Sinergie tecniche al servizio delle aziende</p>
     <h2 class="gate-title">Accesso riservato</h2>
     <p class="gate-sub">Accedi con il tuo account Microsoft 365 aziendale Studio Rivelli.</p>
     <p class="gate-loading hidden" id="gate-loading">Verifica sessione…</p>
