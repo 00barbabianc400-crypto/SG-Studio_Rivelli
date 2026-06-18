@@ -177,6 +177,10 @@ function setLoading(on) {
     const state = await SRAuth.init();
     if (state.loggedIn) showHub();
     else showGate();
+    if (location.search.includes('err=api')) {
+      document.getElementById('gate-error').textContent =
+        'Impossibile collegarsi alle API. Verifica il workflow n8n macchina-auth-login.';
+    }
   } catch (ex) {
     showGate();
     document.getElementById('gate-error').textContent = ex.message || 'Errore inizializzazione';
@@ -192,8 +196,8 @@ document.getElementById('btn-ms-login').addEventListener('click', async () => {
   err.textContent = '';
   btn.disabled = true;
   try {
-    const data = await SRAuth.loginWithMicrosoft(false);
-    if (data) showHub();
+    await SRAuth.loginWithMicrosoft(false);
+    if (await SRAuth.isMsalLoggedIn()) showHub();
   } catch (ex) {
     err.textContent = ex.message || 'Accesso annullato o non autorizzato';
   } finally {

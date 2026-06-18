@@ -1,5 +1,7 @@
 /**
- * Auth Studio Rivelli — Microsoft 365 (MSAL) + JWT n8n
+ * Auth Studio Rivelli
+ * - Hub (index): basta sessione Microsoft (tenant Rivelli via app single-tenant)
+ * - Macchina/API: JWT n8n ottenuto al primo accesso (GET prenotazioni)
  */
 (function (global) {
   const C = global.SR_CONFIG || {};
@@ -47,21 +49,33 @@
     }
   }
 
-  function isAuthenticated() {
+  /** JWT n8n valido — richiesto per le API macchina */
+  function hasN8nToken() {
     const t = getToken();
-    if (!t) return false;
+    if (!t || t.length < 20) return false;
     const exp = getTokenExp();
-    if (exp && Date.now() >= exp) {
-      clearSession();
+    if (!exp || Date.now() >= exp) {
+      clearN8nSession();
       return false;
     }
     return true;
   }
 
-  function clearSession() {
+  function clearN8nSession() {
     sessionStorage.removeItem(C.TOKEN_KEY || 'sr_jwt');
     sessionStorage.removeItem(C.TOKEN_EXP_KEY || 'sr_jwt_exp');
     sessionStorage.removeItem(C.USER_KEY || 'sr_user');
+  }
+
+  function clearMsalCache() {
+    Object.keys(sessionStorage).forEach(k => {
+      if (/^msal/i.test(k)) sessionStorage.removeItem(k);
+    });
+  }
+
+  function clearSession() {
+    clearN8nSession();
+    clearMsalCache();
   }
 
   function saveN8nSession(data) {
@@ -90,6 +104,38 @@
     return msalReady;
   }
 
+  async function getAzureAccessToken() {
+    await initMsal();
+    const redirectResult = await msalInstance.handleRedirectPromise();
+    if (redirectResult && redirectResult.accessToken) {
+      return {
+        accessToken: redirectResult.accessToken,
+        tenantId: redirectResult.tenantId || C.AZURE_TENANT_ID
+      };
+    }
+    const accounts = msalInstance.getAllAccounts();
+    if (!accounts.length) return null;
+    const result = await msalInstance.acquireTokenSilent({
+      scopes: C.AZURE_SCOPES || ['User.Read'],
+      account: accounts[0]
+    });
+    return {
+      accessToken: result.accessToken,
+      tenantId: result.tenantId || C.AZURE_TENANT_ID
+    };
+  }
+
+  /** Hub index: c'è un account Microsoft? */
+  async function isMsalLoggedIn() {
+    try {
+      await initMsal();
+      await msalInstance.handleRedirectPromise();
+      return msalInstance.getAllAccounts().length > 0;
+    } catch {
+      return false;
+    }
+  }
+
   async function exchangeAzureToken(accessToken, tenantId) {
     const resp = await global.fetch(C.WEBHOOK_AUTH, {
       method: 'POST',
@@ -103,67 +149,33 @@
     const data = await resp.json().catch(() => ({}));
 
     if (!resp.ok || !data.token) {
-      throw new Error(data.message || 'Accesso non autorizzato (' + resp.status + ')');
+      throw new Error(data.message || 'Accesso API non autorizzato (' + resp.status + ')');
     }
 
     saveN8nSession(data);
     return data;
   }
 
-  async function trySilentLogin() {
-    await initMsal();
-    const accounts = msalInstance.getAllAccounts();
-    if (!accounts.length) return null;
+  /** Macchina: ottieni JWT n8n da token Azure (chiamata a macchina-auth-login) */
+  async function ensureN8nSession() {
+    if (hasN8nToken()) return true;
 
-    const result = await msalInstance.acquireTokenSilent({
-      scopes: C.AZURE_SCOPES || ['User.Read'],
-      account: accounts[0]
-    });
-    return exchangeAzureToken(result.accessToken, result.tenantId || C.AZURE_TENANT_ID);
+    const azure = await getAzureAccessToken();
+    if (!azure || !azure.accessToken) return false;
+
+    await exchangeAzureToken(azure.accessToken, azure.tenantId);
+    return hasN8nToken();
   }
 
+  /** Bootstrap hub index */
   async function init() {
     await initMsal();
-
     const redirectResult = await msalInstance.handleRedirectPromise();
-    if (redirectResult && redirectResult.accessToken) {
-      await exchangeAzureToken(
-        redirectResult.accessToken,
-        redirectResult.tenantId || C.AZURE_TENANT_ID
-      );
+    if (redirectResult && redirectResult.account) {
       return { loggedIn: true, via: 'redirect' };
     }
-
-    if (isAuthenticated()) {
-      return { loggedIn: true, via: 'session' };
-    }
-
-    try {
-      await trySilentLogin();
-      return { loggedIn: true, via: 'silent' };
-    } catch {
-      return { loggedIn: false };
-    }
-  }
-
-  async function ensureSession() {
-    if (isAuthenticated()) return true;
-
-    try {
-      await initMsal();
-      const redirectResult = await msalInstance.handleRedirectPromise();
-      if (redirectResult && redirectResult.accessToken) {
-        await exchangeAzureToken(
-          redirectResult.accessToken,
-          redirectResult.tenantId || C.AZURE_TENANT_ID
-        );
-        return isAuthenticated();
-      }
-      await trySilentLogin();
-      return isAuthenticated();
-    } catch {
-      return false;
-    }
+    const loggedIn = msalInstance.getAllAccounts().length > 0;
+    return { loggedIn, via: loggedIn ? 'msal' : 'none' };
   }
 
   async function loginWithMicrosoft(useRedirect) {
@@ -173,12 +185,12 @@
       prompt: 'select_account'
     };
 
-    let result;
     if (useRedirect) {
       await msalInstance.loginRedirect(request);
       return null;
     }
 
+    let result;
     try {
       result = await msalInstance.loginPopup(request);
     } catch (ex) {
@@ -189,7 +201,7 @@
       throw ex;
     }
 
-    return exchangeAzureToken(result.accessToken, result.tenantId || C.AZURE_TENANT_ID);
+    return { account: result.account, via: 'msal' };
   }
 
   function authHeaders(extra) {
@@ -200,66 +212,88 @@
   }
 
   async function fetch(url, options) {
-    if (!isAuthenticated()) {
-      redirectToLogin();
-      throw new Error('Sessione scaduta');
+    if (!(await ensureN8nSession())) {
+      redirectToLogin('api');
+      throw new Error('Sessione API non disponibile');
     }
     const opts = { ...(options || {}) };
     opts.headers = authHeaders(opts.headers);
     const resp = await global.fetch(url, opts);
     if (resp.status === 401) {
-      clearSession();
-      redirectToLogin();
-      throw new Error('Sessione scaduta — accedi di nuovo');
+      clearN8nSession();
+      throw new Error('Token API scaduto — ricarica la pagina');
     }
     return resp;
   }
 
-  function redirectToLogin() {
+  function redirectToLogin(reason) {
     const base = global.location.pathname.replace(/[^/]+$/, '');
-    global.location.replace(base + 'index.html');
+    const q = reason === 'api' ? '?err=api' : '';
+    global.location.replace(base + 'index.html' + q);
   }
 
+  /** macchina.html — richiede MSAL + JWT n8n prima del GET */
   async function requireAuthAsync() {
-    const ok = await ensureSession();
-    if (!ok) {
-      redirectToLogin();
+    try {
+      await initMsal();
+      if (!msalInstance.getAllAccounts().length) {
+        redirectToLogin();
+        return false;
+      }
+      if (!(await ensureN8nSession())) {
+        redirectToLogin('api');
+        return false;
+      }
+      return true;
+    } catch (ex) {
+      console.error('Auth macchina:', ex);
+      redirectToLogin('api');
       return false;
     }
-    return true;
   }
 
   function requireAuth() {
-    if (!isAuthenticated()) {
-      redirectToLogin();
+    if (!hasN8nToken()) {
+      redirectToLogin('api');
       return false;
     }
     return true;
   }
 
   async function logout() {
-    clearSession();
+    clearN8nSession();
     try {
       await initMsal();
       const accounts = msalInstance.getAllAccounts();
       if (accounts.length) {
-        await msalInstance.logoutPopup({ account: accounts[0], mainWindowRedirectUri: getRedirectUri() });
+        await msalInstance.logoutRedirect({
+          account: accounts[0],
+          postLogoutRedirectUri: getRedirectUri()
+        });
+        return;
       }
     } catch {
-      /* sessione n8n già cancellata */
+      clearMsalCache();
     }
     redirectToLogin();
   }
 
+  /** @deprecated usa hasN8nToken() o isMsalLoggedIn() */
+  function isAuthenticated() {
+    return hasN8nToken();
+  }
+
   global.SRAuth = {
     init,
-    ensureSession,
     loginWithMicrosoft,
     logout,
     fetch,
     getToken,
     getUser,
+    hasN8nToken,
+    isMsalLoggedIn,
     isAuthenticated,
+    ensureN8nSession,
     requireAuth,
     requireAuthAsync,
     clearSession,
