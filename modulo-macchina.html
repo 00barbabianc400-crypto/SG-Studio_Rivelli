@@ -29,7 +29,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .topbar-logo { width: 36px; height: 36px; background: var(--blue-lt); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
 .topbar-name { color: #fff; font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
 .topbar-name span { font-weight: 400; opacity: .75; }
-.shell { max-width: min(640px, calc(100vw - 32px)); margin: 0 auto; padding: 24px 16px 48px; }
+.shell { max-width: 640px; width: 100%; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left)); }
 .page-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
 .page-sub { font-size: 13px; color: var(--text-2); line-height: 1.5; margin-bottom: 20px; }
 .notice {
@@ -45,16 +45,33 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3);
   box-shadow: var(--shadow-sm); padding: 22px; margin-bottom: 16px;
+  min-width: 0; overflow: hidden;
 }
-.field { margin-bottom: 18px; }
+.field { margin-bottom: 18px; min-width: 0; }
 .field label {
   display: block; font-size: 11px; font-weight: 600; color: var(--text-2);
   text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px;
 }
 .field input[type="text"], .field input[type="number"], .field input[type="date"], .field input[readonly] {
-  width: 100%; border: 1.5px solid var(--border); border-radius: var(--r2);
-  padding: 10px 12px; font-family: inherit; font-size: 14px;
+  width: 100%; max-width: 100%; min-width: 0; border: 1.5px solid var(--border); border-radius: var(--r2);
+  padding: 10px 12px; font-family: inherit; font-size: 14px; box-sizing: border-box;
 }
+.field input[type="date"] {
+  display: block;
+  -webkit-min-logical-width: 0;
+  min-height: 44px;
+}
+.field input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-width: 0;
+}
+.date-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.date-row .field { margin-bottom: 0; }
 .field input[readonly] { background: #f4f6fa; color: var(--text-2); }
 .req { color: var(--blue-lt); }
 .scale-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); margin-bottom: 6px; }
@@ -112,6 +129,27 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .toast.err { background: var(--danger); }
 .success-panel { text-align: center; padding: 40px 20px; }
 .success-panel h2 { font-family: 'Syne', sans-serif; color: var(--navy); margin-bottom: 8px; }
+
+@media (max-width: 520px) {
+  .shell { padding-top: 16px; padding-bottom: calc(40px + env(safe-area-inset-bottom, 0)); }
+  .card { padding: 16px; }
+  .page-title { font-size: 18px; }
+  .topbar-name span { display: none; }
+  .date-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .date-row .field { margin-bottom: 18px; }
+  .date-row .field:last-child { margin-bottom: 0; }
+  .field input[type="date"] { font-size: 16px; padding: 10px; }
+  .scale-btns { gap: 6px; }
+  .scale-btns label { min-width: 0; flex: 1 1 calc(20% - 6px); padding: 10px 4px; }
+  .toast {
+    left: 16px; right: 16px; transform: translateY(80px);
+    max-width: none;
+  }
+  .toast.show { transform: translateY(0); }
+}
 </style>
 </head>
 <body>
@@ -151,13 +189,15 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
           <label>KM contachilometri <span class="req">*</span></label>
           <input type="number" id="f-km" min="0" step="1" required inputmode="numeric">
         </div>
-        <div class="field">
-          <label>Data prelievo chiavi <span class="req">*</span></label>
-          <input type="date" id="f-prelievo" required>
-        </div>
-        <div class="field">
-          <label>Data restituzione chiavi <span class="req">*</span></label>
-          <input type="date" id="f-restituzione" required>
+        <div class="date-row">
+          <div class="field">
+            <label>Data prelievo chiavi <span class="req">*</span></label>
+            <input type="date" id="f-prelievo" required>
+          </div>
+          <div class="field">
+            <label>Data restituzione chiavi <span class="req">*</span></label>
+            <input type="date" id="f-restituzione" required>
+          </div>
         </div>
         <div class="field">
           <label>Situazione carburante <span class="req">*</span></label>

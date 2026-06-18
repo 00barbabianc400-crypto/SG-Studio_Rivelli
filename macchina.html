@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#1e4fa3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Auto Aziendale — Studio Rivelli</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&family=Syne:wght@600;700&display=swap" rel="stylesheet">
@@ -325,6 +327,86 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   font-size: 14px; color: var(--text-2); letter-spacing: .01em;
 }
 @keyframes app-spin { to { transform: rotate(360deg); } }
+
+/* ── Mobile / portrait ── */
+@media (max-width: 720px) {
+  .topbar {
+    height: auto;
+    min-height: 56px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: calc(10px + env(safe-area-inset-top, 0)) 12px 10px;
+  }
+  .topbar-brand {
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+  }
+  .topbar-name { font-size: 13px; line-height: 1.25; }
+  .topbar-name span { display: none; }
+  .topbar-nav-group {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding: 3px;
+  }
+  .topbar-nav {
+    padding: 10px 4px;
+    font-size: 11px;
+    line-height: 1.2;
+    text-align: center;
+    white-space: normal;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .shell {
+    max-width: 100%;
+    padding: 16px 12px calc(48px + env(safe-area-inset-bottom, 0));
+  }
+  .page-title { font-size: 18px; }
+  .page-sub { font-size: 12px; }
+  .card-body { padding: 16px; }
+  .field { min-width: 100%; flex: 1 1 100%; }
+  .field-row { gap: 12px; }
+  .action-bar { justify-content: stretch; }
+  .action-bar .btn { flex: 1; justify-content: center; }
+  .cal-nav {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+  .cal-nav-center { justify-content: center; text-align: center; }
+  .cal-nav-btns { justify-content: center; }
+  .cal-zoom { justify-content: center; }
+  .oc-wd-head span { font-size: 9px; padding: 8px 1px; letter-spacing: 0; }
+  .oc-day { padding: 4px 2px; }
+  .oc-bar { font-size: 10px; padding: 0 4px; }
+  .edit-item { grid-template-columns: 1fr; gap: 10px; }
+  .edit-item-actions { justify-content: flex-end; }
+  .modal-backdrop { padding: 12px; align-items: flex-end; }
+  .modal-backdrop.open .modal { max-height: calc(100dvh - 24px); overflow-y: auto; }
+  .toast {
+    left: 16px;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0));
+    max-width: none;
+  }
+}
+
+@media (max-width: 720px) and (orientation: portrait) {
+  .oc-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -4px;
+    padding: 0 4px;
+  }
+  .oc-cal { min-width: min(100%, 340px); }
+}
 </style>
 </head>
 <body>
@@ -572,7 +654,7 @@ const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','
 const WD = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
 const OP_PALETTE = ['#1e4fa3','#0d9488','#7c3aed','#b45309','#db2777','#0891b2','#059669','#6366f1','#ea580c'];
 const TL_ZOOM_STEPS = [0.85, 1, 1.25, 1.5, 1.75, 2];
-let timZoomIdx = 2;
+let timZoomIdx = window.matchMedia('(max-width: 720px)').matches ? 0 : 2;
 
 let prenotazioni = [];
 let sessionLoaded = false;
@@ -1211,6 +1293,16 @@ document.getElementById('detail-chiudi').addEventListener('click', () => documen
 document.getElementById('edit-cancel').addEventListener('click', () => document.getElementById('edit-backdrop').classList.remove('open'));
 document.getElementById('edit-save').addEventListener('click', salvaEdit);
 document.getElementById('edit-delete').addEventListener('click', eliminaEdit);
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (!document.getElementById('view-monitoraggio').classList.contains('hidden')) {
+      renderMonitoraggio();
+    }
+  }, 200);
+});
 
 (async function startMacchina() {
   try {
