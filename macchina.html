@@ -1143,7 +1143,10 @@ async function salvaEdit() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
-  if (!resp.ok) return showToast('Update fallito: ' + resp.status, 'error');
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    return showToast(data.message || ('Update fallito: ' + resp.status), 'error');
+  }
   showToast('Prenotazione aggiornata', 'success');
   document.getElementById('edit-backdrop').classList.remove('open');
   await caricaPrenotazioni(true);
