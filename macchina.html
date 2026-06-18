@@ -1211,13 +1211,18 @@ document.getElementById('edit-delete').addEventListener('click', eliminaEdit);
 
 (async function startMacchina() {
   try {
-    if (!(await SRAuth.requireAuthAsync())) return;
+    if (!SRAuth.hasN8nToken()) {
+      await SRAuth.ensureN8nSession();
+    }
+    if (!SRAuth.hasN8nToken()) {
+      throw new Error('Sessione API non disponibile');
+    }
     popolaSelectOperatori();
-    caricaPrenotazioni().catch(() => hideAppLoader());
+    await caricaPrenotazioni();
   } catch (ex) {
+    console.error('Macchina auth/load:', ex);
     hideAppLoader();
-    showToast(ex.message || 'Auth fallita', 'error');
-    setTimeout(() => SRAuth.redirectToLogin('api'), 2500);
+    showToast(ex.message || 'Caricamento fallito', 'error');
   }
 })();
 </script>

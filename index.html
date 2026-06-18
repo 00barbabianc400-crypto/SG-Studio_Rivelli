@@ -94,6 +94,8 @@ body {
   background: #f0f4ff; color: var(--blue);
 }
 .hub-card-loading { display: block; margin-top: 8px; font-size: 12px; color: var(--blue); font-weight: 600; }
+.hub-error { font-size: 13px; color: var(--danger); margin-bottom: 12px; min-height: 0; }
+.hub-error:not(:empty) { padding: 10px 12px; background: #fef2f2; border-radius: var(--r2); border: 1px solid #fecaca; }
 </style>
 </head>
 <body>
@@ -130,6 +132,7 @@ body {
     </div>
   </header>
   <main class="hub-body">
+    <p class="hub-error" id="hub-error" aria-live="polite"></p>
     <div class="hub-grid">
       <a class="hub-card" href="macchina.html" id="link-macchina">
         <div class="hub-card-icon">🚗</div>
@@ -213,14 +216,19 @@ document.getElementById('link-macchina').addEventListener('click', async e => {
   e.preventDefault();
   const link = e.currentTarget;
   const loading = document.getElementById('macchina-loading');
-  const err = document.getElementById('gate-error');
+  const err = document.getElementById('hub-error');
   err.textContent = '';
   link.style.pointerEvents = 'none';
   loading.classList.remove('hidden');
   try {
     await SRAuth.ensureN8nSession();
-    location.href = 'macchina.html';
+    if (!SRAuth.hasN8nToken()) {
+      throw new Error('Token non salvato in sessione');
+    }
+    showHub();
+    location.assign('macchina.html');
   } catch (ex) {
+    console.error('ensureN8nSession:', ex);
     err.textContent = ex.message || 'Errore connessione API n8n';
     link.style.pointerEvents = '';
     loading.classList.add('hidden');

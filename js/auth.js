@@ -52,9 +52,9 @@
   /** JWT n8n valido — richiesto per le API macchina */
   function hasN8nToken() {
     const t = getToken();
-    if (!t || t.length < 20) return false;
+    if (!t || !t.startsWith('eyJ')) return false;
     const exp = getTokenExp();
-    if (!exp || Date.now() >= exp) {
+    if (!Number.isFinite(exp) || Date.now() >= exp) {
       clearN8nSession();
       return false;
     }
@@ -79,11 +79,26 @@
   }
 
   function saveN8nSession(data) {
-    sessionStorage.setItem(C.TOKEN_KEY || 'sr_jwt', data.token);
-    const expMs = data.expiresAt
-      ? new Date(data.expiresAt).getTime()
-      : Date.now() + (data.expiresInSec || 28800) * 1000;
+    const token = String(data.token || '').trim();
+    if (!token.startsWith('eyJ')) {
+      throw new Error(
+        'Risposta n8n non valida (token assente). ' +
+        'Nel nodo Respond usa "First Incoming Item" oppure Expression {{ $json.token }}'
+      );
+    }
+
+    sessionStorage.setItem(C.TOKEN_KEY || 'sr_jwt', token);
+
+    let expMs = NaN;
+    const expRaw = data.expiresAt;
+    if (expRaw && !String(expRaw).includes('$json')) {
+      expMs = new Date(expRaw).getTime();
+    }
+    if (!Number.isFinite(expMs)) {
+      expMs = Date.now() + (Number(data.expiresInSec) || 28800) * 1000;
+    }
     sessionStorage.setItem(C.TOKEN_EXP_KEY || 'sr_jwt_exp', String(expMs));
+
     if (data.user) {
       sessionStorage.setItem(C.USER_KEY || 'sr_user', JSON.stringify(data.user));
     }
@@ -160,16 +175,24 @@
       })
     });
 
-    const data = await resp.json().catch(() => ({}));
+    const raw = await resp.text();
+    let data = {};
+    try { data = raw ? JSON.parse(raw) : {}; } catch { data = {}; }
 
-    /* n8n Respond a volte incapsula in body o lascia ok:true */
+    /* n8n Respond: token in root, o intero item se "First Incoming Item" */
     const token = data.token || data.body?.token;
     const expiresAt = data.expiresAt || data.body?.expiresAt;
-    const expiresInSec = data.expiresInSec || data.body?.expiresInSec;
+    const expiresInSec = data.expiresInSec ?? data.body?.expiresInSec;
     const user = data.user || data.body?.user;
 
-    if (!resp.ok || !token) {
+    if (!resp.ok) {
       throw new Error(data.message || data.body?.message || 'Accesso API non autorizzato (' + resp.status + ')');
+    }
+    if (!token) {
+      throw new Error(
+        'n8n ha risposto senza token. Response: ' + raw.slice(0, 120) +
+        ' — Usa Respond "First Incoming Item" o Expression {{ $json.token }}'
+      );
     }
 
     saveN8nSession({ token, expiresAt, expiresInSec, user });
