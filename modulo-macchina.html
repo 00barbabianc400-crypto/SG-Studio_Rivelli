@@ -68,10 +68,48 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .date-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 18px;
+  width: 100%;
+  min-width: 0;
 }
-.date-row .field { margin-bottom: 0; }
+.date-row .field-date {
+  margin-bottom: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.date-box {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r2);
+  background: var(--surface);
+}
+.date-box input[type="date"] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 8px 6px;
+  font-size: 13px;
+  min-height: 40px;
+  line-height: 1.2;
+}
+.date-box input[type="date"]:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(45,110,240,.2);
+}
+.date-box input[type="date"]::-webkit-calendar-picker-indicator {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  padding: 0;
+  opacity: .7;
+}
 .field input[readonly] { background: #f4f6fa; color: var(--text-2); }
 .req { color: var(--blue-lt); }
 .scale-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); margin-bottom: 6px; }
@@ -135,13 +173,18 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   .card { padding: 16px; }
   .page-title { font-size: 18px; }
   .topbar-name span { display: none; }
-  .date-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
+  .date-row { gap: 8px; }
+  .field-date label {
+    font-size: 9px;
+    letter-spacing: 0;
+    line-height: 1.25;
+    hyphens: auto;
   }
-  .date-row .field { margin-bottom: 18px; }
-  .date-row .field:last-child { margin-bottom: 0; }
-  .field input[type="date"] { font-size: 16px; padding: 10px; }
+  .date-box input[type="date"] {
+    font-size: 14px;
+    padding: 8px 4px;
+    min-height: 38px;
+  }
   .scale-btns { gap: 6px; }
   .scale-btns label { min-width: 0; flex: 1 1 calc(20% - 6px); padding: 10px 4px; }
   .toast {
@@ -190,13 +233,17 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
           <input type="number" id="f-km" min="0" step="1" required inputmode="numeric">
         </div>
         <div class="date-row">
-          <div class="field">
+          <div class="field field-date">
             <label>Data prelievo chiavi <span class="req">*</span></label>
-            <input type="date" id="f-prelievo" required>
+            <div class="date-box">
+              <input type="date" id="f-prelievo" required>
+            </div>
           </div>
-          <div class="field">
+          <div class="field field-date">
             <label>Data restituzione chiavi <span class="req">*</span></label>
-            <input type="date" id="f-restituzione" required>
+            <div class="date-box">
+              <input type="date" id="f-restituzione" required>
+            </div>
           </div>
         </div>
         <div class="field">
