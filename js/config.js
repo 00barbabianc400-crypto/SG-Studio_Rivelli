@@ -1,20 +1,18 @@
-/** Endpoint n8n + Azure AD (app registration single-tenant) */
+
 window.SR_CONFIG = {
   WEBHOOK_AUTH: 'https://studiorivelli.app.n8n.cloud/webhook/macchina-auth-login',
   WEBHOOK_CRUD: 'https://studiorivelli.app.n8n.cloud/webhook/inserimento-cancellazione-prenotazione-auth',
   WEBHOOK_RICHIESTA: 'https://studiorivelli.app.n8n.cloud/webhook/richiesta-update-prenotazione-auth',
   WEBHOOK_UPDATE: 'https://studiorivelli.app.n8n.cloud/webhook/update-prenotazione-auth',
 
-  /** Timesheet — webhook con JWT (stesso secret macchina-auth-login) */
+  
   WEBHOOK_TS_RETRIEVE: 'https://studiorivelli.app.n8n.cloud/webhook/retrieve-data-auth',
   WEBHOOK_TS_SAVE: 'https://studiorivelli.app.n8n.cloud/webhook/save-data-auth',
   WEBHOOK_TS_UPDATE: 'https://studiorivelli.app.n8n.cloud/webhook/update-data-auth',
   WEBHOOK_TS_MONITOR: 'https://studiorivelli.app.n8n.cloud/webhook/monitor-data-auth',
   WEBHOOK_TS_LOAD: 'https://studiorivelli.app.n8n.cloud/webhook/load-timesheet-auth',
 
-  /** Azure Portal → App registrations → Application (client) ID */
   AZURE_CLIENT_ID: 'f16e7f48-7775-4461-b27d-53e95aa61b82',
-  /** Entra ID → Overview → Tenant ID */
   AZURE_TENANT_ID: '6598f73a-3511-440a-bb95-3482c4fc5676',
   AZURE_SCOPES: ['User.Read'],
 
@@ -23,6 +21,5 @@ window.SR_CONFIG = {
   USER_KEY: 'sr_user',
   RATE_KEY: 'sr_auth_rate',
 
-  /** Google Apps Script — Deploy as Web App → URL ending in /exec */
   GOOGLE_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxbiATbcWjYVCKRQsM4mBGCv8r9bvvgaS-9QNaummPYkYz7wwur7-WsKZimPIGSRLRFkg/exec'
 };
