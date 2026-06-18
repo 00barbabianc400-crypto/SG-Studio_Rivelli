@@ -115,14 +115,28 @@
     }
     const accounts = msalInstance.getAllAccounts();
     if (!accounts.length) return null;
-    const result = await msalInstance.acquireTokenSilent({
+
+    const request = {
       scopes: C.AZURE_SCOPES || ['User.Read'],
       account: accounts[0]
-    });
-    return {
-      accessToken: result.accessToken,
-      tenantId: result.tenantId || C.AZURE_TENANT_ID
     };
+
+    try {
+      const result = await msalInstance.acquireTokenSilent(request);
+      return {
+        accessToken: result.accessToken,
+        tenantId: result.tenantId || C.AZURE_TENANT_ID
+      };
+    } catch (ex) {
+      if (ex.name === 'InteractionRequiredAuthError' || ex.errorCode === 'interaction_required') {
+        const result = await msalInstance.acquireTokenPopup(request);
+        return {
+          accessToken: result.accessToken,
+          tenantId: result.tenantId || C.AZURE_TENANT_ID
+        };
+      }
+      throw ex;
+    }
   }
 
   /** Hub index: c'è un account Microsoft? */
@@ -148,12 +162,18 @@
 
     const data = await resp.json().catch(() => ({}));
 
-    if (!resp.ok || !data.token) {
-      throw new Error(data.message || 'Accesso API non autorizzato (' + resp.status + ')');
+    /* n8n Respond a volte incapsula in body o lascia ok:true */
+    const token = data.token || data.body?.token;
+    const expiresAt = data.expiresAt || data.body?.expiresAt;
+    const expiresInSec = data.expiresInSec || data.body?.expiresInSec;
+    const user = data.user || data.body?.user;
+
+    if (!resp.ok || !token) {
+      throw new Error(data.message || data.body?.message || 'Accesso API non autorizzato (' + resp.status + ')');
     }
 
-    saveN8nSession(data);
-    return data;
+    saveN8nSession({ token, expiresAt, expiresInSec, user });
+    return { token, expiresAt, expiresInSec, user };
   }
 
   /** Macchina: ottieni JWT n8n da token Azure (chiamata a macchina-auth-login) */
@@ -161,10 +181,15 @@
     if (hasN8nToken()) return true;
 
     const azure = await getAzureAccessToken();
-    if (!azure || !azure.accessToken) return false;
+    if (!azure || !azure.accessToken) {
+      throw new Error('Sessione Microsoft non trovata. Torna alla home e accedi.');
+    }
 
     await exchangeAzureToken(azure.accessToken, azure.tenantId);
-    return hasN8nToken();
+    if (!hasN8nToken()) {
+      throw new Error('n8n non ha restituito un token valido');
+    }
+    return true;
   }
 
   /** Bootstrap hub index */
@@ -234,22 +259,8 @@
 
   /** macchina.html — richiede MSAL + JWT n8n prima del GET */
   async function requireAuthAsync() {
-    try {
-      await initMsal();
-      if (!msalInstance.getAllAccounts().length) {
-        redirectToLogin();
-        return false;
-      }
-      if (!(await ensureN8nSession())) {
-        redirectToLogin('api');
-        return false;
-      }
-      return true;
-    } catch (ex) {
-      console.error('Auth macchina:', ex);
-      redirectToLogin('api');
-      return false;
-    }
+    if (hasN8nToken()) return true;
+    return ensureN8nSession();
   }
 
   function requireAuth() {

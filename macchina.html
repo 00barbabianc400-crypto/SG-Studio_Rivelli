@@ -1210,9 +1210,15 @@ document.getElementById('edit-save').addEventListener('click', salvaEdit);
 document.getElementById('edit-delete').addEventListener('click', eliminaEdit);
 
 (async function startMacchina() {
-  if (!(await SRAuth.requireAuthAsync())) return;
-  popolaSelectOperatori();
-  caricaPrenotazioni().catch(() => hideAppLoader());
+  try {
+    if (!(await SRAuth.requireAuthAsync())) return;
+    popolaSelectOperatori();
+    caricaPrenotazioni().catch(() => hideAppLoader());
+  } catch (ex) {
+    hideAppLoader();
+    showToast(ex.message || 'Auth fallita', 'error');
+    setTimeout(() => SRAuth.redirectToLogin('api'), 2500);
+  }
 })();
 </script>
 </body>
