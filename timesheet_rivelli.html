@@ -1,0 +1,2951 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1e4fa3">
+<title>Foglio Presenze — Studio Rivelli</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ─── TOKENS ───────────────────────────────────────────────── */
+:root {
+  --bg:        oklch(96.5% 0.008 238);
+  --surface:   oklch(99%   0.004 238);
+  --navy:      oklch(26%   0.072 243);
+  --navy-mid:  oklch(38%   0.09  243);
+  --blue:      oklch(50%   0.17  244);
+  --blue-lt:   oklch(62%   0.14  244);
+  --blue-pale: oklch(93%   0.025 244);
+  --ok:        oklch(58%   0.17  145);
+  --warn:      oklch(66%   0.18  58);
+  --err:       oklch(56%   0.22  25);
+  --text:      oklch(19%   0.018 243);
+  --text-2:    oklch(44%   0.018 243);
+  --text-3:    oklch(62%   0.012 243);
+  --border:    oklch(87%   0.012 243);
+  --border-2:  oklch(80%   0.018 243);
+  --shadow-sm: 0 1px 3px oklch(0% 0 0 / 0.06), 0 1px 2px oklch(0% 0 0 / 0.04);
+  --shadow-md: 0 4px 12px oklch(0% 0 0 / 0.08), 0 1px 4px oklch(0% 0 0 / 0.05);
+  --r:  6px; --r2: 10px; --r3: 14px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; -webkit-font-smoothing: antialiased; }
+body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+button { cursor: pointer; font: inherit; }
+select, input { font: inherit; }
+
+/* ─── TOPBAR ───────────────────────────────────────────────── */
+.topbar {
+  background: var(--navy);
+  padding: 0 32px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 52px; position: sticky; top: 0; z-index: 50;
+}
+.topbar-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.topbar-home {
+  color: rgba(255,255,255,.85); text-decoration: none; font-size: 13px; font-weight: 500;
+  padding: 6px 10px; border-radius: 6px; flex-shrink: 0;
+}
+.topbar-home:hover { background: rgba(255,255,255,.1); color: #fff; }
+.topbar-logo {
+  width: 28px; height: 28px;
+  background: oklch(50% 0.17 244);
+  border-radius: 5px; display: grid; place-items: center;
+}
+.topbar-logo svg { width: 16px; height: 16px; }
+.topbar-name {
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13.5px;
+  letter-spacing: 0.03em; color: oklch(96% 0.01 243);
+}
+.topbar-name span { color: var(--blue-lt); font-weight: 400; }
+.topbar-meta { font-size: 11.5px; color: oklch(70% 0.02 243); letter-spacing: 0.02em; }
+.topbar-right { display: flex; align-items: center; gap: 14px; }
+.topbar-nav {
+  font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: var(--r);
+  border: 1px solid oklch(55% 0.08 243); background: oklch(38% 0.09 243);
+  color: oklch(94% 0.01 243); transition: background .15s, border-color .15s;
+}
+.topbar-nav:hover { background: var(--blue); border-color: var(--blue-lt); }
+.topbar-nav.is-active { background: var(--blue); border-color: var(--blue-lt); }
+.topbar-nav-group { display: flex; align-items: center; gap: 8px; }
+.edit-load-bar {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3);
+  padding: 16px 22px; display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap;
+  box-shadow: var(--shadow-sm); margin-bottom: 20px;
+}
+.edit-load-bar .meta-field { flex: 1; min-width: 160px; }
+.edit-id-badge {
+  font-family: 'DM Mono', monospace; font-size: 11.5px; color: var(--text-3);
+  padding: 8px 12px; background: var(--bg); border-radius: var(--r); border: 1px solid var(--border);
+  align-self: center; flex: 1 1 100%;
+}
+.edit-id-badge strong { color: var(--navy); font-weight: 500; }
+.hidden { display: none !important; }
+.view-panel.hidden { display: none !important; }
+
+/* ─── SHELL ────────────────────────────────────────────────── */
+.shell { max-width: 1100px; margin: 0 auto; padding: 0 24px 80px; }
+
+/* ─── PAGE HEAD ────────────────────────────────────────────── */
+.page-head { margin-top: 36px; margin-bottom: 24px; }
+.page-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--navy); letter-spacing: -0.01em; }
+.page-sub { font-size: 12.5px; color: var(--text-3); margin-top: 4px; }
+
+/* ─── META BAR ─────────────────────────────────────────────── */
+.meta-bar {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r3); padding: 16px 22px;
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  box-shadow: var(--shadow-sm); margin-bottom: 20px;
+}
+.meta-field { display: flex; align-items: center; gap: 10px; }
+.meta-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.meta-input {
+  background: var(--bg); border: 1px solid var(--border-2); border-radius: var(--r);
+  padding: 7px 12px; font-size: 13px; color: var(--text); outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.meta-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px oklch(50% 0.17 244 / .12); }
+.meta-input:disabled { opacity: .65; cursor: wait; }
+body.app-loading .setup-card,
+body.app-loading .table-wrap.visible,
+body.app-loading .action-bar { pointer-events: none; opacity: .55; }
+/* native date picker styling */
+input[type="date"].meta-input { min-width: 160px; }
+input[type="date"].meta-input::-webkit-calendar-picker-indicator { opacity: .5; cursor: pointer; }
+.meta-sep { width: 1px; height: 28px; background: var(--border); }
+
+/* ─── HOURS BAR ────────────────────────────────────────────── */
+.hours-bar {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3);
+  padding: 14px 22px; display: flex; align-items: center; justify-content: space-between;
+  gap: 20px; margin-bottom: 20px; flex-wrap: wrap; box-shadow: var(--shadow-sm);
+}
+.hours-summary { display: flex; align-items: center; gap: 14px; }
+.hours-count { font-family: 'DM Mono', monospace; font-size: 24px; font-weight: 500; color: var(--navy); line-height: 1; }
+.hours-count .h-max { font-size: 15px; color: var(--text-3); font-weight: 400; }
+.hours-pill { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; letter-spacing: 0.04em; }
+.pill-ok   { background: oklch(93% 0.04 145); color: oklch(36% 0.12 145); }
+.pill-warn { background: oklch(95% 0.05 58);  color: oklch(42% 0.16 58); }
+.pill-low  { background: var(--blue-pale);    color: var(--blue); }
+.hours-track { flex: 1; min-width: 200px; max-width: 320px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.hours-fill { height: 100%; border-radius: 3px; background: var(--blue); transition: width .35s cubic-bezier(.16,1,.3,1), background-color .2s; }
+.hours-detail { font-size: 12px; color: var(--text-3); text-align: right; }
+
+/* ─── SETUP CARD (fase 1) ───────────────────────────────────── */
+.setup-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3);
+  box-shadow: var(--shadow-md); overflow: visible;
+}
+.setup-card-head {
+  background: oklch(97% 0.01 243); border-bottom: 1px solid var(--border);
+  padding: 13px 22px; display: flex; align-items: center; gap: 10px;
+}
+.setup-badge {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--blue-pale); color: var(--blue);
+  font-size: 11px; font-weight: 700; display: grid; place-items: center;
+}
+.setup-card-head-txt { font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+.setup-card-head-txt span { color: var(--text-3); font-weight: 400; }
+.setup-body {
+  padding: 22px;
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
+}
+@media (max-width: 700px) { .setup-body { grid-template-columns: 1fr; } }
+.setup-field label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+.setup-foot { padding: 16px 22px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: flex-end; gap: 12px; background: oklch(97.5% 0.005 243); }
+
+/* ─── TABLE WRAPPER (fase 2) ────────────────────────────────── */
+.table-wrap {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3);
+  box-shadow: var(--shadow-md); overflow: visible;
+  /* initially hidden */
+  display: none;
+}
+.table-wrap.visible { display: block; }
+.table-scroll { overflow-x: auto; }
+
+/* ─── TABLE ─────────────────────────────────────────────────── */
+.entry-table { width: 100%; border-collapse: collapse; }
+.entry-table thead th {
+  background: var(--navy); color: oklch(84% 0.018 243);
+  font-family: 'Syne', sans-serif; font-size: 10.5px; font-weight: 600;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  padding: 11px 14px; text-align: left; border-bottom: 2px solid var(--navy-mid); white-space: nowrap;
+}
+.entry-table thead th:first-child { width: 40px; text-align: center; }
+.entry-table thead th.col-ore { width: 248px; }
+.ore-cell { display: flex; align-items: center; gap: 6px; }
+.ore-cell .ore-select { flex: 1; min-width: 0; }
+.btn-ore-custom {
+  flex-shrink: 0; width: 32px; height: 32px; padding: 0;
+  border: 1px solid var(--border-2); border-radius: var(--r);
+  background: var(--surface); color: var(--blue);
+  display: grid; place-items: center; transition: border-color .15s, background .15s;
+}
+.btn-ore-custom:hover { border-color: var(--blue); background: var(--blue-pale); }
+.btn-ore-custom svg { width: 16px; height: 16px; }
+.entry-table thead th.col-luogo { width: 138px; }
+.entry-table thead th.col-att { width: 188px; }
+.entry-table thead th.col-del { width: 40px; }
+
+.entry-table tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+.entry-table tbody tr:last-child { border-bottom: none; }
+.entry-table tbody tr:hover { background: oklch(97% 0.012 244); }
+.entry-table tbody tr.row-extra { background: oklch(97.5% 0.005 240); }
+.entry-table tbody tr.row-extra:hover { background: oklch(95.5% 0.01 243); }
+.entry-table tbody tr.row-covered {
+  opacity: 0.38;
+  background: oklch(97% 0.006 243);
+  pointer-events: none;
+}
+.entry-table tbody tr.row-covered:hover { background: oklch(97% 0.006 243); }
+.entry-table tbody tr.row-covered .num-badge {
+  background: oklch(92% 0.01 243);
+  color: var(--text-3);
+}
+.entry-table tbody tr.row-covered .covered-tag {
+  display: block;
+  font-size: 10px;
+  color: var(--text-3);
+  margin-top: 2px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.covered-tag { display: none; }
+.cell-select.ore-invalid { border-color: var(--err); box-shadow: 0 0 0 2px oklch(56% 0.22 25 / .15); }
+
+.entry-table td { padding: 8px 10px; vertical-align: middle; }
+.td-num { text-align: center; width: 40px; user-select: none; }
+.num-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--blue-pale); color: var(--blue); font-family: 'DM Mono', monospace; font-size: 10.5px; font-weight: 500;
+}
+.row-extra .num-badge { background: oklch(93% 0.018 58); color: oklch(44% 0.18 58); }
+
+/* ─── SELECTS ───────────────────────────────────────────────── */
+.cell-select {
+  width: 100%; appearance: none; -webkit-appearance: none;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 7px 28px 7px 10px; font-size: 12.5px; color: var(--text); outline: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23848E9C' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+  transition: border-color .15s, box-shadow .15s, background-color .15s;
+}
+.cell-select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px oklch(50% 0.17 244 / .10); background-color: var(--bg); }
+.cell-select:hover:not(:focus) { border-color: var(--border-2); }
+
+/* ─── CLIENT AUTOCOMPLETE ───────────────────────────────────── */
+.client-wrap { position: relative; }
+.client-input {
+  width: 100%; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 7px 10px; font-size: 12.5px; color: var(--text); outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.client-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px oklch(50% 0.17 244 / .10); }
+.client-dropdown {
+  display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  background: var(--surface); border: 1px solid var(--border-2); border-radius: var(--r2);
+  box-shadow: var(--shadow-md); max-height: 220px; overflow-y: auto;
+  z-index: 1000; font-size: 12.5px;
+}
+.client-dropdown.is-floating {
+  position: fixed; left: 0; top: 0; right: auto; width: auto;
+}
+.client-dropdown.open { display: block; }
+.entry-table tbody tr:has(.client-input:focus) { position: relative; z-index: 20; }
+.setup-field:has(.client-input:focus) { position: relative; z-index: 20; }
+.client-dd-item {
+  padding: 7px 12px; cursor: pointer; color: var(--text);
+  border-bottom: 1px solid oklch(92% 0.008 243); transition: background .08s;
+}
+.client-dd-item:last-child { border-bottom: none; }
+.client-dd-item:hover, .client-dd-item.focused { background: var(--blue-pale); color: var(--navy); }
+.client-dd-item mark { background: oklch(92% 0.06 248); color: var(--blue); font-weight: 600; border-radius: 2px; padding: 0 1px; }
+.client-dd-empty { padding: 10px 12px; color: var(--text-3); font-style: italic; font-size: 12px; }
+.client-dropdown::-webkit-scrollbar { width: 6px; }
+.client-dropdown::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+
+/* ─── TABLE FOOTER ──────────────────────────────────────────── */
+.table-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px; border-top: 1px solid var(--border);
+  background: oklch(97.5% 0.005 243); gap: 12px; flex-wrap: wrap;
+}
+.btn-add-row {
+  display: flex; align-items: center; gap: 7px; background: none;
+  border: 1.5px dashed var(--border-2); border-radius: var(--r);
+  padding: 6px 14px; color: var(--text-2); font-size: 12.5px; font-weight: 500; transition: all .15s;
+}
+.btn-add-row:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-pale); }
+
+/* ─── DELETE BTN ────────────────────────────────────────────── */
+.btn-del {
+  width: 26px; height: 26px; background: none; border: 1px solid transparent;
+  border-radius: var(--r); color: var(--text-3);
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: all .12s; opacity: 0;
+}
+tr:hover .btn-del { opacity: 1; }
+.btn-del:hover { background: oklch(94% 0.04 25); border-color: oklch(88% 0.06 25); color: var(--err); }
+
+/* ─── BUTTONS ───────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  border-radius: var(--r2); padding: 9px 20px; font-size: 13px; font-weight: 600;
+  border: 1.5px solid transparent; transition: all .15s; letter-spacing: 0.01em;
+}
+.btn-ghost { background: var(--surface); border-color: var(--border-2); color: var(--text-2); }
+.btn-ghost:hover { border-color: var(--blue-lt); color: var(--blue); }
+.btn-primary { background: var(--navy); color: oklch(96% 0.01 243); border-color: var(--navy); box-shadow: 0 2px 8px oklch(26% .072 243 / .25); }
+.btn-primary:hover { background: var(--navy-mid); }
+.btn-primary:active { transform: translateY(1px); }
+.btn-primary:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+/* ─── ACTION BAR ────────────────────────────────────────────── */
+.action-bar { margin-top: 20px; display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
+
+/* ─── TOAST ─────────────────────────────────────────────────── */
+.toast-area { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 200; pointer-events: none; }
+.toast {
+  background: var(--navy); color: oklch(94% 0.01 243); padding: 10px 20px;
+  border-radius: var(--r2); font-size: 13px; font-weight: 500;
+  box-shadow: var(--shadow-md); white-space: nowrap;
+  animation: tin .25s cubic-bezier(.16,1,.3,1), tout .2s 2.3s ease-in forwards;
+}
+@keyframes tin  { from { opacity:0; transform: translateY(12px) scale(.97); } to { opacity:1; transform: none; } }
+@keyframes tout { from { opacity:1; } to { opacity:0; transform: translateY(6px); } }
+
+/* ─── MODALE ORologio fascia ─────────────────────────────────── */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 300;
+  background: oklch(20% 0.02 243 / 0.45);
+  display: grid; place-items: center; padding: 20px;
+  opacity: 0; visibility: hidden; transition: opacity .2s, visibility .2s;
+}
+.modal-backdrop.open { opacity: 1; visibility: visible; }
+.modal-fascia {
+  width: min(100%, 360px); background: var(--surface);
+  border: 1px solid var(--border-2); border-radius: var(--r3);
+  box-shadow: var(--shadow-md); overflow: hidden;
+  transform: translateY(8px) scale(.98); transition: transform .25s cubic-bezier(.16,1,.3,1);
+}
+.modal-backdrop.open .modal-fascia { transform: none; }
+.modal-fascia-head {
+  padding: 16px 20px 10px; border-bottom: 1px solid var(--border);
+  background: oklch(97% 0.01 243);
+}
+.modal-fascia-head h2 {
+  font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--navy);
+}
+.modal-fascia-head p { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+.modal-fascia-body { padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.clock-preview {
+  font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 500;
+  color: var(--navy); letter-spacing: 0.02em;
+}
+.clock-preview span { color: var(--text-3); font-weight: 400; }
+.clock-svg { width: 260px; height: 260px; touch-action: none; user-select: none; cursor: pointer; }
+.clock-svg .ring-bg { fill: none; stroke: var(--border); stroke-width: 14; }
+.clock-svg .ring-forbidden { fill: none; stroke: oklch(92% 0.04 25); stroke-width: 14; opacity: .85; }
+.clock-svg .ring-allowed { fill: none; stroke: var(--blue-pale); stroke-width: 14; }
+.clock-svg .ring-range { fill: none; stroke: var(--blue); stroke-width: 14; stroke-linecap: round; }
+.clock-svg .tick { stroke: var(--border-2); stroke-width: 1; }
+.clock-svg .tick-major { stroke: var(--text-3); stroke-width: 1.5; }
+.clock-svg .handle { fill: var(--surface); stroke: var(--blue); stroke-width: 2.5; cursor: grab; filter: drop-shadow(0 1px 3px oklch(0% 0 0 / .12)); }
+.clock-svg .handle:active { cursor: grabbing; }
+.clock-svg .handle-start { fill: var(--navy); stroke: oklch(96% 0.01 243); }
+.clock-svg .handle-end { fill: var(--blue); stroke: var(--surface); }
+.clock-hint { font-size: 11.5px; color: var(--text-3); text-align: center; line-height: 1.45; max-width: 280px; }
+.modal-fascia-foot {
+  padding: 14px 20px 18px; border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end; gap: 10px;
+  background: oklch(97.5% 0.005 243);
+}
+
+/* ─── TABLE ENTER ANIM ──────────────────────────────────────── */
+@keyframes fadeSlide { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: none; } }
+.table-wrap.visible { animation: fadeSlide .3s cubic-bezier(.16,1,.3,1); }
+
+/* ─── RESPONSIVE ────────────────────────────────────────────── */
+/* ─── MONITORAGGIO ─────────────────────────────────────────── */
+.mon-filters {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3);
+  padding: 16px 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+  box-shadow: var(--shadow-sm); margin-bottom: 20px;
+}
+@media (max-width: 900px) { .mon-filters { grid-template-columns: 1fr 1fr; } }
+.mon-filters label { display: block; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); margin-bottom: 6px; }
+.mon-filters select { width: 100%; }
+.mon-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+@media (max-width: 800px) { .mon-kpi-grid { grid-template-columns: 1fr 1fr; } }
+.mon-kpi {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3);
+  padding: 16px 18px; box-shadow: var(--shadow-sm);
+}
+.mon-kpi-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); }
+.mon-kpi-val { font-family: 'DM Mono', monospace; font-size: 26px; font-weight: 500; color: var(--navy); margin-top: 6px; line-height: 1; }
+.mon-kpi-val.warn { color: oklch(48% 0.16 58); }
+.mon-kpi-val.ok { color: var(--ok); }
+.mon-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 20px; }
+@media (max-width: 900px) { .mon-grid { grid-template-columns: 1fr; } }
+.mon-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3);
+  box-shadow: var(--shadow-sm); overflow: hidden;
+}
+.mon-card-head {
+  padding: 12px 18px; border-bottom: 1px solid var(--border);
+  font-family: 'Syne', sans-serif; font-size: 12.5px; font-weight: 700; color: var(--navy);
+  background: oklch(97.5% 0.005 243);
+}
+.mon-card-body { padding: 14px 18px 18px; }
+.mon-chart-row { display: grid; grid-template-columns: minmax(80px, 28%) 1fr 52px; gap: 10px; align-items: center; margin-bottom: 10px; font-size: 12px; }
+.mon-chart-row:last-child { margin-bottom: 0; }
+.mon-chart-label { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mon-chart-bar-wrap { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.mon-chart-bar { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--navy), var(--blue)); min-width: 2px; transition: width .35s cubic-bezier(.16,1,.3,1); }
+.mon-chart-bar.extra { background: linear-gradient(90deg, oklch(52% 0.14 58), oklch(62% 0.16 58)); }
+.mon-chart-val { font-family: 'DM Mono', monospace; font-size: 11.5px; color: var(--navy); text-align: right; }
+.mon-empty { padding: 24px; text-align: center; color: var(--text-3); font-size: 13px; }
+.mon-loading { padding: 48px; text-align: center; color: var(--text-3); }
+.mon-detail-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3); box-shadow: var(--shadow-sm); overflow: hidden; }
+.mon-detail-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.mon-detail-table th {
+  background: var(--navy); color: oklch(84% 0.018 243); text-align: left; padding: 10px 12px;
+  font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.mon-detail-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.mon-detail-table tr:hover td { background: oklch(97% 0.012 244); }
+.mon-detail-table .tag-extra { font-size: 10px; font-weight: 600; color: oklch(44% 0.16 58); background: oklch(95% 0.05 58); padding: 2px 7px; border-radius: 10px; }
+.mon-detail-section { margin-top: 4px; }
+.mon-detail-toolbar {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3) var(--r3) 0 0;
+  padding: 14px 16px 12px; border-bottom: none;
+}
+.mon-detail-toolbar-row {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px;
+}
+.mon-detail-toolbar-row > div { min-width: 120px; }
+.mon-detail-toolbar label {
+  display: block; font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--text-3); margin-bottom: 5px;
+}
+.mon-detail-toolbar select { width: 100%; min-width: 0; }
+.mon-date-tabs {
+  display: inline-flex; background: oklch(96% 0.008 244); border: 1px solid var(--border);
+  border-radius: 8px; padding: 3px; gap: 2px;
+}
+.mon-date-tab {
+  border: none; background: transparent; font-family: 'Syne', sans-serif; font-size: 11px;
+  font-weight: 600; color: var(--text-2); padding: 6px 12px; border-radius: 6px; cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.mon-date-tab:hover { color: var(--navy); }
+.mon-date-tab.is-active {
+  background: var(--surface); color: var(--navy); box-shadow: var(--shadow-sm);
+}
+.mon-tbl-range { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; min-width: 200px; }
+.mon-range-trigger {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-width: 200px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--navy);
+  font-family: 'DM Mono', monospace; font-size: 12px; padding: 9px 12px; border-radius: var(--r2);
+  cursor: pointer; text-align: left; transition: border-color .15s, box-shadow .15s;
+}
+.mon-range-trigger:hover { border-color: var(--blue-lt); box-shadow: var(--shadow-sm); }
+.mon-range-trigger svg { flex-shrink: 0; color: var(--blue); }
+.mon-range-modal {
+  width: min(360px, calc(100vw - 32px)); background: var(--surface); border-radius: var(--r3);
+  box-shadow: var(--shadow-lg); border: 1px solid var(--border); overflow: hidden;
+  transform: translateY(12px) scale(.98); transition: transform .28s cubic-bezier(.16,1,.3,1);
+}
+.modal-backdrop.open .mon-range-modal { transform: none; }
+.mon-range-modal-head {
+  padding: 16px 18px 10px; border-bottom: 1px solid var(--border);
+}
+.mon-range-modal-head h2 {
+  font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--navy);
+}
+.mon-range-modal-head p { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+.mon-range-modal-body { padding: 12px 14px 14px; user-select: none; }
+.mon-cal-weekdays {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 6px;
+}
+.mon-cal-weekdays span {
+  text-align: center; font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--text-3); padding: 4px 0;
+}
+.mon-cal-weekdays span.is-weekend { color: oklch(52% 0.12 58); }
+.mon-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.mon-cal-day {
+  aspect-ratio: 1; border: 1px solid transparent; border-radius: 8px; background: transparent;
+  font-family: 'DM Mono', monospace; font-size: 12px; color: var(--navy); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  line-height: 1.1; transition: background .12s, border-color .12s, color .12s;
+  touch-action: none;
+}
+.mon-cal-day .mon-cal-dow { font-size: 8px; font-weight: 600; letter-spacing: 0.02em; color: var(--text-3); }
+.mon-cal-day.is-weekend .mon-cal-dow { color: oklch(54% 0.1 58); }
+.mon-cal-day.is-weekend { color: oklch(42% 0.1 58); }
+.mon-cal-day.is-empty { visibility: hidden; pointer-events: none; }
+.mon-cal-day:hover:not(.is-empty) { background: oklch(97% 0.012 244); border-color: var(--border); }
+.mon-cal-day.in-range { background: oklch(94% 0.04 244); border-color: oklch(88% 0.06 244); }
+.mon-cal-day.is-anchor,
+.mon-cal-day.range-start,
+.mon-cal-day.range-end {
+  background: var(--navy); border-color: var(--navy); color: white;
+}
+.mon-cal-day.is-anchor .mon-cal-dow,
+.mon-cal-day.range-start .mon-cal-dow,
+.mon-cal-day.range-end .mon-cal-dow { color: oklch(84% 0.02 244); }
+.mon-range-modal-foot {
+  display: flex; justify-content: flex-end; gap: 8px; padding: 12px 14px 14px;
+  border-top: 1px solid var(--border); background: oklch(98% 0.006 244);
+}
+.mon-detail-meta {
+  margin-top: 10px; font-size: 11.5px; color: var(--text-3);
+}
+.mon-detail-wrap { border-radius: 0; border-top: 1px solid var(--border); }
+.mon-pagination {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  padding: 12px 16px; background: var(--surface); border: 1px solid var(--border);
+  border-top: none; border-radius: 0 0 var(--r3) var(--r3);
+}
+.mon-page-btn {
+  border: 1px solid var(--border); background: var(--surface); color: var(--navy);
+  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600; padding: 6px 14px;
+  border-radius: 8px; cursor: pointer; transition: background .15s, border-color .15s;
+}
+.mon-page-btn:hover:not(:disabled) { background: oklch(97% 0.012 244); border-color: var(--blue-lt); }
+.mon-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.mon-page-info { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-2); min-width: 88px; text-align: center; }
+
+@media (max-width: 860px) {
+  .topbar { padding: 0 16px; }
+  .shell  { padding: 0 12px 60px; }
+  .table-scroll { overflow-x: auto; }
+  .entry-table { min-width: 760px; }
+  .mon-detail-wrap { overflow-x: auto; }
+}
+@media (max-width: 720px) {
+  .topbar {
+    height: auto; min-height: 52px; flex-direction: column; align-items: stretch;
+    gap: 10px; padding: calc(10px + env(safe-area-inset-top, 0)) 12px 10px;
+  }
+  .topbar-brand { flex-wrap: wrap; }
+  .topbar-name span { display: none; }
+  .topbar-right {
+    width: 100%; flex-direction: column; align-items: stretch; gap: 8px;
+  }
+  .topbar-meta { text-align: center; font-size: 11px; }
+  .topbar-nav-group {
+    width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+  }
+  .topbar-nav {
+    padding: 10px 4px; font-size: 11px; line-height: 1.2; min-height: 44px;
+    white-space: normal; text-align: center;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <a class="topbar-home" href="index.html">← Home</a>
+    <div class="topbar-logo">
+      <svg viewBox="0 0 16 16" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">
+        <rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/>
+        <rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/>
+      </svg>
+    </div>
+    <span class="topbar-name">Studio Rivelli <span>Consulting</span></span>
+  </div>
+  <div class="topbar-right">
+    <span class="topbar-meta" id="topbar-date"></span>
+    <nav class="topbar-nav-group" aria-label="Sezioni">
+      <button type="button" class="topbar-nav is-active" data-section="inserimento">Inserimento</button>
+      <button type="button" class="topbar-nav" data-section="monitoraggio">Monitoraggio</button>
+      <button type="button" class="topbar-nav" data-section="modifica">Modifica</button>
+    </nav>
+  </div>
+</div>
+
+<div class="shell">
+
+  <div id="view-inserimento" class="view-panel">
+
+  <!-- PAGE HEAD -->
+  <div class="page-head">
+    <h1 class="page-title">Foglio Presenze — 8 ore</h1>
+    <p class="page-sub">Calendario a partire dal 01/01/2026 &nbsp;·&nbsp; inserimento giornaliero</p>
+  </div>
+
+  <!-- META BAR: dipendente + data -->
+  <div class="meta-bar">
+    <div class="meta-field">
+      <span class="meta-label">Dipendente</span>
+      <select class="meta-input" id="inp-dipendente" style="width:220px" disabled>
+        <option value="">Caricamento…</option>
+      </select>
+    </div>
+    <div class="meta-sep"></div>
+    <div class="meta-field">
+      <span class="meta-label">Data</span>
+      <input class="meta-input" id="inp-data" type="date" style="width:170px">
+    </div>
+  </div>
+
+  <!-- HOURS BAR -->
+  <div class="hours-bar">
+    <div class="hours-summary">
+      <div>
+        <div class="hours-count"><span id="ore-count">0</span><span class="h-max">&thinsp;/ 8 h</span></div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:3px">ore registrate</div>
+      </div>
+      <span class="hours-pill pill-low" id="ore-pill">Non iniziato</span>
+    </div>
+    <div class="hours-track"><div class="hours-fill" id="ore-fill" style="width:0%"></div></div>
+    <div class="hours-detail" id="ore-detail">—</div>
+  </div>
+
+  <!-- SETUP CARD (fase 1: una riga template) -->
+  <div class="setup-card" id="setup-card">
+    <div class="setup-card-head">
+      <span class="setup-badge">1</span>
+      <span class="setup-card-head-txt">Imposta la giornata &nbsp;<span>— seleziona cliente, attività e luogo. Le 8 fasce orarie verranno generate automaticamente.</span></span>
+    </div>
+    <div class="setup-body">
+      <div class="setup-field">
+        <label>Cliente / Destinazione</label>
+        <div class="client-wrap" id="setup-client-wrap"></div>
+      </div>
+      <div class="setup-field">
+        <label>Attività</label>
+        <select class="cell-select" id="setup-att"></select>
+      </div>
+      <div class="setup-field">
+        <label>Luogo</label>
+        <select class="cell-select" id="setup-luogo"></select>
+      </div>
+    </div>
+    <div class="setup-foot">
+      <span style="font-size:12px;color:var(--text-3)">I tre campi verranno replicati su tutte le 8 righe orarie</span>
+      <button class="btn btn-primary" id="btn-genera">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M7 1v6l3-3M7 7l-3-3"/><path d="M2 10a5 5 0 1 0 10 0"/>
+        </svg>
+        Genera 8 righe
+      </button>
+    </div>
+  </div>
+
+  <!-- TABLE (fase 2: 8 righe generate) -->
+  <div class="table-wrap" id="table-wrap">
+    <div class="table-scroll">
+    <table class="entry-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th class="col-ore">Ore</th>
+          <th>Cliente / Destinazione</th>
+          <th class="col-att">Attività</th>
+          <th class="col-luogo">Luogo</th>
+          <th class="col-del"></th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+    </div>
+    <div class="table-foot">
+      <button class="btn-add-row" id="btn-add-row">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 1v12M1 7h12"/></svg>
+        Aggiungi riga
+      </button>
+      <button class="btn btn-ghost" id="btn-rimodifica" style="font-size:12px;padding:6px 14px">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1 6A5 5 0 1 0 6 1M1 1v5h5"/></svg>
+        Modifica template
+      </button>
+    </div>
+  </div>
+
+  <!-- ACTION BAR -->
+  <div class="action-bar" id="action-bar" style="display:none">
+    <button class="btn btn-ghost" id="btn-reset">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1 7A6 6 0 1 0 7 1M1 1v6h6"/></svg>
+      Reset
+    </button>
+    <button class="btn btn-primary" id="btn-salva">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="1" width="12" height="12" rx="2"/><path d="M4 1v4h6V1M4 8h6"/></svg>
+      Salva giornata
+    </button>
+  </div>
+
+  </div><!-- /view-inserimento -->
+
+  <div id="view-monitoraggio" class="view-panel hidden">
+
+    <div class="page-head">
+      <h1 class="page-title">Monitoraggio timesheet</h1>
+      <p class="page-sub">Analytics su ore, clienti, attività e straordinari · dati da Data Table</p>
+    </div>
+
+    <div id="mon-loading" class="mon-loading hidden">Caricamento dati…</div>
+
+    <div id="mon-dashboard" class="hidden">
+      <div class="mon-filters">
+        <div>
+          <label for="mon-f-dip">Dipendente</label>
+          <select class="cell-select" id="mon-f-dip"><option value="">Tutti</option></select>
+        </div>
+        <div>
+          <label for="mon-f-cliente">Cliente</label>
+          <select class="cell-select" id="mon-f-cliente"><option value="">Tutti</option></select>
+        </div>
+        <div>
+          <label for="mon-f-mese">Mese</label>
+          <select class="cell-select" id="mon-f-mese"><option value="">Tutti</option></select>
+        </div>
+        <div>
+          <label for="mon-f-att">Attività</label>
+          <select class="cell-select" id="mon-f-att"><option value="">Tutte</option></select>
+        </div>
+      </div>
+
+      <div class="mon-kpi-grid">
+        <div class="mon-kpi">
+          <div class="mon-kpi-label">Ore totali</div>
+          <div class="mon-kpi-val" id="mon-kpi-ore">0</div>
+        </div>
+        <div class="mon-kpi">
+          <div class="mon-kpi-label">Ore extra ★</div>
+          <div class="mon-kpi-val warn" id="mon-kpi-extra">0</div>
+        </div>
+        <div class="mon-kpi">
+          <div class="mon-kpi-label">Giornate</div>
+          <div class="mon-kpi-val ok" id="mon-kpi-giorni">0</div>
+        </div>
+        <div class="mon-kpi">
+          <div class="mon-kpi-label">Righe</div>
+          <div class="mon-kpi-val" id="mon-kpi-righe">0</div>
+        </div>
+      </div>
+
+      <div class="mon-grid">
+        <div class="mon-card">
+          <div class="mon-card-head">Ore per attività</div>
+          <div class="mon-card-body" id="mon-chart-att"></div>
+        </div>
+        <div class="mon-card">
+          <div class="mon-card-head">Ore per cliente</div>
+          <div class="mon-card-body" id="mon-chart-cli"></div>
+        </div>
+        <div class="mon-card">
+          <div class="mon-card-head">Ore per dipendente</div>
+          <div class="mon-card-body" id="mon-chart-dip"></div>
+        </div>
+        <div class="mon-card">
+          <div class="mon-card-head">Ore extra per cliente</div>
+          <div class="mon-card-body" id="mon-chart-extra"></div>
+        </div>
+      </div>
+
+      <div class="mon-detail-section">
+        <div class="mon-detail-toolbar">
+          <div class="mon-detail-toolbar-row">
+            <div>
+              <label for="mon-tbl-dip">Dipendente</label>
+              <select class="cell-select" id="mon-tbl-dip"><option value="">Tutti</option></select>
+            </div>
+            <div>
+              <label>Visualizza</label>
+              <div class="mon-date-tabs" role="tablist" aria-label="Tipo periodo">
+                <button type="button" class="mon-date-tab is-active" data-mode="mese" id="mon-tbl-mode-mese">Mese intero</button>
+                <button type="button" class="mon-date-tab" data-mode="intervallo" id="mon-tbl-mode-range">Da — A</button>
+              </div>
+            </div>
+            <div>
+              <label for="mon-tbl-mese">Mese</label>
+              <select class="cell-select" id="mon-tbl-mese"><option value="">Tutti i mesi</option></select>
+            </div>
+            <div class="mon-tbl-range hidden" id="mon-tbl-range-wrap">
+              <div style="flex:1">
+                <label for="mon-range-trigger">Periodo nel mese</label>
+                <button type="button" class="mon-range-trigger" id="mon-range-trigger" aria-haspopup="dialog">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3"/>
+                  </svg>
+                  <span id="mon-range-label">Seleziona intervallo</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="mon-detail-meta" id="mon-detail-meta">—</div>
+        </div>
+        <div class="mon-detail-wrap">
+          <table class="mon-detail-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Dipendente</th>
+                <th>Fascia</th>
+                <th>Ore</th>
+                <th>Cliente</th>
+                <th>Attività</th>
+                <th>Luogo</th>
+              </tr>
+            </thead>
+            <tbody id="mon-detail-body"></tbody>
+          </table>
+        </div>
+        <div class="mon-pagination">
+          <button type="button" class="mon-page-btn" id="mon-page-prev" disabled aria-label="Pagina precedente">← Prec.</button>
+          <span class="mon-page-info" id="mon-page-info">—</span>
+          <button type="button" class="mon-page-btn" id="mon-page-next" disabled aria-label="Pagina successiva">Succ. →</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /view-monitoraggio -->
+
+  <div id="view-modifica" class="view-panel hidden">
+
+    <div class="page-head">
+      <h1 class="page-title">Modifica giornata salvata</h1>
+      <p class="page-sub">Carica le righe già inviate, modificale e invia l’aggiornamento (webhook update-data)</p>
+    </div>
+
+    <div class="edit-load-bar">
+      <div class="meta-field">
+        <span class="meta-label">Dipendente</span>
+        <select class="meta-input" id="edit-inp-dipendente" style="width:100%" disabled>
+          <option value="">Caricamento…</option>
+        </select>
+      </div>
+      <div class="meta-field">
+        <span class="meta-label">Data</span>
+        <input class="meta-input" id="edit-inp-data" type="date" style="width:100%">
+      </div>
+      <button type="button" class="btn btn-primary" id="btn-edit-carica">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 7h10M7 2v10"/></svg>
+        Carica giornata
+      </button>
+      <p class="edit-id-badge" id="edit-id-badge">Seleziona dipendente e data, poi carica.</p>
+    </div>
+
+    <div class="hours-bar" id="edit-hours-bar" style="display:none">
+      <div class="hours-summary">
+        <div>
+          <div class="hours-count"><span id="edit-ore-count">0</span><span class="h-max">&thinsp;/ 8 h</span></div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:3px">ore registrate</div>
+        </div>
+        <span class="hours-pill pill-low" id="edit-ore-pill">—</span>
+      </div>
+      <div class="hours-track"><div class="hours-fill" id="edit-ore-fill" style="width:0%"></div></div>
+      <div class="hours-detail" id="edit-ore-detail">—</div>
+    </div>
+
+    <div class="table-wrap" id="edit-table-wrap">
+      <div class="table-scroll">
+        <table class="entry-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th class="col-ore">Ore</th>
+              <th>Cliente / Destinazione</th>
+              <th class="col-att">Attività</th>
+              <th class="col-luogo">Luogo</th>
+              <th class="col-del"></th>
+            </tr>
+          </thead>
+          <tbody id="edit-table-body"></tbody>
+        </table>
+      </div>
+      <div class="table-foot">
+        <button class="btn-add-row" id="btn-edit-add-row">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 1v12M1 7h12"/></svg>
+          Aggiungi riga
+        </button>
+      </div>
+    </div>
+
+    <div class="action-bar" id="edit-action-bar" style="display:none">
+      <button type="button" class="btn btn-ghost" id="btn-edit-annulla">Annulla modifiche</button>
+      <button type="button" class="btn btn-primary" id="btn-edit-salva">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="1" width="12" height="12" rx="2"/><path d="M4 1v4h6V1M4 8h6"/></svg>
+        Salva modifiche
+      </button>
+    </div>
+
+  </div><!-- /view-modifica -->
+
+</div>
+
+<div class="modal-backdrop" id="modal-fascia-backdrop" aria-hidden="true">
+  <div class="modal-fascia" role="dialog" aria-labelledby="modal-fascia-title" aria-modal="true">
+    <div class="modal-fascia-head">
+      <h2 id="modal-fascia-title">Fascia personalizzata</h2>
+      <p id="modal-fascia-sub">Trascina gli estremi sull’anello</p>
+    </div>
+    <div class="modal-fascia-body">
+      <div class="clock-preview" id="clock-preview">09:00 <span>→</span> 10:00</div>
+      <svg class="clock-svg" id="clock-svg" viewBox="0 0 260 260" aria-hidden="true">
+        <circle class="ring-bg" cx="130" cy="130" r="98"/>
+        <path class="ring-forbidden" id="clock-forbidden" d=""/>
+        <path class="ring-allowed" id="clock-allowed" d=""/>
+        <path class="ring-range" id="clock-range" d=""/>
+        <g id="clock-ticks"></g>
+        <circle class="handle handle-start" id="clock-handle-start" cx="130" cy="32" r="11"/>
+        <circle class="handle handle-end" id="clock-handle-end" cx="130" cy="32" r="11"/>
+      </svg>
+      <p class="clock-hint" id="clock-hint"></p>
+    </div>
+    <div class="modal-fascia-foot">
+      <button type="button" class="btn btn-ghost" id="clock-cancel">Annulla</button>
+      <button type="button" class="btn btn-primary" id="clock-apply">Applica fascia</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-area" id="toast-area"></div>
+
+<div class="modal-backdrop" id="mon-range-backdrop" aria-hidden="true">
+  <div class="mon-range-modal" role="dialog" aria-labelledby="mon-range-modal-title" aria-modal="true">
+    <div class="mon-range-modal-head">
+      <h2 id="mon-range-modal-title">Seleziona periodo</h2>
+      <p>Tieni premuto e trascina sui giorni per selezionare l’intervallo</p>
+    </div>
+    <div class="mon-range-modal-body">
+      <div class="mon-cal-weekdays" id="mon-cal-weekdays"></div>
+      <div class="mon-cal-grid" id="mon-cal-grid"></div>
+    </div>
+    <div class="mon-range-modal-foot">
+      <button type="button" class="btn btn-ghost" id="mon-range-mese-intero">Mese intero</button>
+      <button type="button" class="btn btn-primary" id="mon-range-applica">Applica</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+/* ═══════════════════════════════════════════════
+   DATI (liste da n8n — vedi caricaParametri)
+═══════════════════════════════════════════════ */
+const WEBHOOK_RETRIEVE = SR_CONFIG.WEBHOOK_TS_RETRIEVE;
+const WEBHOOK_SAVE = SR_CONFIG.WEBHOOK_TS_SAVE;
+const WEBHOOK_UPDATE = SR_CONFIG.WEBHOOK_TS_UPDATE;
+const WEBHOOK_MONITOR = SR_CONFIG.WEBHOOK_TS_MONITOR;
+const WEBHOOK_LOAD_TIMESHEET = SR_CONFIG.WEBHOOK_TS_LOAD;
+
+const LUOGHI = ['UFFICIO', 'SMART', 'FUORISEDE'];
+
+/** 8 fasce standard “Genera righe” (pausa pranzo esclusa) */
+const SLOT_DEFAULT = [
+  '09:00/10:00', '10:00/11:00', '11:00/12:00', '12:00/13:00',
+  '14:00/15:00', '15:00/16:00', '16:00/17:00', '17:00/18:00'
+];
+
+let CLIENTI = [];
+let ATTIVITA = [];
+let SLOT_ORE = [];
+let DIPENDENTI = [];
+let parametriPronti = false;
+
+const GIORNI  = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+const MESI_IT = ['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'];
+
+/* ═══════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════ */
+function todayISO() {
+  const d = new Date();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+const WORK_START_MIN = 9 * 60;
+const WORK_END_MIN = 18 * 60;
+const PAUSA_START_MIN = 13 * 60;
+const PAUSA_END_MIN = 14 * 60;
+
+function parseFascia(str) {
+  if (!str) return null;
+  const m = String(str).match(/^(\d{2}):(\d{2})\/(\d{2}):(\d{2})/);
+  if (!m) return null;
+  const start = +m[1] * 60 + +m[2];
+  const end = +m[3] * 60 + +m[4];
+  if (end <= start) return null;
+  return { start, end, durata: (end - start) / 60 };
+}
+
+function minutiOverlapPausa(start, end) {
+  const s = Math.max(start, PAUSA_START_MIN);
+  const e = Math.min(end, PAUSA_END_MIN);
+  return Math.max(0, e - s);
+}
+
+/** Ore lavorate: esclude 13:00–14:00 se la fascia la attraversa (righe standard / orologio) */
+function parseOre(str, isExtra = false) {
+  const f = parseFascia(str);
+  if (!f) return 0;
+  let mins = f.end - f.start;
+  const attraversaPausa = f.start < PAUSA_END_MIN && f.end > PAUSA_START_MIN;
+  if (attraversaPausa && (!isExtra || (f.start < WORK_END_MIN && f.end > WORK_START_MIN))) {
+    mins -= minutiOverlapPausa(f.start, f.end);
+  }
+  return Math.round((mins / 60) * 100) / 100;
+}
+
+function isFasciaSoloPausaPranzo(label) {
+  const r = parseFascia(label);
+  if (!r) return false;
+  return r.start >= PAUSA_START_MIN && r.end <= PAUSA_END_MIN;
+}
+
+function rangesOverlap(a, b) {
+  return a.start < b.end && b.start < a.end;
+}
+
+function rangeContains(outer, inner) {
+  return outer.start <= inner.start && outer.end >= inner.end;
+}
+
+function fasciaInOrarioUfficio(range) {
+  return range.start >= WORK_START_MIN && range.end <= WORK_END_MIN;
+}
+
+/** Fascia oraria “a slot” (1 h, senza etichetta tipo “mattina completa”) */
+function isFasciaOrariaSemplice(label) {
+  if (!label || label.includes('(')) return false;
+  const r = parseFascia(label);
+  if (!r) return false;
+  return Math.abs(r.durata - 1) < 0.01;
+}
+
+/** Pacchetti n8n con descrizione: (Mattina completa), (Giornata intera), ecc. */
+function isBloccoPreparato(label) {
+  return Boolean(label && String(label).includes('(') && !isFasciaPersonalizzata(label));
+}
+
+function isFasciaPersonalizzata(label) {
+  return Boolean(label && String(label).includes('(personalizzata)'));
+}
+
+function isFasciaFuoriOrarioUfficio(range) {
+  return range.end <= WORK_START_MIN || range.start >= WORK_END_MIN;
+}
+
+/** Canoniche: fasce 09:00–18:00 + blocchi preparati (anche se escono da quell’orario) */
+function fascePerRigaStandard() {
+  if (!SLOT_ORE.length) return [...SLOT_DEFAULT];
+  return SLOT_ORE.filter(label => {
+    if (isFasciaSoloPausaPranzo(label)) return false;
+    if (isBloccoPreparato(label)) return true;
+    const r = parseFascia(label);
+    return r && fasciaInOrarioUfficio(r);
+  });
+}
+
+/** Extra ★: solo ore singole 07–22, niente pacchetti preparati */
+function fascePerRigaExtra() {
+  if (!SLOT_ORE.length) return [];
+  return SLOT_ORE.filter(isFasciaOrariaSemplice);
+}
+
+function isCopertoDaRigaPrecedente(info, infos, index) {
+  if (info.isExtra || !info.canonical) return false;
+  for (let k = 0; k < index; k++) {
+    const prev = infos[k];
+    if (prev.range && rangeContains(prev.range, info.canonical)) return true;
+  }
+  return false;
+}
+
+function getRowFasciaInfo(tr) {
+  const oreSel = tr.querySelector('.ore-select');
+  const fascia = oreSel?.value || '';
+  const range = parseFascia(fascia);
+  const isExtra = tr.classList.contains('row-extra');
+  const canonIdx = tr.dataset.canonIdx;
+  const canonical = canonIdx !== '' && canonIdx != null ? parseFascia(SLOT_DEFAULT[+canonIdx]) : null;
+  const badge = tr.querySelector('.num-badge');
+  return { tr, oreSel, fascia, range, isExtra, canonical, badgeLabel: badge?.textContent || '' };
+}
+
+function setRigaCoperta(tr, coveredBy) {
+  tr.classList.add('row-covered');
+  tr.dataset.coveredBy = coveredBy || '';
+  const tag = tr.querySelector('.covered-tag');
+  if (tag) tag.textContent = coveredBy ? `↳ coperto (riga ${coveredBy})` : '';
+}
+
+function clearRigaCoperta(tr) {
+  tr.classList.remove('row-covered');
+  delete tr.dataset.coveredBy;
+  const tag = tr.querySelector('.covered-tag');
+  if (tag) tag.textContent = '';
+}
+
+function aggiornaOreTabella(tbodyId) {
+  if (tbodyId === 'edit-table-body') {
+    updateHoursFor('edit-table-body', 'edit-ore-count', 'edit-ore-fill', 'edit-ore-pill', 'edit-ore-detail');
+  } else {
+    updateHours();
+  }
+}
+
+function validaFasceOrarie(triggerSel, tbodyId = 'table-body') {
+  const rows = [...document.querySelectorAll(`#${tbodyId} tr`)];
+  if (!rows.length) return;
+
+  rows.forEach(clearRigaCoperta);
+
+  const infos = rows.map(getRowFasciaInfo);
+  const coveredSet = new Set();
+
+  if (triggerSel) {
+    const tr = triggerSel.closest('tr');
+    const cur = getRowFasciaInfo(tr);
+    const prev = triggerSel.dataset.prevValue || '';
+    const idx = infos.findIndex(i => i.tr === tr);
+
+    if (cur.fascia) {
+      const duplicato = infos.find((i, j) => {
+        if (j === idx || i.fascia !== cur.fascia) return false;
+        return !isCopertoDaRigaPrecedente(i, infos, j);
+      });
+      if (duplicato) {
+        triggerSel.value = prev;
+        showToast('⚠ Fascia oraria già usata in un\'altra riga');
+        return;
+      }
+      if (!cur.isExtra && cur.range && !fasciaInOrarioUfficio(cur.range) && !isBloccoPreparato(cur.fascia) && !isFasciaPersonalizzata(cur.fascia)) {
+        triggerSel.value = prev;
+        showToast('⚠ Nelle 8 righe standard: ore singole 09:00–18:00, oppure un blocco preparato');
+        return;
+      }
+      if (cur.isExtra && cur.range && !isFasciaFuoriOrarioUfficio(cur.range)) {
+        triggerSel.value = prev;
+        showToast('⚠ Riga extra: fascia solo prima delle 09:00 o dopo le 18:00');
+        return;
+      }
+    }
+  }
+
+  const sources = [];
+  for (let i = 0; i < infos.length; i++) {
+    const info = infos[i];
+    if (coveredSet.has(info.tr) || !info.range) continue;
+
+    const conflitto = sources.find(src => rangesOverlap(info.range, src.range));
+    if (conflitto) {
+      if (triggerSel === info.oreSel) {
+        info.oreSel.value = info.oreSel.dataset.prevValue || '';
+        showToast(`⚠ Fascia sovrapposta alla riga ${conflitto.badgeLabel}`);
+      }
+      continue;
+    }
+
+    sources.push({ ...info, order: i });
+
+    for (let j = i + 1; j < infos.length; j++) {
+      const next = infos[j];
+      if (next.isExtra || !next.canonical) continue;
+      if (rangeContains(info.range, next.canonical)) {
+        coveredSet.add(next.tr);
+        setRigaCoperta(next.tr, info.badgeLabel);
+      }
+    }
+  }
+
+  triggerSel?.classList.remove('ore-invalid');
+  aggiornaOreTabella(tbodyId);
+}
+
+/* ═══════════════════════════════════════════════
+   MODALE ORologio — fascia personalizzata
+═══════════════════════════════════════════════ */
+const CLOCK_CX = 130;
+const CLOCK_CY = 130;
+const CLOCK_R = 98;
+const SNAP_MIN = 15;
+const EXTRA_DAY_START = 7 * 60;
+const EXTRA_DAY_END = 22 * 60;
+
+const clockState = { oreSel: null, isExtra: false, startMin: 540, endMin: 600, drag: null };
+
+function minToHHMM(m) {
+  const h = Math.floor(m / 60) % 24;
+  const mi = m % 60;
+  return `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;
+}
+
+function fasciaLabelPersonalizzata(startMin, endMin) {
+  return `${minToHHMM(startMin)}/${minToHHMM(endMin)} (personalizzata)`;
+}
+
+function snapMin(m) {
+  return Math.round(m / SNAP_MIN) * SNAP_MIN;
+}
+
+function minsToAngle(mins) {
+  return (mins / (24 * 60)) * 360 - 90;
+}
+
+function polar(cx, cy, r, angleDeg) {
+  const rad = (angleDeg * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function arcPath(cx, cy, r, startMin, endMin) {
+  if (endMin <= startMin) return '';
+  const p0 = polar(cx, cy, r, minsToAngle(startMin));
+  const p1 = polar(cx, cy, r, minsToAngle(endMin));
+  const large = endMin - startMin > 12 * 60 ? 1 : 0;
+  return `M ${p0.x} ${p0.y} A ${r} ${r} 0 ${large} 1 ${p1.x} ${p1.y}`;
+}
+
+function angleToMins(clientX, clientY, svg) {
+  const rect = svg.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const dx = clientX - cx;
+  const dy = clientY - cy;
+  let deg = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
+  while (deg < 0) deg += 360;
+  deg %= 360;
+  return snapMin((deg / 360) * 24 * 60);
+}
+
+function initClockTicks() {
+  const g = document.getElementById('clock-ticks');
+  if (g.dataset.ready) return;
+  g.dataset.ready = '1';
+  for (let h = 0; h < 24; h++) {
+    const a = minsToAngle(h * 60);
+    const inner = polar(CLOCK_CX, CLOCK_CY, h % 6 === 0 ? 86 : 92, a);
+    const outer = polar(CLOCK_CX, CLOCK_CY, CLOCK_R, a);
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', inner.x);
+    line.setAttribute('y1', inner.y);
+    line.setAttribute('x2', outer.x);
+    line.setAttribute('y2', outer.y);
+    line.setAttribute('class', h % 6 === 0 ? 'tick-major' : 'tick');
+    g.appendChild(line);
+  }
+}
+
+function renderClockDial() {
+  let { startMin, endMin, isExtra } = clockState;
+
+  if (!isExtra) {
+    startMin = Math.max(WORK_START_MIN, Math.min(WORK_END_MIN - SNAP_MIN, startMin));
+    endMin = Math.max(startMin + SNAP_MIN, Math.min(WORK_END_MIN, endMin));
+  } else {
+    startMin = Math.max(EXTRA_DAY_START, Math.min(EXTRA_DAY_END - SNAP_MIN, startMin));
+    endMin = Math.max(startMin + SNAP_MIN, Math.min(EXTRA_DAY_END, endMin));
+    if (!(endMin <= WORK_START_MIN || startMin >= WORK_END_MIN)) {
+      if (startMin < WORK_END_MIN && endMin > WORK_START_MIN) {
+        if ((startMin + endMin) / 2 < WORK_START_MIN) endMin = Math.min(endMin, WORK_START_MIN);
+        else startMin = Math.max(startMin, WORK_END_MIN);
+      }
+    }
+  }
+  clockState.startMin = startMin;
+  clockState.endMin = endMin;
+
+  document.getElementById('clock-forbidden').setAttribute(
+    'd',
+    isExtra ? arcPath(CLOCK_CX, CLOCK_CY, CLOCK_R, WORK_START_MIN, WORK_END_MIN) : ''
+  );
+  document.getElementById('clock-allowed').setAttribute(
+    'd',
+    isExtra ? '' : arcPath(CLOCK_CX, CLOCK_CY, CLOCK_R, WORK_START_MIN, WORK_END_MIN)
+  );
+  document.getElementById('clock-range').setAttribute('d', arcPath(CLOCK_CX, CLOCK_CY, CLOCK_R, startMin, endMin));
+
+  const pS = polar(CLOCK_CX, CLOCK_CY, CLOCK_R, minsToAngle(startMin));
+  const pE = polar(CLOCK_CX, CLOCK_CY, CLOCK_R, minsToAngle(endMin));
+  document.getElementById('clock-handle-start').setAttribute('cx', pS.x);
+  document.getElementById('clock-handle-start').setAttribute('cy', pS.y);
+  document.getElementById('clock-handle-end').setAttribute('cx', pE.x);
+  document.getElementById('clock-handle-end').setAttribute('cy', pE.y);
+
+  const fasciaTmp = fasciaLabelPersonalizzata(startMin, endMin);
+  const oreLav = parseOre(fasciaTmp, isExtra);
+  const durataLorda = Math.round(((endMin - startMin) / 60) * 100) / 100;
+  const pausaNota = oreLav < durataLorda
+    ? ` <span style="font-size:12px;color:var(--text-3)">(${oreLav} h lavorate, pausa 13–14 esclusa)</span>`
+    : '';
+  document.getElementById('clock-preview').innerHTML =
+    `${minToHHMM(startMin)} <span>→</span> ${minToHHMM(endMin)}${pausaNota}`;
+}
+
+function apriModaleFascia(oreSel) {
+  const tr = oreSel?.closest('tr');
+  if (!oreSel || tr?.classList.contains('row-covered')) return;
+
+  const isExtra = tr.classList.contains('row-extra');
+  clockState.oreSel = oreSel;
+  clockState.isExtra = isExtra;
+
+  const parsed = parseFascia(oreSel.value);
+  if (parsed) {
+    clockState.startMin = parsed.start;
+    clockState.endMin = parsed.end;
+  } else if (isExtra) {
+    clockState.startMin = EXTRA_DAY_START;
+    clockState.endMin = EXTRA_DAY_START + 60;
+  } else {
+    clockState.startMin = WORK_START_MIN;
+    clockState.endMin = WORK_START_MIN + 60;
+  }
+
+  document.getElementById('modal-fascia-title').textContent = isExtra
+    ? 'Fascia extra (fuori 09–18)'
+    : 'Fascia personalizzata';
+  document.getElementById('modal-fascia-sub').textContent = isExtra
+    ? 'Prima delle 09:00 o dopo le 18:00'
+    : 'Solo tra le 09:00 e le 18:00';
+  document.getElementById('clock-hint').textContent = isExtra
+    ? 'L’area rosata è l’orario delle 8 righe standard: qui non puoi inserire ore.'
+    : 'Trascina i due estremi. La fascia può coprire più righe sottostanti (residue trasparenti).';
+
+  initClockTicks();
+  renderClockDial();
+
+  const backdrop = document.getElementById('modal-fascia-backdrop');
+  backdrop.classList.add('open');
+  backdrop.setAttribute('aria-hidden', 'false');
+}
+
+function chiudiModaleFascia() {
+  document.getElementById('modal-fascia-backdrop').classList.remove('open');
+  document.getElementById('modal-fascia-backdrop').setAttribute('aria-hidden', 'true');
+  clockState.drag = null;
+}
+
+function ensureFasciaInSelect(sel, label) {
+  if ([...sel.options].some(o => o.value === label)) return;
+  const opt = document.createElement('option');
+  opt.value = label;
+  opt.textContent = label;
+  opt.dataset.custom = '1';
+  sel.insertBefore(opt, sel.firstChild);
+}
+
+function applicaFasciaPersonalizzata() {
+  const { oreSel, isExtra } = clockState;
+  let { startMin, endMin } = clockState;
+  if (!oreSel) return;
+
+  renderClockDial();
+  startMin = clockState.startMin;
+  endMin = clockState.endMin;
+
+  if (endMin <= startMin) {
+    showToast('⚠ La fascia deve durare almeno 15 minuti');
+    return;
+  }
+  if (isExtra && !isFasciaFuoriOrarioUfficio({ start: startMin, end: endMin })) {
+    showToast('⚠ Riga extra: fascia solo prima delle 09:00 o dopo le 18:00');
+    return;
+  }
+
+  const label = fasciaLabelPersonalizzata(startMin, endMin);
+  oreSel.dataset.prevValue = oreSel.value;
+  ensureFasciaInSelect(oreSel, label);
+  oreSel.value = label;
+  chiudiModaleFascia();
+  const tbodyId = oreSel.closest('tbody')?.id || 'table-body';
+  validaFasceOrarie(oreSel, tbodyId);
+}
+
+(function initClockModal() {
+  const svg = document.getElementById('clock-svg');
+  const hStart = document.getElementById('clock-handle-start');
+  const hEnd = document.getElementById('clock-handle-end');
+
+  function onMove(e) {
+    if (!clockState.drag) return;
+    const pt = e.touches ? e.touches[0] : e;
+    let mins = angleToMins(pt.clientX, pt.clientY, svg);
+
+    if (clockState.drag === 'start') {
+      if (!clockState.isExtra) {
+        mins = Math.max(WORK_START_MIN, Math.min(mins, clockState.endMin - SNAP_MIN));
+      } else {
+        mins = Math.max(EXTRA_DAY_START, Math.min(mins, clockState.endMin - SNAP_MIN));
+      }
+      clockState.startMin = mins;
+    } else {
+      if (!clockState.isExtra) {
+        mins = Math.max(clockState.startMin + SNAP_MIN, Math.min(mins, WORK_END_MIN));
+      } else {
+        mins = Math.max(clockState.startMin + SNAP_MIN, Math.min(mins, EXTRA_DAY_END));
+      }
+      clockState.endMin = mins;
+    }
+    renderClockDial();
+  }
+
+  function onUp() {
+    clockState.drag = null;
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onUp);
+  }
+
+  function startDrag(key, e) {
+    e.preventDefault();
+    clockState.drag = key;
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onUp);
+  }
+
+  hStart.addEventListener('mousedown', e => startDrag('start', e));
+  hEnd.addEventListener('mousedown', e => startDrag('end', e));
+  hStart.addEventListener('touchstart', e => startDrag('start', e), { passive: false });
+  hEnd.addEventListener('touchstart', e => startDrag('end', e), { passive: false });
+
+  svg.addEventListener('mousedown', e => {
+    if (e.target.classList.contains('handle')) return;
+    const mins = angleToMins(e.clientX, e.clientY, svg);
+    clockState.drag =
+      Math.abs(mins - clockState.startMin) <= Math.abs(mins - clockState.endMin) ? 'start' : 'end';
+    onMove(e);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  document.getElementById('clock-cancel').addEventListener('click', chiudiModaleFascia);
+  document.getElementById('clock-apply').addEventListener('click', applicaFasciaPersonalizzata);
+  document.getElementById('modal-fascia-backdrop').addEventListener('click', e => {
+    if (e.target.id === 'modal-fascia-backdrop') chiudiModaleFascia();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('modal-fascia-backdrop').classList.contains('open')) {
+      chiudiModaleFascia();
+    }
+  });
+})();
+
+function normalizzaElencoRisposta(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.data)) return payload.data;
+  if (payload && Array.isArray(payload.body)) return payload.body;
+  if (typeof payload === 'string') {
+    try { return normalizzaElencoRisposta(JSON.parse(payload)); } catch { return []; }
+  }
+  return [];
+}
+
+/** Risposta n8n: array misto con chiavi Dipendenti | Cliente | Attivita | Ore */
+function parseRetrieveData(rows) {
+  const out = { dipendenti: [], clienti: [], attivita: [], fasceOre: [] };
+  rows.forEach(row => {
+    if (!row || typeof row !== 'object') return;
+    if (row.Dipendenti) out.dipendenti.push(String(row.Dipendenti).trim());
+    else if (row.Cliente) out.clienti.push(String(row.Cliente).trim());
+    else if (row.Attivita) out.attivita.push(String(row.Attivita).trim());
+    else if (row.Ore) out.fasceOre.push(String(row.Ore).trim());
+  });
+  const dedupe = arr => [...new Set(arr)].filter(Boolean);
+  out.dipendenti = dedupe(out.dipendenti);
+  out.clienti = dedupe(out.clienti);
+  out.attivita = dedupe(out.attivita);
+  out.fasceOre = dedupe(out.fasceOre);
+  return out;
+}
+
+async function caricaParametri() {
+  document.body.classList.add('app-loading');
+  let resp;
+  try {
+    resp = await SRAuth.fetch(WEBHOOK_RETRIEVE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({})
+    });
+  } catch (err) {
+    document.body.classList.remove('app-loading');
+    throw new Error(err.message || 'rete non disponibile');
+  }
+  if (!resp.ok) {
+    document.body.classList.remove('app-loading');
+    throw new Error(`HTTP ${resp.status}`);
+  }
+  const raw = await resp.json();
+  if (raw && typeof raw === 'object' && !Array.isArray(raw) && raw.message === 'Workflow was started') {
+    document.body.classList.remove('app-loading');
+    throw new Error(
+      'n8n ha avviato il workflow ma non ha restituito i dati. Nel nodo Webhook imposta "Respond" → When Last Node Finishes, oppure aggiungi "Respond to Webhook" in coda.'
+    );
+  }
+  const rows = normalizzaElencoRisposta(raw);
+  if (!rows.length) {
+    document.body.classList.remove('app-loading');
+    throw new Error('risposta vuota da n8n (atteso array con Dipendenti, Cliente, Attivita, Ore)');
+  }
+  const parsed = parseRetrieveData(rows);
+  if (!parsed.dipendenti.length || !parsed.clienti.length || !parsed.attivita.length || !parsed.fasceOre.length) {
+    document.body.classList.remove('app-loading');
+    throw new Error('elenchi incompleti (dipendenti, clienti, attività o fasce orarie)');
+  }
+  DIPENDENTI = parsed.dipendenti;
+  CLIENTI = parsed.clienti;
+  ATTIVITA = parsed.attivita;
+  SLOT_ORE = parsed.fasceOre;
+  parametriPronti = true;
+  document.body.classList.remove('app-loading');
+}
+
+/* ═══════════════════════════════════════════════
+   INIT DATE
+═══════════════════════════════════════════════ */
+(function initDate() {
+  const inp = document.getElementById('inp-data');
+  inp.value = todayISO();
+  const now = new Date();
+  document.getElementById('topbar-date').textContent =
+    `${GIORNI[now.getDay()]} ${now.getDate()} ${MESI_IT[now.getMonth()]} ${now.getFullYear()}`;
+})();
+
+/* ═══════════════════════════════════════════════
+   BUILD SELECTS (SETUP)
+═══════════════════════════════════════════════ */
+function buildSelectEl(options, cls) {
+  const sel = document.createElement('select');
+  sel.className = cls || 'cell-select';
+  options.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o; opt.textContent = o;
+    sel.appendChild(opt);
+  });
+  return sel;
+}
+
+function getClientDropdownPortal() {
+  let portal = document.getElementById('client-dropdown-portal');
+  if (!portal) {
+    portal = document.createElement('div');
+    portal.id = 'client-dropdown-portal';
+    document.body.appendChild(portal);
+    if (!window._clientDdRepositionBound) {
+      window._clientDdRepositionBound = true;
+      const riposiziona = () => {
+        document.querySelectorAll('.client-dropdown.open.is-floating').forEach(dd => {
+          const inp = dd._clientInpRef;
+          if (inp) positionClientDropdown(inp, dd);
+        });
+      };
+      window.addEventListener('scroll', riposiziona, true);
+      window.addEventListener('resize', riposiziona);
+    }
+  }
+  return portal;
+}
+
+function positionClientDropdown(inp, dd) {
+  const r = inp.getBoundingClientRect();
+  const spazioSotto = window.innerHeight - r.bottom - 12;
+  const maxH = Math.min(220, Math.max(120, spazioSotto));
+  dd.style.position = 'fixed';
+  dd.style.left = `${Math.max(8, r.left)}px`;
+  dd.style.top = `${r.bottom + 4}px`;
+  dd.style.width = `${Math.max(r.width, 200)}px`;
+  dd.style.maxHeight = `${maxH}px`;
+  dd.style.zIndex = '10000';
+}
+
+function openClientDropdown(inp, dd, wrap) {
+  document.querySelectorAll('.client-dropdown.open').forEach(other => {
+    if (other !== dd && other._clientWrapRef) closeClientDropdown(other, other._clientWrapRef);
+  });
+  dd._clientInpRef = inp;
+  dd._clientWrapRef = wrap;
+  getClientDropdownPortal().appendChild(dd);
+  dd.classList.add('is-floating');
+  positionClientDropdown(inp, dd);
+  dd.classList.add('open');
+}
+
+function closeClientDropdown(dd, wrap) {
+  dd.classList.remove('open', 'is-floating');
+  dd.style.cssText = '';
+  dd._clientInpRef = null;
+  wrap.appendChild(dd);
+}
+
+function buildClientAutocomplete(initialValue) {
+  const wrap = document.createElement('div');
+  wrap.className = 'client-wrap';
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.className = 'client-input';
+  inp.placeholder = 'Cerca cliente…';
+  inp.setAttribute('autocomplete','off');
+  if (initialValue) inp.value = initialValue;
+
+  const dd = document.createElement('div');
+  dd.className = 'client-dropdown';
+  let focusedIdx = -1;
+
+  function renderDd(q) {
+    dd.innerHTML = ''; focusedIdx = -1;
+    const lq = q.toLowerCase();
+    const list = q ? CLIENTI.filter(c => c.toLowerCase().includes(lq)) : CLIENTI;
+    if (!list.length) {
+      dd.innerHTML = '<div class="client-dd-empty">Nessun risultato</div>';
+    } else {
+      list.forEach((c,i) => {
+        const el = document.createElement('div');
+        el.className = 'client-dd-item';
+        if (q) {
+          const idx = c.toLowerCase().indexOf(lq);
+          el.innerHTML = c.slice(0,idx)+'<mark>'+c.slice(idx,idx+q.length)+'</mark>'+c.slice(idx+q.length);
+        } else { el.textContent = c; }
+        el.addEventListener('mousedown', e => {
+          e.preventDefault();
+          inp.value = c;
+          closeClientDropdown(dd, wrap);
+        });
+        dd.appendChild(el);
+      });
+    }
+    if (dd.classList.contains('open')) positionClientDropdown(inp, dd);
+  }
+
+  inp.addEventListener('focus', () => {
+    renderDd(inp.value);
+    openClientDropdown(inp, dd, wrap);
+  });
+  inp.addEventListener('blur', () => setTimeout(() => closeClientDropdown(dd, wrap), 150));
+  inp.addEventListener('input', () => renderDd(inp.value));
+  inp.addEventListener('keydown', e => {
+    const items = dd.querySelectorAll('.client-dd-item');
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); focusedIdx = Math.min(focusedIdx+1, items.length-1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); focusedIdx = Math.max(focusedIdx-1, 0); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (focusedIdx >= 0) { inp.value = items[focusedIdx].textContent; closeClientDropdown(dd, wrap); }
+    } else if (e.key === 'Escape') { closeClientDropdown(dd, wrap); }
+    items.forEach((el,i) => el.classList.toggle('focused', i===focusedIdx));
+    if (focusedIdx >= 0) items[focusedIdx].scrollIntoView({block:'nearest'});
+  });
+
+  wrap.appendChild(inp); wrap.appendChild(dd);
+  return wrap;
+}
+
+function popolaSelectDipendenti(selectId, abilita = true) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const corrente = sel.value;
+  sel.innerHTML = '';
+  DIPENDENTI.forEach(nome => {
+    const opt = document.createElement('option');
+    opt.value = nome;
+    opt.textContent = nome;
+    sel.appendChild(opt);
+  });
+  const preferito = DIPENDENTI.find(d => /Luca Figliolini/i.test(d));
+  if (corrente && DIPENDENTI.includes(corrente)) sel.value = corrente;
+  else sel.value = preferito || DIPENDENTI[0] || '';
+  sel.disabled = !abilita || !DIPENDENTI.length;
+}
+
+function initDipendenteSelect() {
+  popolaSelectDipendenti('inp-dipendente');
+  popolaSelectDipendenti('edit-inp-dipendente');
+}
+
+function initSetup() {
+  const wrap = document.getElementById('setup-client-wrap');
+  wrap.innerHTML = '';
+  wrap.appendChild(buildClientAutocomplete(''));
+
+  const attSel = buildSelectEl(ATTIVITA, 'cell-select');
+  attSel.id = 'setup-att';
+  document.getElementById('setup-att').replaceWith(attSel);
+
+  const luogoSel = buildSelectEl(LUOGHI, 'cell-select');
+  luogoSel.id = 'setup-luogo';
+  document.getElementById('setup-luogo').replaceWith(luogoSel);
+}
+
+/* ═══════════════════════════════════════════════
+   BUILD TABLE ROW
+═══════════════════════════════════════════════ */
+function buildRow(num, slot, clientVal, attVal, luogoVal, isExtra, canonIdx, tableBodyId = 'table-body', rowMeta = {}) {
+  const tr = document.createElement('tr');
+  if (isExtra) tr.classList.add('row-extra');
+  else if (canonIdx !== undefined) tr.dataset.canonIdx = String(canonIdx);
+  if (rowMeta.id != null) tr.dataset.rowId = String(rowMeta.id);
+  if (rowMeta.numeroRiga > 0) tr.dataset.numeroRiga = String(rowMeta.numeroRiga);
+
+  // # badge
+  const tdNum = document.createElement('td'); tdNum.className = 'td-num';
+  const badge = document.createElement('span'); badge.className = 'num-badge';
+  badge.textContent = isExtra ? '★' : num;
+  const coveredTag = document.createElement('span');
+  coveredTag.className = 'covered-tag';
+  tdNum.appendChild(badge);
+  tdNum.appendChild(coveredTag);
+  tr.appendChild(tdNum);
+
+  // Ore + modale orologio
+  const tdOre = document.createElement('td');
+  const oreCell = document.createElement('div');
+  oreCell.className = 'ore-cell';
+  const oreOptions = isExtra ? fascePerRigaExtra() : fascePerRigaStandard();
+  const oreEl = buildSelectEl(oreOptions.length ? oreOptions : SLOT_ORE, 'cell-select ore-select');
+  if (slot) {
+    if (![...oreEl.options].some(o => o.value === slot)) ensureFasciaInSelect(oreEl, slot);
+    oreEl.value = slot;
+  }
+  oreEl.addEventListener('focus', () => { oreEl.dataset.prevValue = oreEl.value; });
+  oreEl.addEventListener('change', () => validaFasceOrarie(oreEl, tableBodyId));
+  const btnOre = document.createElement('button');
+  btnOre.type = 'button';
+  btnOre.className = 'btn-ore-custom';
+  btnOre.title = 'Fascia personalizzata (orologio)';
+  btnOre.innerHTML = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+    <circle cx="8" cy="8" r="6.25"/><path d="M8 4.5V8l2.5 1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+  btnOre.addEventListener('click', () => apriModaleFascia(oreEl));
+  oreCell.appendChild(oreEl);
+  oreCell.appendChild(btnOre);
+  tdOre.appendChild(oreCell);
+  tr.appendChild(tdOre);
+
+  // Cliente
+  const tdCl = document.createElement('td');
+  tdCl.appendChild(buildClientAutocomplete(clientVal || ''));
+  tr.appendChild(tdCl);
+
+  // Attività
+  const tdAtt = document.createElement('td');
+  const attEl = buildSelectEl(ATTIVITA, 'cell-select');
+  if (attVal) attEl.value = attVal;
+  tdAtt.appendChild(attEl); tr.appendChild(tdAtt);
+
+  // Luogo
+  const tdLuogo = document.createElement('td');
+  const luogoEl = buildSelectEl(LUOGHI, 'cell-select');
+  if (luogoVal) luogoEl.value = luogoVal;
+  tdLuogo.appendChild(luogoEl); tr.appendChild(tdLuogo);
+
+  // Delete (solo righe extra o tutte, con hover)
+  const tdDel = document.createElement('td'); tdDel.style.textAlign='center';
+  if (isExtra) {
+    const btn = document.createElement('button');
+    btn.className = 'btn-del'; btn.style.opacity='1';
+    btn.title = 'Rimuovi riga';
+    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 1l10 10M11 1L1 11"/></svg>`;
+    btn.addEventListener('click', () => {
+      tr.remove();
+      validaFasceOrarie(null, tableBodyId);
+    });
+    tdDel.appendChild(btn);
+  }
+  tr.appendChild(tdDel);
+
+  return tr;
+}
+
+/* ═══════════════════════════════════════════════
+   GENERA 8 RIGHE
+═══════════════════════════════════════════════ */
+function genera() {
+  if (!parametriPronti) { showToast('⚠ Attendi il caricamento dati'); return; }
+  const clientInp = document.querySelector('#setup-client-wrap .client-input');
+  const clientVal = clientInp ? clientInp.value.trim() : '';
+  const attVal    = document.getElementById('setup-att')?.value   || ATTIVITA[0];
+  const luogoVal  = document.getElementById('setup-luogo')?.value || LUOGHI[0];
+
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+
+  SLOT_DEFAULT.forEach((slot, i) => {
+    tbody.appendChild(buildRow(i + 1, slot, clientVal, attVal, luogoVal, false, i));
+  });
+
+  document.getElementById('setup-card').style.display = 'none';
+  document.getElementById('table-wrap').classList.add('visible');
+  document.getElementById('action-bar').style.display = 'flex';
+  validaFasceOrarie();
+}
+
+document.getElementById('btn-genera').addEventListener('click', genera);
+
+/* ═══════════════════════════════════════════════
+   MODIFICA TEMPLATE
+═══════════════════════════════════════════════ */
+document.getElementById('btn-rimodifica').addEventListener('click', () => {
+  document.getElementById('setup-card').style.display = 'block';
+  // ripopola i valori dal template attuale (prima riga)
+  const firstRow = document.querySelector('#table-body tr:first-child');
+  if (firstRow) {
+    const ci = firstRow.querySelector('.client-input');
+    const as = firstRow.querySelectorAll('select')[1];
+    const ls = firstRow.querySelectorAll('select')[2];
+    const sci = document.querySelector('#setup-client-wrap .client-input');
+    if (ci && sci) sci.value = ci.value;
+    const sas = document.getElementById('setup-att');
+    if (as && sas) sas.value = as.value;
+    const sls = document.getElementById('setup-luogo');
+    if (ls && sls) sls.value = ls.value;
+  }
+});
+
+/* ═══════════════════════════════════════════════
+   ADD EXTRA ROW
+═══════════════════════════════════════════════ */
+document.getElementById('btn-add-row').addEventListener('click', () => {
+  const clientInp = document.querySelector('#setup-client-wrap .client-input');
+  const clientVal = clientInp ? clientInp.value.trim() : '';
+  const attVal    = document.getElementById('setup-att')?.value   || ATTIVITA[0];
+  const luogoVal  = document.getElementById('setup-luogo')?.value || LUOGHI[0];
+  document.getElementById('table-body').appendChild(buildRow('★', '', clientVal, attVal, luogoVal, true));
+  validaFasceOrarie();
+});
+
+/* ═══════════════════════════════════════════════
+   HOURS COUNTER
+═══════════════════════════════════════════════ */
+function updateHoursFor(tbodyId, countId, fillId, pillId, detailId) {
+  let total = 0;
+  document.querySelectorAll(`#${tbodyId} tr`).forEach(tr => {
+    if (tr.classList.contains('row-covered')) return;
+    const sel = tr.querySelector('.ore-select');
+    if (sel?.value) total += parseOre(sel.value, tr.classList.contains('row-extra'));
+  });
+  total = Math.round(total * 100) / 100;
+  const pct = Math.min(100, (total / 8) * 100);
+
+  document.getElementById(countId).textContent = total % 1 === 0 ? total : total.toFixed(1);
+  const fill = document.getElementById(fillId);
+  fill.style.width = pct + '%';
+
+  const pill = document.getElementById(pillId);
+  const det = document.getElementById(detailId);
+
+  if (total >= 8) {
+    fill.style.background = 'var(--ok)';
+    pill.className = 'hours-pill pill-ok';
+    pill.textContent = total > 8 ? 'Ore in eccesso' : 'Ore raggiunte ✓';
+    det.textContent = total > 8 ? `+${(total - 8).toFixed(1)} h extra` : 'obiettivo raggiunto';
+  } else if (total >= 4) {
+    fill.style.background = 'var(--warn)';
+    pill.className = 'hours-pill pill-warn';
+    pill.textContent = 'In corso';
+    det.textContent = `mancano ${(8 - total).toFixed(1)} h`;
+  } else {
+    fill.style.background = 'var(--blue)';
+    pill.className = 'hours-pill pill-low';
+    pill.textContent = total === 0 ? 'Non iniziato' : 'In corso';
+    det.textContent = total === 0 ? '—' : `mancano ${(8 - total).toFixed(1)} h`;
+  }
+}
+
+function updateHours() {
+  updateHoursFor('table-body', 'ore-count', 'ore-fill', 'ore-pill', 'ore-detail');
+}
+
+/* ═══════════════════════════════════════════════
+   FASE 1 — template (dopo reset o salvataggio ok)
+═══════════════════════════════════════════════ */
+function tornaFaseTemplate({ svuotaTemplate = false } = {}) {
+  if (!svuotaTemplate) {
+    const firstRow = document.querySelector('#table-body tr:not(.row-covered)');
+    if (firstRow) {
+      const ci = firstRow.querySelector('.client-input');
+      const sels = firstRow.querySelectorAll('select');
+      const sci = document.querySelector('#setup-client-wrap .client-input');
+      if (ci && sci) sci.value = ci.value;
+      const sas = document.getElementById('setup-att');
+      const sls = document.getElementById('setup-luogo');
+      if (sels[1] && sas) sas.value = sels[1].value;
+      if (sels[2] && sls) sls.value = sels[2].value;
+    }
+  } else {
+    const sci = document.querySelector('#setup-client-wrap .client-input');
+    if (sci) sci.value = '';
+  }
+
+  document.getElementById('table-body').innerHTML = '';
+  document.getElementById('table-wrap').classList.remove('visible');
+  document.getElementById('action-bar').style.display = 'none';
+  document.getElementById('setup-card').style.display = 'block';
+  updateHours();
+}
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  if (!confirm('Azzerare tutti i dati della giornata?')) return;
+  tornaFaseTemplate({ svuotaTemplate: true });
+  showToast('Form azzerato');
+});
+
+/* ═══════════════════════════════════════════════
+   SALVA → n8n save-data (mapping colonne Data Table)
+═══════════════════════════════════════════════ */
+function buildIdGiornata(dipendente, dataGiorno) {
+  return `${dataGiorno}_${String(dipendente).trim()}`;
+}
+
+function validaSalvataggio() {
+  const dip = document.getElementById('inp-dipendente')?.value?.trim();
+  if (!dip) return 'Seleziona un dipendente';
+  const dataGiorno = document.getElementById('inp-data')?.value;
+  if (!dataGiorno) return 'Seleziona la data';
+  const attive = [...document.querySelectorAll('#table-body tr')].filter(
+    tr => !tr.classList.contains('row-covered')
+  );
+  if (!attive.length) return 'Genera almeno una riga oraria prima di salvare';
+  const conCliente = attive.filter(tr => tr.querySelector('.client-input')?.value?.trim());
+  if (!conCliente.length) return 'Inserisci almeno un cliente su una riga attiva';
+  return null;
+}
+
+/** Righe piatte: chiavi = colonne Data Table (vedi timesheet_righe_esempio.csv) */
+function buildRigheSalvataggio(dipendente, dataGiorno, salvatoIl, tbodyId = 'table-body') {
+  const idGiornata = buildIdGiornata(dipendente, dataGiorno);
+  const righe = [];
+  const usedExtraNums = new Set();
+
+  document.querySelectorAll(`#${tbodyId} tr`).forEach(tr => {
+    if (tr.classList.contains('row-covered')) return;
+
+    const sels = tr.querySelectorAll('select');
+    const ci = tr.querySelector('.client-input');
+    if (!sels.length) return;
+
+    const fasciaOraria = sels[0]?.value || '';
+    if (!fasciaOraria) return;
+
+    const isExtra = tr.classList.contains('row-extra');
+    const badge = tr.querySelector('.num-badge')?.textContent || '';
+    const storedNum = parseInt(tr.dataset.numeroRiga, 10);
+    let numeroRiga;
+
+    if (isExtra) {
+      if (storedNum > 8) numeroRiga = storedNum;
+      else {
+        let n = 9;
+        while (usedExtraNums.has(n)) n += 1;
+        numeroRiga = n;
+      }
+      usedExtraNums.add(numeroRiga);
+    } else {
+      numeroRiga = parseInt(badge, 10) || righe.length + 1;
+    }
+
+    const rowId = tr.dataset.rowId ? Number(tr.dataset.rowId) : null;
+    const row = {
+      id_giornata: idGiornata,
+      dipendente,
+      data_giorno: dataGiorno,
+      fascia_oraria: fasciaOraria,
+      ore_ore: parseOre(fasciaOraria, isExtra),
+      cliente: (ci?.value || '').trim(),
+      attivita: sels[1]?.value || '',
+      luogo: sels[2]?.value || '',
+      tipo_riga: isExtra ? 'extra' : 'standard',
+      numero_riga: numeroRiga,
+      salvato_il: salvatoIl
+    };
+    if (rowId) row.id = rowId;
+    righe.push(row);
+  });
+
+  return righe;
+}
+
+function buildPayloadSalvataggio() {
+  const dipendente = document.getElementById('inp-dipendente').value.trim();
+  const dataGiorno = document.getElementById('inp-data').value || todayISO();
+  const salvatoIl = new Date().toISOString();
+  const idGiornata = buildIdGiornata(dipendente, dataGiorno);
+  const righe = buildRigheSalvataggio(dipendente, dataGiorno, salvatoIl);
+  const oreTotali = Math.round(righe.reduce((s, r) => s + (r.ore_ore || 0), 0) * 100) / 100;
+
+  return {
+    id_giornata: idGiornata,
+    dipendente,
+    data_giorno: dataGiorno,
+    ore_totali: oreTotali,
+    righe,
+    meta: {
+      salvato_il: salvatoIl,
+      origine: 'Studio Rivelli — Foglio Presenze',
+      righe_count: righe.length
+    }
+  };
+}
+
+async function salvaGiornata() {
+  validaFasceOrarie();
+
+  const err = validaSalvataggio();
+  if (err) {
+    showToast('⚠ ' + err);
+    return;
+  }
+
+  const payload = buildPayloadSalvataggio();
+  if (!payload.righe.length) {
+    showToast('⚠ Nessuna riga valida da inviare');
+    return;
+  }
+
+  const btn = document.getElementById('btn-salva');
+  btn.disabled = true;
+
+  try {
+    const resp = await SRAuth.fetch(WEBHOOK_SAVE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!resp.ok) {
+      const testo = await resp.text().catch(() => '');
+      throw new Error(`HTTP ${resp.status}${testo ? ' — ' + testo.slice(0, 120) : ''}`);
+    }
+
+    const ct = resp.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      try {
+        const body = await resp.json();
+        if (body && body.message === 'Workflow was started') {
+          showToast('⚠ Workflow avviato ma risposta senza conferma — verifica in n8n');
+          return;
+        }
+      } catch { /* risposta 200 senza JSON: ok */ }
+    }
+
+    showToast(`✓ Giornata salvata (${payload.righe.length} righe)`);
+    monitorCaricato = false;
+    tornaFaseTemplate();
+  } catch (e) {
+    const msg = e?.message || String(e);
+    const daFile = location.protocol === 'file:';
+    showToast(
+      daFile
+        ? '⚠ Invio fallito da file locale (CORS). Apri da server o verifica webhook n8n.'
+        : '⚠ Salvataggio fallito: ' + msg
+    );
+    console.error('[save-data]', e, payload);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('btn-salva').addEventListener('click', () => { salvaGiornata(); });
+
+/* ═══════════════════════════════════════════════
+   NAVIGAZIONE + MONITORAGGIO
+═══════════════════════════════════════════════ */
+let sezioneAttiva = 'inserimento';
+let monitorDatiRaw = [];
+let monitorCaricato = false;
+const MON_DETAIL_PAGE_SIZE = 8;
+let monDetailPage = 1;
+let monDetailDateMode = 'mese';
+let monRangePick = { dayFrom: 1, dayTo: 31 };
+const MON_CAL_WD = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+let monCalDrag = { active: false, anchor: null, previewTo: null };
+
+function monOffsetLunedi(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  const dow = new Date(y, m - 1, 1).getDay();
+  return (dow + 6) % 7;
+}
+
+function resetMonRangeForMonth(ym) {
+  const n = giorniNelMese(ym);
+  monRangePick = { dayFrom: 1, dayTo: n };
+  aggiornaMonRangeLabel();
+}
+
+function aggiornaMonRangeLabel() {
+  const el = document.getElementById('mon-range-label');
+  if (!el) return;
+  const ym = document.getElementById('mon-tbl-mese')?.value;
+  if (!ym || monDetailDateMode !== 'intervallo') {
+    el.textContent = 'Seleziona intervallo';
+    return;
+  }
+  const n = giorniNelMese(ym);
+  const from = monRangePick.dayFrom || 1;
+  const to = monRangePick.dayTo ?? n;
+  if (from === 1 && to >= n) {
+    el.textContent = `${labelMese(ym)} — intero`;
+  } else {
+    el.textContent = `${String(from).padStart(2, '0')} — ${String(to).padStart(2, '0')} · ${labelMese(ym)}`;
+  }
+}
+
+function aggiornaMonRangeUI() {
+  const ym = document.getElementById('mon-tbl-mese')?.value;
+  const wrap = document.getElementById('mon-tbl-range-wrap');
+  if (!ym || monDetailDateMode !== 'intervallo') {
+    wrap?.classList.add('hidden');
+    return;
+  }
+  wrap?.classList.remove('hidden');
+  if (!monRangePick.dayTo || monRangePick.dayTo > giorniNelMese(ym)) {
+    resetMonRangeForMonth(ym);
+  } else {
+    aggiornaMonRangeLabel();
+  }
+}
+
+function getMonRangeAttivo() {
+  const ym = document.getElementById('mon-tbl-mese')?.value;
+  const n = giorniNelMese(ym);
+  const from = Math.max(1, monRangePick.dayFrom || 1);
+  const to = Math.min(n, monRangePick.dayTo ?? n);
+  return { from: Math.min(from, to), to: Math.max(from, to) };
+}
+
+function renderMonCalendarioRange() {
+  const ym = document.getElementById('mon-tbl-mese')?.value;
+  const grid = document.getElementById('mon-cal-grid');
+  const wdHead = document.getElementById('mon-cal-weekdays');
+  const title = document.getElementById('mon-range-modal-title');
+  if (!ym || !grid || !wdHead) return;
+
+  title.textContent = labelMese(ym);
+  wdHead.innerHTML = MON_CAL_WD.map((w, i) =>
+    `<span class="${i >= 5 ? 'is-weekend' : ''}">${w}</span>`
+  ).join('');
+
+  const [y, m] = ym.split('-').map(Number);
+  const n = giorniNelMese(ym);
+  const pad = monOffsetLunedi(ym);
+  const previewFrom = monCalDrag.active && monCalDrag.anchor != null
+    ? Math.min(monCalDrag.anchor, monCalDrag.previewTo ?? monCalDrag.anchor)
+    : null;
+  const previewTo = monCalDrag.active && monCalDrag.anchor != null
+    ? Math.max(monCalDrag.anchor, monCalDrag.previewTo ?? monCalDrag.anchor)
+    : null;
+  const sel = monCalDrag.active
+    ? { from: previewFrom, to: previewTo }
+    : getMonRangeAttivo();
+
+  let html = '';
+  for (let i = 0; i < pad; i += 1) {
+    html += '<span class="mon-cal-day is-empty" aria-hidden="true"></span>';
+  }
+  for (let d = 1; d <= n; d += 1) {
+    const date = new Date(y, m - 1, d);
+    const dow = date.getDay();
+    const isWeekend = dow === 0 || dow === 6;
+    const dowLabel = GIORNI[dow];
+    const inRange = d >= sel.from && d <= sel.to;
+    const cls = [
+      'mon-cal-day',
+      isWeekend ? 'is-weekend' : '',
+      inRange ? 'in-range' : '',
+      d === sel.from ? 'range-start' : '',
+      d === sel.to ? 'range-end' : '',
+      monCalDrag.active && d === monCalDrag.anchor ? 'is-anchor' : ''
+    ].filter(Boolean).join(' ');
+    html += `<button type="button" class="${cls}" data-day="${d}" aria-label="${d} ${dowLabel}">
+      <span class="mon-cal-dow">${dowLabel}</span>
+      <span>${d}</span>
+    </button>`;
+  }
+  grid.innerHTML = html;
+}
+
+function chiudiMonRangeModal() {
+  const bd = document.getElementById('mon-range-backdrop');
+  bd?.classList.remove('open');
+  bd?.setAttribute('aria-hidden', 'true');
+  monCalDrag = { active: false, anchor: null, previewTo: null };
+}
+
+function apriMonRangeModal() {
+  const ym = document.getElementById('mon-tbl-mese')?.value;
+  if (!ym) {
+    showToast('⚠ Seleziona prima un mese per l’intervallo date');
+    return;
+  }
+  renderMonCalendarioRange();
+  const bd = document.getElementById('mon-range-backdrop');
+  bd?.classList.add('open');
+  bd?.setAttribute('aria-hidden', 'false');
+}
+
+function applicaMonRangePick(closeModal = true) {
+  const ym = document.getElementById('mon-tbl-mese')?.value;
+  if (!ym) return;
+  const { from, to } = getMonRangeAttivo();
+  monRangePick = { dayFrom: from, dayTo: to };
+  aggiornaMonRangeLabel();
+  monDetailPage = 1;
+  if (closeModal) chiudiMonRangeModal();
+  if (monitorCaricato) applicaFiltriMonitor({ refreshTblFiltri: false });
+}
+
+function initMonRangeCalendario() {
+  const grid = document.getElementById('mon-cal-grid');
+  if (!grid) return;
+
+  const onPointerDown = (e) => {
+    const btn = e.target.closest('.mon-cal-day[data-day]');
+    if (!btn) return;
+    e.preventDefault();
+    const day = Number(btn.dataset.day);
+    monCalDrag = { active: true, anchor: day, previewTo: day };
+    grid.setPointerCapture(e.pointerId);
+    renderMonCalendarioRange();
+  };
+
+  const onPointerMove = (e) => {
+    if (!monCalDrag.active) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const btn = el?.closest?.('.mon-cal-day[data-day]');
+    if (!btn) return;
+    const day = Number(btn.dataset.day);
+    if (day !== monCalDrag.previewTo) {
+      monCalDrag.previewTo = day;
+      renderMonCalendarioRange();
+    }
+  };
+
+  const onPointerUp = (e) => {
+    if (!monCalDrag.active) return;
+    try { grid.releasePointerCapture(e.pointerId); } catch { /* ok */ }
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const btn = el?.closest?.('.mon-cal-day[data-day]');
+    if (btn) monCalDrag.previewTo = Number(btn.dataset.day);
+    const from = Math.min(monCalDrag.anchor, monCalDrag.previewTo ?? monCalDrag.anchor);
+    const to = Math.max(monCalDrag.anchor, monCalDrag.previewTo ?? monCalDrag.anchor);
+    monRangePick = { dayFrom: from, dayTo: to };
+    monCalDrag = { active: false, anchor: null, previewTo: null };
+    renderMonCalendarioRange();
+    aggiornaMonRangeLabel();
+    monDetailPage = 1;
+    if (monitorCaricato) applicaFiltriMonitor({ refreshTblFiltri: false });
+  };
+
+  grid.addEventListener('pointerdown', onPointerDown);
+  grid.addEventListener('pointermove', onPointerMove);
+  grid.addEventListener('pointerup', onPointerUp);
+  grid.addEventListener('pointercancel', onPointerUp);
+
+  document.getElementById('mon-range-trigger')?.addEventListener('click', apriMonRangeModal);
+  document.getElementById('mon-range-applica')?.addEventListener('click', () => applicaMonRangePick(true));
+  document.getElementById('mon-range-mese-intero')?.addEventListener('click', () => {
+    const ym = document.getElementById('mon-tbl-mese')?.value;
+    if (ym) resetMonRangeForMonth(ym);
+    renderMonCalendarioRange();
+    applicaMonRangePick(true);
+  });
+  document.getElementById('mon-range-backdrop')?.addEventListener('click', e => {
+    if (e.target.id === 'mon-range-backdrop') chiudiMonRangeModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('mon-range-backdrop')?.classList.contains('open')) {
+      chiudiMonRangeModal();
+    }
+  });
+}
+
+function formatDataIt(iso) {
+  if (!iso) return '—';
+  const s = String(iso).slice(0, 10);
+  const [y, m, d] = s.split('-');
+  if (!y || !m || !d) return s;
+  return `${d}/${m}/${y}`;
+}
+
+function giorniNelMese(ym) {
+  if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return 31;
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(y, m, 0).getDate();
+}
+
+function setMonDetailDateMode(mode) {
+  if (mode === 'intervallo') {
+    const ym = document.getElementById('mon-tbl-mese')?.value;
+    if (!ym) {
+      showToast('⚠ Seleziona prima un mese per usare Da — A');
+      document.getElementById('mon-tbl-mode-mese')?.classList.add('is-active');
+      document.getElementById('mon-tbl-mode-range')?.classList.remove('is-active');
+      return;
+    }
+  }
+
+  monDetailDateMode = mode;
+  document.querySelectorAll('.mon-date-tab').forEach(btn => {
+    btn.classList.toggle('is-active', btn.dataset.mode === mode);
+  });
+
+  if (mode === 'intervallo') {
+    const ym = document.getElementById('mon-tbl-mese')?.value;
+    if (ym && !monRangePick.dayTo) resetMonRangeForMonth(ym);
+    aggiornaMonRangeUI();
+    apriMonRangeModal();
+  } else {
+    document.getElementById('mon-tbl-range-wrap')?.classList.add('hidden');
+  }
+
+  monDetailPage = 1;
+  if (monitorCaricato) applicaFiltriMonitor();
+}
+
+function popolaFiltriDettaglio(righeBase) {
+  const dips = [...new Set(righeBase.map(r => r.dipendente).filter(Boolean))].sort();
+  const mesi = [...new Set(righeBase.map(r => r.mese).filter(Boolean))].sort().reverse();
+  popolaSelectFiltro('mon-tbl-dip', dips);
+  popolaSelectFiltro('mon-tbl-mese', mesi, labelMese);
+  const primaOpt = document.querySelector('#mon-tbl-mese option[value=""]');
+  if (primaOpt) primaOpt.textContent = 'Tutti i mesi';
+  aggiornaMonRangeUI();
+}
+
+function filtraRigheDettaglio(righeBase) {
+  const dip = document.getElementById('mon-tbl-dip')?.value || '';
+  const mese = document.getElementById('mon-tbl-mese')?.value || '';
+
+  return righeBase.filter(r => {
+    if (dip && r.dipendente !== dip) return false;
+    if (!mese) return true;
+
+    if (r.mese !== mese) return false;
+
+    if (monDetailDateMode === 'intervallo') {
+      const { from, to } = getMonRangeAttivo();
+      const day = parseInt(String(r.data_giorno).slice(8, 10), 10);
+      if (day < from || day > to) return false;
+    }
+    return true;
+  });
+}
+
+function aggiornaPaginazioneDettaglio(totalRighe) {
+  const pages = Math.max(1, Math.ceil(totalRighe / MON_DETAIL_PAGE_SIZE));
+  if (monDetailPage > pages) monDetailPage = pages;
+  if (monDetailPage < 1) monDetailPage = 1;
+
+  document.getElementById('mon-page-info').textContent =
+    totalRighe ? `${monDetailPage} / ${pages}` : '—';
+  document.getElementById('mon-page-prev').disabled = monDetailPage <= 1;
+  document.getElementById('mon-page-next').disabled = monDetailPage >= pages || totalRighe === 0;
+}
+
+function renderDettaglioRighe(righe) {
+  const tbody = document.getElementById('mon-detail-body');
+  const meta = document.getElementById('mon-detail-meta');
+  const sorted = [...righe].sort((a, b) => {
+    if (a.data_giorno !== b.data_giorno) return b.data_giorno.localeCompare(a.data_giorno);
+    if (a.dipendente !== b.dipendente) return a.dipendente.localeCompare(b.dipendente);
+    return a.numero_riga - b.numero_riga;
+  });
+
+  const total = sorted.length;
+  aggiornaPaginazioneDettaglio(total);
+
+  const start = (monDetailPage - 1) * MON_DETAIL_PAGE_SIZE;
+  const show = sorted.slice(start, start + MON_DETAIL_PAGE_SIZE);
+
+  if (meta) {
+    meta.textContent = total
+      ? `${total} righe · pagina ${monDetailPage} (${show.length} visualizzate)`
+      : 'Nessuna riga per i filtri selezionati';
+  }
+
+  if (!show.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="mon-empty">Nessuna riga</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = show.map(r => `
+    <tr>
+      <td>${formatDataIt(r.data_giorno)}</td>
+      <td>${r.dipendente}</td>
+      <td>${r.fascia_oraria}${r.isExtra ? ' <span class="tag-extra">extra</span>' : ''}</td>
+      <td>${r.ore_ore % 1 === 0 ? r.ore_ore : r.ore_ore.toFixed(2)}</td>
+      <td>${r.cliente || '—'}</td>
+      <td>${r.attivita}</td>
+      <td>${r.luogo}</td>
+    </tr>
+  `).join('');
+}
+
+function normalizzaDataGiorno(val) {
+  if (!val) return '';
+  const s = String(val);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s.slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function labelMese(ym) {
+  if (!ym || ym.length < 7) return ym;
+  const m = parseInt(ym.slice(5, 7), 10);
+  const y = ym.slice(0, 4);
+  return `${MESI_IT[m - 1] || ym} ${y}`;
+}
+
+function normalizzaMonitorRisposta(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.data)) return payload.data;
+  if (payload && Array.isArray(payload.body)) return payload.body;
+  if (payload && Array.isArray(payload.righe)) return payload.righe;
+  if (payload?.body && Array.isArray(payload.body.righe)) return payload.body.righe;
+  if (typeof payload === 'string') {
+    try { return normalizzaMonitorRisposta(JSON.parse(payload)); } catch { return []; }
+  }
+  return [];
+}
+
+function isExtraRiga(r) {
+  return r.tipo_riga === 'extra' || Number(r.numero_riga) > 8;
+}
+
+function normalizzaRigaMonitor(r) {
+  const dataGiorno = normalizzaDataGiorno(r.data_giorno);
+  const extra = isExtraRiga(r);
+  return {
+    id: r.id != null && r.id !== '' ? Number(r.id) : null,
+    id_giornata: r.id_giornata || '',
+    dipendente: r.dipendente || '',
+    data_giorno: dataGiorno,
+    mese: dataGiorno ? dataGiorno.slice(0, 7) : '',
+    fascia_oraria: r.fascia_oraria || '',
+    ore_ore: Number(r.ore_ore) || 0,
+    cliente: (r.cliente || '').trim(),
+    attivita: r.attivita || '',
+    luogo: r.luogo || '',
+    tipo_riga: extra ? 'extra' : (r.tipo_riga || 'standard'),
+    numero_riga: Number(r.numero_riga) || 0,
+    salvato_il: r.salvato_il || '',
+    isExtra: extra
+  };
+}
+
+/** Una riga per slot standard; extra duplicate (stesso contenuto) → tiene la più recente (id più alto). */
+function dedupeRigheCaricate(righe) {
+  const stdByNum = new Map();
+  const extraByContent = new Map();
+  const ord = [...righe].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+
+  for (const r of ord) {
+    if (!isExtraRiga(r)) {
+      const n = r.numero_riga;
+      if (n >= 1 && n <= 8 && !stdByNum.has(n)) stdByNum.set(n, r);
+      continue;
+    }
+    const ck = `${r.fascia_oraria}|${r.cliente}|${r.attivita}|${r.luogo}`;
+    if (!extraByContent.has(ck)) extraByContent.set(ck, r);
+  }
+
+  return [...stdByNum.values(), ...extraByContent.values()]
+    .sort((a, b) => a.numero_riga - b.numero_riga);
+}
+
+const TITOLI_SEZIONE = {
+  inserimento: 'Foglio Presenze — Studio Rivelli',
+  monitoraggio: 'Monitoraggio — Studio Rivelli',
+  modifica: 'Modifica timesheet — Studio Rivelli'
+};
+
+function mostraSezione(nome) {
+  sezioneAttiva = nome;
+  document.getElementById('view-inserimento').classList.toggle('hidden', nome !== 'inserimento');
+  document.getElementById('view-monitoraggio').classList.toggle('hidden', nome !== 'monitoraggio');
+  document.getElementById('view-modifica').classList.toggle('hidden', nome !== 'modifica');
+  document.querySelectorAll('.topbar-nav[data-section]').forEach(btn => {
+    btn.classList.toggle('is-active', btn.dataset.section === nome);
+  });
+  document.title = TITOLI_SEZIONE[nome] || TITOLI_SEZIONE.inserimento;
+  if (nome === 'monitoraggio') caricaMonitoraggio();
+  if (nome === 'modifica' && !document.getElementById('edit-inp-data').value) {
+    document.getElementById('edit-inp-data').value = todayISO();
+  }
+}
+
+document.querySelectorAll('.topbar-nav[data-section]').forEach(btn => {
+  btn.addEventListener('click', () => mostraSezione(btn.dataset.section));
+});
+
+/* ═══════════════════════════════════════════════
+   MODIFICA — carica / salva giornata esistente
+═══════════════════════════════════════════════ */
+let modificaSessione = { idGiornata: '', dipendente: '', dataGiorno: '', rowIds: [] };
+
+function normalizzaRigheLoad(raw) {
+  return dedupeRigheCaricate(
+    normalizzaMonitorRisposta(raw).map(r => normalizzaRigaMonitor(r))
+  );
+}
+
+function aggiornaBadgeIdGiornata() {
+  const dip = document.getElementById('edit-inp-dipendente')?.value?.trim();
+  const data = document.getElementById('edit-inp-data')?.value;
+  const el = document.getElementById('edit-id-badge');
+  if (!dip || !data) {
+    el.innerHTML = 'Seleziona dipendente e data, poi carica.';
+    return;
+  }
+  const id = buildIdGiornata(dip, data);
+  el.innerHTML = `Chiave giornata: <strong>${id}</strong>`;
+}
+
+function nascondiEditorModifica() {
+  document.getElementById('edit-table-body').innerHTML = '';
+  document.getElementById('edit-table-wrap').classList.remove('visible');
+  document.getElementById('edit-hours-bar').style.display = 'none';
+  document.getElementById('edit-action-bar').style.display = 'none';
+  modificaSessione = { idGiornata: '', dipendente: '', dataGiorno: '', rowIds: [] };
+}
+
+function mostraEditorModifica(righe, dipendente, dataGiorno, { rimosseDuplicati = 0 } = {}) {
+  const tbody = document.getElementById('edit-table-body');
+  tbody.innerHTML = '';
+  const sorted = [...righe].sort((a, b) => a.numero_riga - b.numero_riga);
+
+  sorted.forEach(r => {
+    const isExtra = isExtraRiga(r);
+    const canonIdx = !isExtra && r.numero_riga >= 1 && r.numero_riga <= 8 ? r.numero_riga - 1 : undefined;
+    const num = isExtra ? '★' : r.numero_riga;
+    tbody.appendChild(buildRow(
+      num,
+      r.fascia_oraria,
+      r.cliente,
+      r.attivita,
+      r.luogo,
+      isExtra,
+      canonIdx,
+      'edit-table-body',
+      { id: r.id, numeroRiga: r.numero_riga }
+    ));
+  });
+
+  modificaSessione = {
+    idGiornata: buildIdGiornata(dipendente, dataGiorno),
+    dipendente,
+    dataGiorno,
+    rowIds: sorted.map(r => r.id).filter(Boolean)
+  };
+  if (rimosseDuplicati > 0) {
+    showToast(`ℹ ${rimosseDuplicati} righe duplicate ignorate (pulizia DB consigliata)`);
+  }
+  aggiornaBadgeIdGiornata();
+  document.getElementById('edit-table-wrap').classList.add('visible');
+  document.getElementById('edit-hours-bar').style.display = 'flex';
+  document.getElementById('edit-action-bar').style.display = 'flex';
+  validaFasceOrarie(null, 'edit-table-body');
+}
+
+async function caricaGiornataModifica() {
+  if (!parametriPronti) { showToast('⚠ Attendi il caricamento liste'); return; }
+  const dipendente = document.getElementById('edit-inp-dipendente')?.value?.trim();
+  const dataGiorno = document.getElementById('edit-inp-data')?.value;
+  if (!dipendente || !dataGiorno) {
+    showToast('⚠ Seleziona dipendente e data');
+    return;
+  }
+
+  const btn = document.getElementById('btn-edit-carica');
+  btn.disabled = true;
+  nascondiEditorModifica();
+
+  try {
+    const resp = await SRAuth.fetch(WEBHOOK_LOAD_TIMESHEET, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ dipendente, data_giorno: dataGiorno })
+    });
+    if (!resp.ok) {
+      const testo = await resp.text().catch(() => '');
+      throw new Error(`HTTP ${resp.status}${testo ? ' — ' + testo.slice(0, 100) : ''}`);
+    }
+
+    let raw = [];
+    const ct = resp.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      raw = await resp.json();
+      if (raw && raw.message === 'Workflow was started') {
+        throw new Error('n8n non ha restituito i dati (Workflow was started)');
+      }
+    }
+
+    const rawCount = normalizzaMonitorRisposta(raw).length;
+    const righe = normalizzaRigheLoad(raw);
+    if (!righe.length) {
+      showToast('⚠ Nessuna riga trovata per questa giornata');
+      aggiornaBadgeIdGiornata();
+      return;
+    }
+
+    mostraEditorModifica(righe, dipendente, dataGiorno, {
+      rimosseDuplicati: Math.max(0, rawCount - righe.length)
+    });
+    showToast(`✓ Caricate ${righe.length} righe`);
+  } catch (e) {
+    showToast('⚠ Caricamento: ' + (e.message || e));
+    console.error('[load-timesheet]', e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function validaSalvataggioModifica() {
+  const dip = modificaSessione.dipendente || document.getElementById('edit-inp-dipendente')?.value?.trim();
+  const dataGiorno = modificaSessione.dataGiorno || document.getElementById('edit-inp-data')?.value;
+  if (!dip || !dataGiorno) return 'Carica prima una giornata';
+  const attive = [...document.querySelectorAll('#edit-table-body tr')].filter(
+    tr => !tr.classList.contains('row-covered')
+  );
+  if (!attive.length) return 'Nessuna riga da salvare';
+  if (!attive.some(tr => tr.querySelector('.client-input')?.value?.trim())) {
+    return 'Inserisci almeno un cliente su una riga attiva';
+  }
+  return null;
+}
+
+async function salvaModificaGiornata() {
+  validaFasceOrarie(null, 'edit-table-body');
+  const err = validaSalvataggioModifica();
+  if (err) { showToast('⚠ ' + err); return; }
+
+  const dipendente = modificaSessione.dipendente;
+  const dataGiorno = modificaSessione.dataGiorno;
+  const payload = buildPayloadSalvataggioFrom(dipendente, dataGiorno, 'edit-table-body');
+  if (!payload.righe.length) {
+    showToast('⚠ Nessuna riga valida');
+    return;
+  }
+
+  const btn = document.getElementById('btn-edit-salva');
+  btn.disabled = true;
+  try {
+    const resp = await SRAuth.fetch(WEBHOOK_UPDATE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) {
+      const testo = await resp.text().catch(() => '');
+      throw new Error(`HTTP ${resp.status}${testo ? ' — ' + testo.slice(0, 120) : ''}`);
+    }
+    const ct = resp.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      try {
+        const body = await resp.json();
+        if (body && body.message === 'Workflow was started') {
+          showToast('⚠ Workflow avviato — verifica in n8n');
+          return;
+        }
+      } catch { /* ok */ }
+    }
+    const nDel = payload.meta.ids_da_eliminare?.length || 0;
+    showToast(
+      nDel
+        ? `✓ Aggiornate ${payload.righe.length} righe, ${nDel} da rimuovere in DB`
+        : `✓ Giornata aggiornata (${payload.righe.length} righe)`
+    );
+    monitorCaricato = false;
+    nascondiEditorModifica();
+  } catch (e) {
+    showToast('⚠ Aggiornamento: ' + (e.message || e));
+    console.error('[update-data]', e, payload);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/** Righe coperte dall’orologio (fasce unite): hanno ancora id in DB ma non vanno in righe[] → da eliminare. */
+function idsRigheDaEliminare(tbodyId, idsPresenti) {
+  const presenti = new Set(idsPresenti);
+  const daEliminare = new Set();
+  document.querySelectorAll(`#${tbodyId} tr.row-covered`).forEach(tr => {
+    const id = tr.dataset.rowId ? Number(tr.dataset.rowId) : null;
+    if (id) daEliminare.add(id);
+  });
+  (modificaSessione.rowIds || []).forEach(id => {
+    if (!presenti.has(id)) daEliminare.add(id);
+  });
+  return [...daEliminare];
+}
+
+function buildPayloadSalvataggioFrom(dipendente, dataGiorno, tbodyId) {
+  const salvatoIl = new Date().toISOString();
+  const idGiornata = buildIdGiornata(dipendente, dataGiorno);
+  const righe = buildRigheSalvataggio(dipendente, dataGiorno, salvatoIl, tbodyId);
+  const oreTotali = Math.round(righe.reduce((s, r) => s + (r.ore_ore || 0), 0) * 100) / 100;
+  const idsPresenti = righe.map(r => r.id).filter(Boolean);
+  const idsDaEliminare = tbodyId === 'edit-table-body'
+    ? idsRigheDaEliminare(tbodyId, idsPresenti)
+    : [];
+  return {
+    id_giornata: idGiornata,
+    dipendente,
+    data_giorno: dataGiorno,
+    ore_totali: oreTotali,
+    righe,
+    meta: {
+      salvato_il: salvatoIl,
+      origine: 'Studio Rivelli — Modifica giornata',
+      righe_count: righe.length,
+      modalita: 'modifica',
+      ids_presenti: idsPresenti,
+      ids_da_eliminare: idsDaEliminare
+    }
+  };
+}
+
+document.getElementById('btn-edit-carica').addEventListener('click', caricaGiornataModifica);
+document.getElementById('edit-inp-dipendente').addEventListener('change', aggiornaBadgeIdGiornata);
+document.getElementById('edit-inp-data').addEventListener('change', aggiornaBadgeIdGiornata);
+document.getElementById('btn-edit-salva').addEventListener('click', salvaModificaGiornata);
+document.getElementById('btn-edit-annulla').addEventListener('click', () => {
+  if (modificaSessione.idGiornata && !confirm('Annullare le modifiche non salvate?')) return;
+  nascondiEditorModifica();
+  aggiornaBadgeIdGiornata();
+});
+document.getElementById('btn-edit-add-row').addEventListener('click', () => {
+  const tbody = document.getElementById('edit-table-body');
+  const first = tbody.querySelector('tr:not(.row-covered)');
+  const clientVal = first?.querySelector('.client-input')?.value?.trim() || '';
+  const attVal = first?.querySelectorAll('select')[1]?.value || ATTIVITA[0];
+  const luogoVal = first?.querySelectorAll('select')[2]?.value || LUOGHI[0];
+  tbody.appendChild(buildRow('★', '', clientVal, attVal, luogoVal, true, undefined, 'edit-table-body'));
+  validaFasceOrarie(null, 'edit-table-body');
+});
+
+function popolaSelectFiltro(id, valori, labelFn) {
+  const sel = document.getElementById(id);
+  const corrente = sel.value;
+  const prima = sel.options[0];
+  sel.innerHTML = '';
+  sel.appendChild(prima);
+  valori.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = labelFn ? labelFn(v) : v;
+    sel.appendChild(opt);
+  });
+  if (corrente && valori.includes(corrente)) sel.value = corrente;
+}
+
+function popolaFiltriMonitor() {
+  const dips = [...new Set(monitorDatiRaw.map(r => r.dipendente).filter(Boolean))].sort();
+  const clis = [...new Set(monitorDatiRaw.map(r => r.cliente).filter(Boolean))].sort();
+  const mesi = [...new Set(monitorDatiRaw.map(r => r.mese).filter(Boolean))].sort().reverse();
+  const atts = [...new Set(monitorDatiRaw.map(r => r.attivita).filter(Boolean))].sort();
+  popolaSelectFiltro('mon-f-dip', dips);
+  popolaSelectFiltro('mon-f-cliente', clis);
+  popolaSelectFiltro('mon-f-mese', mesi, labelMese);
+  popolaSelectFiltro('mon-f-att', atts);
+}
+
+function filtraRigheMonitor() {
+  const dip = document.getElementById('mon-f-dip').value;
+  const cli = document.getElementById('mon-f-cliente').value;
+  const mese = document.getElementById('mon-f-mese').value;
+  const att = document.getElementById('mon-f-att').value;
+  return monitorDatiRaw.filter(r => {
+    if (dip && r.dipendente !== dip) return false;
+    if (cli && r.cliente !== cli) return false;
+    if (mese && r.mese !== mese) return false;
+    if (att && r.attivita !== att) return false;
+    return true;
+  });
+}
+
+function sommaPerChiave(righe, chiave) {
+  const map = new Map();
+  righe.forEach(r => {
+    const k = r[chiave] || '(non indicato)';
+    map.set(k, (map.get(k) || 0) + r.ore_ore);
+  });
+  return [...map.entries()].map(([nome, ore]) => ({ nome, ore: Math.round(ore * 100) / 100 }))
+    .sort((a, b) => b.ore - a.ore);
+}
+
+function renderBarChart(containerId, items, { extra = false, maxItems = 10 } = {}) {
+  const el = document.getElementById(containerId);
+  if (!items.length) {
+    el.innerHTML = '<div class="mon-empty">Nessun dato per i filtri selezionati</div>';
+    return;
+  }
+  const top = items.slice(0, maxItems);
+  const maxOre = top[0].ore || 1;
+  el.innerHTML = top.map(it => `
+    <div class="mon-chart-row">
+      <span class="mon-chart-label" title="${it.nome.replace(/"/g, '&quot;')}">${it.nome}</span>
+      <div class="mon-chart-bar-wrap">
+        <div class="mon-chart-bar ${extra ? 'extra' : ''}" style="width:${Math.max(4, (it.ore / maxOre) * 100)}%"></div>
+      </div>
+      <span class="mon-chart-val">${it.ore % 1 === 0 ? it.ore : it.ore.toFixed(1)} h</span>
+    </div>
+  `).join('');
+}
+
+function applicaFiltriMonitor({ refreshTblFiltri = true } = {}) {
+  const righe = filtraRigheMonitor();
+  if (refreshTblFiltri) popolaFiltriDettaglio(righe);
+  const righeDettaglio = filtraRigheDettaglio(righe);
+  const oreTot = Math.round(righe.reduce((s, r) => s + r.ore_ore, 0) * 100) / 100;
+  const oreExtra = Math.round(righe.filter(r => r.isExtra).reduce((s, r) => s + r.ore_ore, 0) * 100) / 100;
+  const giorni = new Set(righe.map(r => r.id_giornata).filter(Boolean)).size;
+
+  document.getElementById('mon-kpi-ore').textContent = oreTot % 1 === 0 ? oreTot : oreTot.toFixed(1);
+  document.getElementById('mon-kpi-extra').textContent = oreExtra % 1 === 0 ? oreExtra : oreExtra.toFixed(1);
+  document.getElementById('mon-kpi-giorni').textContent = String(giorni);
+  document.getElementById('mon-kpi-righe').textContent = String(righe.length);
+
+  renderBarChart('mon-chart-att', sommaPerChiave(righe, 'attivita'));
+  renderBarChart('mon-chart-cli', sommaPerChiave(righe, 'cliente'));
+  renderBarChart('mon-chart-dip', sommaPerChiave(righe, 'dipendente'));
+  renderBarChart('mon-chart-extra', sommaPerChiave(righe.filter(r => r.isExtra), 'cliente'), { extra: true });
+  renderDettaglioRighe(righeDettaglio);
+}
+
+async function caricaMonitoraggio(force) {
+  if (monitorCaricato && !force) {
+    applicaFiltriMonitor();
+    return;
+  }
+
+  const loading = document.getElementById('mon-loading');
+  const dash = document.getElementById('mon-dashboard');
+  loading.classList.remove('hidden');
+  dash.classList.add('hidden');
+
+  try {
+    const resp = await SRAuth.fetch(WEBHOOK_MONITOR, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({})
+    });
+    if (!resp.ok) {
+      const testo = await resp.text().catch(() => '');
+      throw new Error(`HTTP ${resp.status}${testo ? ' — ' + testo.slice(0, 80) : ''}`);
+    }
+
+    let raw;
+    const ct = resp.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      raw = await resp.json();
+      if (raw && raw.message === 'Workflow was started') {
+        throw new Error('n8n non ha restituito i dati (Workflow was started)');
+      }
+    } else {
+      raw = [];
+    }
+
+    const rows = normalizzaMonitorRisposta(raw);
+    monitorDatiRaw = rows.map(normalizzaRigaMonitor);
+    monitorCaricato = true;
+    popolaFiltriMonitor();
+    loading.classList.add('hidden');
+    dash.classList.remove('hidden');
+    applicaFiltriMonitor();
+    showToast(`✓ Monitoraggio: ${monitorDatiRaw.length} righe caricate`);
+  } catch (e) {
+    loading.classList.add('hidden');
+    showToast('⚠ Monitoraggio: ' + (e.message || e));
+    console.error('[monitor-data]', e);
+  }
+}
+
+['mon-f-dip', 'mon-f-cliente', 'mon-f-mese', 'mon-f-att'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    if (monitorCaricato) {
+      monDetailPage = 1;
+      applicaFiltriMonitor();
+    }
+  });
+});
+
+['mon-tbl-dip', 'mon-tbl-mese'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    if (id === 'mon-tbl-mese') {
+      const ym = document.getElementById('mon-tbl-mese')?.value;
+      if (!ym && monDetailDateMode === 'intervallo') {
+        setMonDetailDateMode('mese');
+        return;
+      }
+      if (ym && monDetailDateMode === 'intervallo') resetMonRangeForMonth(ym);
+      aggiornaMonRangeUI();
+    }
+    monDetailPage = 1;
+    if (monitorCaricato) applicaFiltriMonitor();
+  });
+});
+
+document.getElementById('mon-tbl-mode-mese').addEventListener('click', () => setMonDetailDateMode('mese'));
+document.getElementById('mon-tbl-mode-range').addEventListener('click', () => setMonDetailDateMode('intervallo'));
+
+document.getElementById('mon-page-prev').addEventListener('click', () => {
+  if (monDetailPage > 1) {
+    monDetailPage -= 1;
+    applicaFiltriMonitor({ refreshTblFiltri: false });
+  }
+});
+document.getElementById('mon-page-next').addEventListener('click', () => {
+  monDetailPage += 1;
+  applicaFiltriMonitor({ refreshTblFiltri: false });
+});
+
+/* ═══════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════ */
+function showToast(msg) {
+  const area = document.getElementById('toast-area');
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  area.appendChild(t);
+  setTimeout(() => t.remove(), 2650);
+}
+
+/* ═══════════════════════════════════════════════
+   AVVIO — parametri da n8n
+═══════════════════════════════════════════════ */
+(async function boot() {
+  try {
+    if (!SRAuth.hasN8nToken()) {
+      await SRAuth.ensureN8nSession();
+    }
+    if (!SRAuth.hasN8nToken()) {
+      throw new Error('Sessione API non disponibile');
+    }
+    await caricaParametri();
+    initDipendenteSelect();
+    initSetup();
+    initMonRangeCalendario();
+    showToast(`✓ Dati caricati (${DIPENDENTI.length} dip., ${CLIENTI.length} clienti)`);
+  } catch (err) {
+    const sel = document.getElementById('inp-dipendente');
+    sel.innerHTML = '<option value="">Errore caricamento</option>';
+    showToast('⚠ Impossibile caricare i dati: ' + (err.message || err));
+    console.error('[retrieve-data]', err);
+  }
+})();
+</script>
+</body>
+</html>

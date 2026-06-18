@@ -136,7 +136,7 @@ body {
       </svg>
       Accedi con Microsoft
     </button>
-    <p class="gate-foot">Solo account del tenant Studio Rivelli · sessione JWT sicura</p>
+    <p class="gate-foot">Solo account del tenant Studio Rivelli · sessione autenticata tramite JWT</p>
   </div>
 </div>
 
@@ -153,6 +153,12 @@ body {
   <main class="hub-body">
     <p class="hub-error" id="hub-error" aria-live="polite"></p>
     <div class="hub-grid">
+      <a class="hub-card" href="timesheet_rivelli.html" id="link-timesheet">
+        <div class="hub-card-icon">⏱️</div>
+        <div class="hub-card-title">Foglio presenze</div>
+        <p class="hub-card-desc">Inserimento, monitoraggio e modifica delle ore lavorate.</p>
+        <span class="hub-card-loading hidden" id="timesheet-loading">Connessione API…</span>
+      </a>
       <a class="hub-card" href="macchina.html" id="link-macchina">
         <div class="hub-card-icon">🚗</div>
         <div class="hub-card-title">Auto aziendale</div>
@@ -230,6 +236,28 @@ document.getElementById('btn-ms-login').addEventListener('click', async () => {
 
 document.getElementById('btn-logout').addEventListener('click', () => SRAuth.logout());
 
+document.getElementById('link-timesheet').addEventListener('click', async e => {
+  e.preventDefault();
+  const link = e.currentTarget;
+  const loading = document.getElementById('timesheet-loading');
+  const err = document.getElementById('hub-error');
+  err.textContent = '';
+  link.style.pointerEvents = 'none';
+  loading.classList.remove('hidden');
+  try {
+    await SRAuth.ensureN8nSession();
+    if (!SRAuth.hasN8nToken()) {
+      throw new Error('Token non salvato in sessione');
+    }
+    location.assign('timesheet_rivelli.html');
+  } catch (ex) {
+    console.error('ensureN8nSession:', ex);
+    err.textContent = ex.message || 'Errore connessione API n8n';
+    link.style.pointerEvents = '';
+    loading.classList.add('hidden');
+  }
+});
+
 document.getElementById('link-macchina').addEventListener('click', async e => {
   e.preventDefault();
   const link = e.currentTarget;
@@ -254,7 +282,7 @@ document.getElementById('link-macchina').addEventListener('click', async e => {
 });
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=4').then(reg => reg.update()).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=8').then(reg => reg.update()).catch(() => {});
 }
 </script>
 </body>

@@ -5,6 +5,13 @@ window.SR_CONFIG = {
   WEBHOOK_RICHIESTA: 'https://studiorivelli.app.n8n.cloud/webhook/richiesta-update-prenotazione-auth',
   WEBHOOK_UPDATE: 'https://studiorivelli.app.n8n.cloud/webhook/update-prenotazione-auth',
 
+  /** Timesheet — webhook con JWT (stesso secret macchina-auth-login) */
+  WEBHOOK_TS_RETRIEVE: 'https://studiorivelli.app.n8n.cloud/webhook/retrieve-data-auth',
+  WEBHOOK_TS_SAVE: 'https://studiorivelli.app.n8n.cloud/webhook/save-data-auth',
+  WEBHOOK_TS_UPDATE: 'https://studiorivelli.app.n8n.cloud/webhook/update-data-auth',
+  WEBHOOK_TS_MONITOR: 'https://studiorivelli.app.n8n.cloud/webhook/monitor-data-auth',
+  WEBHOOK_TS_LOAD: 'https://studiorivelli.app.n8n.cloud/webhook/load-timesheet-auth',
+
   /** Azure Portal → App registrations → Application (client) ID */
   AZURE_CLIENT_ID: 'f16e7f48-7775-4461-b27d-53e95aa61b82',
   /** Entra ID → Overview → Tenant ID */
