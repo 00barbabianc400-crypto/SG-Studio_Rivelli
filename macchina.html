@@ -1144,7 +1144,7 @@ async function salvaEdit() {
     body: JSON.stringify(payload)
   });
   const data = await resp.json().catch(() => ({}));
-  if (!resp.ok) {
+  if (!resp.ok || data.action === 'error' || data.ok === false) {
     return showToast(data.message || ('Update fallito: ' + resp.status), 'error');
   }
   showToast('Prenotazione aggiornata', 'success');
