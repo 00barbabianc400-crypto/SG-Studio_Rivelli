@@ -711,12 +711,13 @@ tr:hover .btn-del { opacity: 1; }
 
     <div class="page-head">
       <h1 class="page-title">Monitoraggio timesheet</h1>
-      <p class="page-sub">Analytics su ore, clienti, attività e straordinari · dati da Data Table</p>
+      <p class="page-sub" id="mon-page-sub">Consultazione righe registrate · dati da Data Table</p>
     </div>
 
     <div id="mon-loading" class="mon-loading hidden">Caricamento dati…</div>
 
     <div id="mon-dashboard" class="hidden">
+      <div id="mon-analytics" class="hidden">
       <div class="mon-filters">
         <div>
           <label for="mon-f-dip">Dipendente</label>
@@ -773,6 +774,7 @@ tr:hover .btn-del { opacity: 1; }
           <div class="mon-card-body" id="mon-chart-extra"></div>
         </div>
       </div>
+      </div><!-- /mon-analytics -->
 
       <div class="mon-detail-section">
         <div class="mon-detail-toolbar">
@@ -2153,6 +2155,7 @@ document.getElementById('btn-salva').addEventListener('click', () => { salvaGior
 let sezioneAttiva = 'inserimento';
 let monitorDatiRaw = [];
 let monitorCaricato = false;
+let monitorAbilitato = false;
 const MON_DETAIL_PAGE_SIZE = 8;
 let monDetailPage = 1;
 let monDetailDateMode = 'mese';
@@ -2510,6 +2513,36 @@ function normalizzaMonitorRisposta(payload) {
     try { return normalizzaMonitorRisposta(JSON.parse(payload)); } catch { return []; }
   }
   return [];
+}
+
+function leggiMonitorAbilitato(resp) {
+  const v = resp.headers.get('x-sr-monitor-abilitato')
+    || resp.headers.get('X-SR-Monitor-Abilitato');
+  if (v == null || v === '') return false;
+  const s = String(v).trim().toLowerCase();
+  return s === 'true' || s === '1' || s === 'yes' || s === 'si';
+}
+
+function estraiMonitorRighe(raw) {
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    if (raw.action === 'error') {
+      throw new Error(raw.message || 'Errore monitoraggio');
+    }
+    if (Array.isArray(raw.righe)) return raw.righe;
+  }
+  return normalizzaMonitorRisposta(raw);
+}
+
+function impostaLayoutMonitor(abilitato) {
+  monitorAbilitato = !!abilitato;
+  const analytics = document.getElementById('mon-analytics');
+  const sub = document.getElementById('mon-page-sub');
+  if (analytics) analytics.classList.toggle('hidden', !monitorAbilitato);
+  if (sub) {
+    sub.textContent = monitorAbilitato
+      ? 'Analytics su ore, clienti, attività e straordinari · dati da Data Table'
+      : 'Consultazione righe registrate · dati da Data Table';
+  }
 }
 
 function isExtraRiga(r) {
@@ -2900,23 +2933,29 @@ function renderBarChart(containerId, items, { extra = false, maxItems = 10 } = {
 }
 
 function applicaFiltriMonitor({ refreshTblFiltri = true } = {}) {
-  const righe = filtraRigheMonitor();
-  if (refreshTblFiltri) popolaFiltriDettaglio(righe);
-  const righeDettaglio = filtraRigheDettaglio(righe);
-  const oreTot = Math.round(righe.reduce((s, r) => s + r.ore_ore, 0) * 100) / 100;
-  const oreExtra = Math.round(righe.filter(r => r.isExtra).reduce((s, r) => s + r.ore_ore, 0) * 100) / 100;
-  const giorni = new Set(righe.map(r => r.id_giornata).filter(Boolean)).size;
+  if (monitorAbilitato) {
+    const righe = filtraRigheMonitor();
+    if (refreshTblFiltri) popolaFiltriDettaglio(righe);
+    const righeDettaglio = filtraRigheDettaglio(righe);
+    const oreTot = Math.round(righe.reduce((s, r) => s + r.ore_ore, 0) * 100) / 100;
+    const oreExtra = Math.round(righe.filter(r => r.isExtra).reduce((s, r) => s + r.ore_ore, 0) * 100) / 100;
+    const giorni = new Set(righe.map(r => r.id_giornata).filter(Boolean)).size;
 
-  document.getElementById('mon-kpi-ore').textContent = oreTot % 1 === 0 ? oreTot : oreTot.toFixed(1);
-  document.getElementById('mon-kpi-extra').textContent = oreExtra % 1 === 0 ? oreExtra : oreExtra.toFixed(1);
-  document.getElementById('mon-kpi-giorni').textContent = String(giorni);
-  document.getElementById('mon-kpi-righe').textContent = String(righe.length);
+    document.getElementById('mon-kpi-ore').textContent = oreTot % 1 === 0 ? oreTot : oreTot.toFixed(1);
+    document.getElementById('mon-kpi-extra').textContent = oreExtra % 1 === 0 ? oreExtra : oreExtra.toFixed(1);
+    document.getElementById('mon-kpi-giorni').textContent = String(giorni);
+    document.getElementById('mon-kpi-righe').textContent = String(righe.length);
 
-  renderBarChart('mon-chart-att', sommaPerChiave(righe, 'attivita'));
-  renderBarChart('mon-chart-cli', sommaPerChiave(righe, 'cliente'));
-  renderBarChart('mon-chart-dip', sommaPerChiave(righe, 'dipendente'));
-  renderBarChart('mon-chart-extra', sommaPerChiave(righe.filter(r => r.isExtra), 'cliente'), { extra: true });
-  renderDettaglioRighe(righeDettaglio);
+    renderBarChart('mon-chart-att', sommaPerChiave(righe, 'attivita'));
+    renderBarChart('mon-chart-cli', sommaPerChiave(righe, 'cliente'));
+    renderBarChart('mon-chart-dip', sommaPerChiave(righe, 'dipendente'));
+    renderBarChart('mon-chart-extra', sommaPerChiave(righe.filter(r => r.isExtra), 'cliente'), { extra: true });
+    renderDettaglioRighe(righeDettaglio);
+    return;
+  }
+
+  if (refreshTblFiltri) popolaFiltriDettaglio(monitorDatiRaw);
+  renderDettaglioRighe(filtraRigheDettaglio(monitorDatiRaw));
 }
 
 async function caricaMonitoraggio(force) {
@@ -2952,10 +2991,11 @@ async function caricaMonitoraggio(force) {
       raw = [];
     }
 
-    const rows = normalizzaMonitorRisposta(raw);
-    monitorDatiRaw = rows.map(normalizzaRigaMonitor);
+    const abilitato = leggiMonitorAbilitato(resp);
+    impostaLayoutMonitor(abilitato);
+    monitorDatiRaw = estraiMonitorRighe(raw).map(normalizzaRigaMonitor);
     monitorCaricato = true;
-    popolaFiltriMonitor();
+    if (monitorAbilitato) popolaFiltriMonitor();
     loading.classList.add('hidden');
     dash.classList.remove('hidden');
     applicaFiltriMonitor();
