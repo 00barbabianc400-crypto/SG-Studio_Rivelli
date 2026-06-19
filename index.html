@@ -208,7 +208,7 @@ function setLoading(on) {
     else showGate();
     if (location.search.includes('err=api')) {
       document.getElementById('gate-error').textContent =
-        'Impossibile collegarsi alle API. Verifica il workflow n8n macchina-auth-login.';
+        'Impossibile collegarsi alle API. Verifica il workflow in n8n';
     }
   } catch (ex) {
     showGate();

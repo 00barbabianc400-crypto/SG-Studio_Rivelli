@@ -1,7 +1,5 @@
 /**
- * Auth Studio Rivelli
- * - Hub (index): basta sessione Microsoft (tenant Rivelli via app single-tenant)
- * - Macchina/API: JWT n8n ottenuto al primo accesso (GET prenotazioni)
+ * Auth
  */
 (function (global) {
   const C = global.SR_CONFIG || {};
@@ -49,7 +47,7 @@
     }
   }
 
-  /** JWT n8n valido — richiesto per le API macchina */
+  /** JWT **/
   function hasN8nToken() {
     const t = getToken();
     if (!t || !t.startsWith('eyJ')) return false;
@@ -82,8 +80,7 @@
     const token = String(data.token || '').trim();
     if (!token.startsWith('eyJ')) {
       throw new Error(
-        'Risposta n8n non valida (token assente). ' +
-        'Nel nodo Respond usa "First Incoming Item" oppure Expression {{ $json.token }}'
+        'Risposta n8n non valida (token assente). '
       );
     }
 
@@ -179,7 +176,7 @@
     let data = {};
     try { data = raw ? JSON.parse(raw) : {}; } catch { data = {}; }
 
-    /* n8n Respond: token in root, o intero item se "First Incoming Item" */
+    /* n8n Respond */
     const token = data.token || data.body?.token;
     const expiresAt = data.expiresAt || data.body?.expiresAt;
     const expiresInSec = data.expiresInSec ?? data.body?.expiresInSec;
@@ -190,8 +187,7 @@
     }
     if (!token) {
       throw new Error(
-        'n8n ha risposto senza token. Response: ' + raw.slice(0, 120) +
-        ' — Usa Respond "First Incoming Item" o Expression {{ $json.token }}'
+        'n8n ha risposto senza token.'
       );
     }
 
@@ -199,7 +195,7 @@
     return { token, expiresAt, expiresInSec, user };
   }
 
-  /** Macchina: ottieni JWT n8n da token Azure (chiamata a macchina-auth-login) */
+  /** Macchina */
   async function ensureN8nSession() {
     if (hasN8nToken()) return true;
 
@@ -280,7 +276,7 @@
     global.location.replace(base + 'index.html' + q);
   }
 
-  /** macchina.html — richiede MSAL + JWT n8n prima del GET */
+  /** macchina.html **/
   async function requireAuthAsync() {
     if (hasN8nToken()) return true;
     return ensureN8nSession();
@@ -312,7 +308,6 @@
     redirectToLogin();
   }
 
-  /** @deprecated usa hasN8nToken() o isMsalLoggedIn() */
   function isAuthenticated() {
     return hasN8nToken();
   }

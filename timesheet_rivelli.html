@@ -937,7 +937,7 @@ tr:hover .btn-del { opacity: 1; }
 <script src="js/auth.js"></script>
 <script>
 /* ═══════════════════════════════════════════════
-   DATI (liste da n8n — vedi caricaParametri)
+   DATI 
 ═══════════════════════════════════════════════ */
 const WEBHOOK_RETRIEVE = SR_CONFIG.WEBHOOK_TS_RETRIEVE;
 const WEBHOOK_SAVE = SR_CONFIG.WEBHOOK_TS_SAVE;
@@ -1900,7 +1900,7 @@ document.getElementById('btn-reset').addEventListener('click', () => {
 });
 
 /* ═══════════════════════════════════════════════
-   SALVA → n8n save-data (mapping colonne Data Table)
+   SALVATAGGIO
 ═══════════════════════════════════════════════ */
 function buildIdGiornata(dipendente, dataGiorno) {
   return `${dataGiorno}_${String(dipendente).trim()}`;
@@ -1920,7 +1920,7 @@ function validaSalvataggio() {
   return null;
 }
 
-/** Righe piatte: chiavi = colonne Data Table (vedi timesheet_righe_esempio.csv) */
+
 function buildRigheSalvataggio(dipendente, dataGiorno, salvatoIl, tbodyId = 'table-body') {
   const idGiornata = buildIdGiornata(dipendente, dataGiorno);
   const righe = [];
@@ -2924,7 +2924,7 @@ function showToast(msg) {
 }
 
 /* ═══════════════════════════════════════════════
-   AVVIO — parametri da n8n
+   AVVIO
 ═══════════════════════════════════════════════ */
 (async function boot() {
   try {
