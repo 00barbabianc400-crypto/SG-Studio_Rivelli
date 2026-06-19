@@ -114,6 +114,17 @@ select, input { font: inherit; }
 body.app-loading .setup-card,
 body.app-loading .table-wrap.visible,
 body.app-loading .action-bar { pointer-events: none; opacity: .55; }
+body.is-operator-blocked .shell,
+body.is-operator-blocked .topbar-nav-group {
+  opacity: 0.45;
+  pointer-events: none;
+  user-select: none;
+}
+body.is-operator-blocked .shell .btn,
+body.is-operator-blocked .shell select,
+body.is-operator-blocked .shell input,
+body.is-operator-blocked .shell textarea,
+body.is-operator-blocked .shell button { cursor: not-allowed; }
 /* native date picker styling */
 input[type="date"].meta-input { min-width: 160px; }
 input[type="date"].meta-input::-webkit-calendar-picker-indicator { opacity: .5; cursor: pointer; }
@@ -318,6 +329,13 @@ tr:hover .btn-del { opacity: 1; }
   border-radius: var(--r2); font-size: 13px; font-weight: 500;
   box-shadow: var(--shadow-md); white-space: nowrap;
   animation: tin .25s cubic-bezier(.16,1,.3,1), tout .2s 2.3s ease-in forwards;
+}
+.toast.toast-error {
+  background: oklch(52% 0.2 25); color: oklch(98% 0.01 25);
+  animation: tin .25s cubic-bezier(.16,1,.3,1);
+  white-space: normal;
+  max-width: min(92vw, 420px);
+  text-align: center;
 }
 @keyframes tin  { from { opacity:0; transform: translateY(12px) scale(.97); } to { opacity:1; transform: none; } }
 @keyframes tout { from { opacity:1; } to { opacity:0; transform: translateY(6px); } }
@@ -958,6 +976,8 @@ let ATTIVITA = [];
 let SLOT_ORE = [];
 let DIPENDENTI = [];
 let parametriPronti = false;
+let dipendenteMatch = null;
+let timesheetAutorizzato = true;
 
 const GIORNI  = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
 const MESI_IT = ['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'];
@@ -1512,6 +1532,71 @@ async function caricaParametri() {
   document.body.classList.remove('app-loading');
 }
 
+function trovaDipendenteInLista(nomeAzure, lista) {
+  const raw = String(nomeAzure || '').trim();
+  if (!raw || !Array.isArray(lista) || !lista.length) return null;
+  const lower = raw.toLowerCase();
+  const exact = lista.find(o => String(o).toLowerCase() === lower);
+  if (exact) return exact;
+  const azureParts = lower.split(/\s+/).filter(Boolean);
+  for (const op of lista) {
+    const opLower = String(op).toLowerCase();
+    if (lower.includes(opLower) || opLower.includes(lower)) return op;
+    const opWords = opLower.split(/\s+/);
+    if (opWords.every(w => azureParts.includes(w))) return op;
+    const cognome = opWords[opWords.length - 1];
+    if (cognome.length > 2 && azureParts.includes(cognome)) return op;
+  }
+  return null;
+}
+
+async function risolviNomeAzure() {
+  let u = SRAuth.getUser();
+  if (u?.name) return String(u.name).trim();
+  if (!SRAuth.hasN8nToken()) {
+    await SRAuth.ensureN8nSession().catch(() => {});
+  }
+  u = SRAuth.getUser();
+  if (u?.name) return String(u.name).trim();
+  if (u?.email) return String(u.email).trim();
+  return '';
+}
+
+async function initDipendenteAzure() {
+  const displayName = await risolviNomeAzure();
+  dipendenteMatch = trovaDipendenteInLista(displayName, DIPENDENTI);
+  timesheetAutorizzato = !!dipendenteMatch;
+  document.body.classList.toggle('is-operator-blocked', !timesheetAutorizzato);
+
+  ['inp-dipendente', 'edit-inp-dipendente'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    if (dipendenteMatch) {
+      sel.value = dipendenteMatch;
+      sel.disabled = true;
+    } else {
+      sel.value = '';
+      sel.disabled = true;
+    }
+  });
+
+  if (!timesheetAutorizzato) {
+    showToast(
+      'Operatore non autorizzato: "' + (displayName || 'utente sconosciuto') + '" non è nella lista dipendenti.',
+      'error',
+      8000
+    );
+  }
+}
+
+function bloccaSeNonAutorizzato() {
+  if (!timesheetAutorizzato) {
+    showToast('Non puoi operare: dipendente non presente nella lista.', 'error', 6000);
+    return true;
+  }
+  return false;
+}
+
 /* ═══════════════════════════════════════════════
    INIT DATE
 ═══════════════════════════════════════════════ */
@@ -1661,10 +1746,14 @@ function popolaSelectDipendenti(selectId, abilita = true) {
     opt.textContent = nome;
     sel.appendChild(opt);
   });
-  const preferito = DIPENDENTI.find(d => /Luca Figliolini/i.test(d));
-  if (corrente && DIPENDENTI.includes(corrente)) sel.value = corrente;
-  else sel.value = preferito || DIPENDENTI[0] || '';
-  sel.disabled = !abilita || !DIPENDENTI.length;
+  if (dipendenteMatch && DIPENDENTI.includes(dipendenteMatch)) {
+    sel.value = dipendenteMatch;
+  } else if (corrente && DIPENDENTI.includes(corrente)) {
+    sel.value = corrente;
+  } else {
+    sel.value = DIPENDENTI[0] || '';
+  }
+  sel.disabled = !abilita || !DIPENDENTI.length || !!dipendenteMatch || !timesheetAutorizzato;
 }
 
 function initDipendenteSelect() {
@@ -1770,6 +1859,7 @@ function buildRow(num, slot, clientVal, attVal, luogoVal, isExtra, canonIdx, tab
    GENERA 8 RIGHE
 ═══════════════════════════════════════════════ */
 function genera() {
+  if (bloccaSeNonAutorizzato()) return;
   if (!parametriPronti) { showToast('⚠ Attendi il caricamento dati'); return; }
   const clientInp = document.querySelector('#setup-client-wrap .client-input');
   const clientVal = clientInp ? clientInp.value.trim() : '';
@@ -1997,6 +2087,7 @@ function buildPayloadSalvataggio() {
 }
 
 async function salvaGiornata() {
+  if (bloccaSeNonAutorizzato()) return;
   validaFasceOrarie();
 
   const err = validaSalvataggio();
@@ -2561,6 +2652,7 @@ function mostraEditorModifica(righe, dipendente, dataGiorno, { rimosseDuplicati 
 }
 
 async function caricaGiornataModifica() {
+  if (bloccaSeNonAutorizzato()) return;
   if (!parametriPronti) { showToast('⚠ Attendi il caricamento liste'); return; }
   const dipendente = document.getElementById('edit-inp-dipendente')?.value?.trim();
   const dataGiorno = document.getElementById('edit-inp-data')?.value;
@@ -2628,6 +2720,7 @@ function validaSalvataggioModifica() {
 }
 
 async function salvaModificaGiornata() {
+  if (bloccaSeNonAutorizzato()) return;
   validaFasceOrarie(null, 'edit-table-body');
   const err = validaSalvataggioModifica();
   if (err) { showToast('⚠ ' + err); return; }
@@ -2916,11 +3009,13 @@ document.getElementById('mon-page-next').addEventListener('click', () => {
 /* ═══════════════════════════════════════════════
    TOAST
 ═══════════════════════════════════════════════ */
-function showToast(msg) {
+function showToast(msg, type, ms) {
   const area = document.getElementById('toast-area');
-  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  const t = document.createElement('div');
+  t.className = 'toast' + (type === 'error' ? ' toast-error' : '');
+  t.textContent = msg;
   area.appendChild(t);
-  setTimeout(() => t.remove(), 2650);
+  setTimeout(() => t.remove(), ms || 2650);
 }
 
 /* ═══════════════════════════════════════════════
@@ -2936,9 +3031,14 @@ function showToast(msg) {
     }
     await caricaParametri();
     initDipendenteSelect();
+    document.body.classList.add('app-loading');
+    await initDipendenteAzure();
+    document.body.classList.remove('app-loading');
     initSetup();
     initMonRangeCalendario();
-    showToast(`✓ Dati caricati (${DIPENDENTI.length} dip., ${CLIENTI.length} clienti)`);
+    if (timesheetAutorizzato) {
+      showToast(`✓ Dati caricati (${DIPENDENTI.length} dip., ${CLIENTI.length} clienti)`);
+    }
   } catch (err) {
     const sel = document.getElementById('inp-dipendente');
     sel.innerHTML = '<option value="">Errore caricamento</option>';

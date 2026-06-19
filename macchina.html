@@ -279,6 +279,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   padding: 12px 20px 18px; border-top: 1px solid var(--border);
   display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;
 }
+.modal-foot.detail-modal-foot { justify-content: flex-end; }
 .conflict-box {
   background: #fff8f0; border: 1px solid #fed7aa; border-radius: var(--r2);
   padding: 16px; margin: 12px 0; font-size: 13px; color: #7c2d12;
@@ -309,6 +310,12 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .toast.success { background: var(--ok); }
 .toast.error { background: var(--danger); }
 .toast.warn { background: var(--warn); }
+.view-panel.is-blocked { opacity: 0.45; pointer-events: none; user-select: none; }
+.view-panel.is-blocked .btn,
+.view-panel.is-blocked .range-trigger,
+.view-panel.is-blocked select,
+.view-panel.is-blocked textarea,
+.view-panel.is-blocked input { cursor: not-allowed; }
 
 .app-loader {
   position: fixed; inset: 0; z-index: 9999;
@@ -348,7 +355,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   .topbar-nav-group {
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 4px;
     padding: 3px;
   }
@@ -425,7 +432,6 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   <nav class="topbar-nav-group" aria-label="Sezioni">
     <button type="button" class="topbar-nav is-active" data-section="inserimento">Prenota</button>
     <button type="button" class="topbar-nav" data-section="monitoraggio">Monitoraggio</button>
-    <button type="button" class="topbar-nav" data-section="modifica">Modifica</button>
   </nav>
 </div>
 
@@ -520,30 +526,6 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
     </div>
   </div>
 
-  <!-- MODIFICA -->
-  <div id="view-modifica" class="view-panel hidden">
-    <div class="page-head">
-      <h1 class="page-title">Modifica prenotazioni</h1>
-      <p class="page-sub">Accesso riservato — richiede credenziali</p>
-    </div>
-    <div class="card" id="mod-panel">
-      <div class="card-head">
-        <div class="card-icon">✏️</div>
-        <span class="card-title">Gestione prenotazioni</span>
-      </div>
-      <div class="card-body">
-        <div class="field-row">
-          <div class="field">
-            <label>Filtra per operatore</label>
-            <select id="mod-filtro-op"><option value="">— seleziona operatore —</option></select>
-          </div>
-        </div>
-        <div class="edit-list" id="mod-list"></div>
-        <div class="empty-msg" id="mod-empty">Seleziona un operatore per visualizzare le prenotazioni</div>
-      </div>
-    </div>
-  </div>
-
 </div>
 
 <!-- Modal calendario periodo -->
@@ -593,7 +575,9 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   <div class="modal" role="dialog" style="width:min(440px,calc(100vw - 32px))">
     <div class="modal-head"><h2>Dettaglio prenotazione</h2></div>
     <div class="modal-body" id="detail-body"></div>
-    <div class="modal-foot">
+    <div class="modal-foot detail-modal-foot">
+      <button type="button" class="btn btn-danger" id="detail-elimina">Elimina</button>
+      <button type="button" class="btn btn-outline" id="detail-modifica">Modifica</button>
       <button type="button" class="btn btn-secondary" id="detail-chiudi">Chiudi</button>
     </div>
   </div>
@@ -621,7 +605,6 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
       <div class="field"><label>Note</label><textarea id="edit-note" rows="2"></textarea></div>
     </div>
     <div class="modal-foot">
-      <button type="button" class="btn btn-danger" id="edit-delete">Elimina</button>
       <button type="button" class="btn btn-ghost" id="edit-cancel">Annulla</button>
       <button type="button" class="btn btn-primary" id="edit-save">Salva</button>
     </div>
@@ -649,7 +632,8 @@ const OPERATORI = [
   'Luca Rivelli',
   'Andrea Castellan',
   'Simona Rivagli',
-  'Fabiola Leone'
+  'Fabiola Leone',
+  'Claudia Nuccitelli'
 ];
 
 const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
@@ -658,9 +642,12 @@ const OP_PALETTE = ['#1e4fa3','#0d9488','#7c3aed','#b45309','#db2777','#0891b2',
 const TL_ZOOM_STEPS = [0.85, 1, 1.25, 1.5, 1.75, 2];
 let timZoomIdx = window.matchMedia('(max-width: 720px)').matches ? 0 : 2;
 
+let detailBookingId = null;
 let prenotazioni = [];
 let sessionLoaded = false;
 let conflictPending = null;
+let operatoreMatch = null;
+let prenotaAutorizzata = true;
 
 let rangeCtx = 'insert';
 let rangeStart = null;
@@ -756,13 +743,66 @@ function trovaConflitto(dataDa, dataA, excludeId) {
 }
 
 function popolaSelectOperatori() {
-  ['ins-operatore','mod-filtro-op','edit-operatore'].forEach(id => {
+  ['ins-operatore', 'edit-operatore'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    const placeholder = id === 'mod-filtro-op' ? '— seleziona operatore —' : '— seleziona —';
-    el.innerHTML = `<option value="">${placeholder}</option>`
+    el.innerHTML = `<option value="">— seleziona —</option>`
       + OPERATORI.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
   });
+}
+
+function trovaOperatoreInLista(nomeAzure) {
+  const raw = String(nomeAzure || '').trim();
+  if (!raw) return null;
+  const lower = raw.toLowerCase();
+  const exact = OPERATORI.find(o => o.toLowerCase() === lower);
+  if (exact) return exact;
+  const azureParts = lower.split(/\s+/).filter(Boolean);
+  for (const op of OPERATORI) {
+    const opLower = op.toLowerCase();
+    if (lower.includes(opLower) || opLower.includes(lower)) return op;
+    const opWords = opLower.split(/\s+/);
+    if (opWords.every(w => azureParts.includes(w))) return op;
+    const cognome = opWords[opWords.length - 1];
+    if (cognome.length > 2 && azureParts.includes(cognome)) return op;
+  }
+  return null;
+}
+
+async function risolviNomeAzure() {
+  let u = SRAuth.getUser();
+  if (u?.name) return String(u.name).trim();
+  if (!SRAuth.hasN8nToken()) {
+    await SRAuth.ensureN8nSession().catch(() => {});
+  }
+  u = SRAuth.getUser();
+  if (u?.name) return String(u.name).trim();
+  if (u?.email) return String(u.email).trim();
+  return '';
+}
+
+async function initOperatorePrenota() {
+  const displayName = await risolviNomeAzure();
+  operatoreMatch = trovaOperatoreInLista(displayName);
+  prenotaAutorizzata = !!operatoreMatch;
+
+  const panel = document.getElementById('view-inserimento');
+  const sel = document.getElementById('ins-operatore');
+  panel.classList.toggle('is-blocked', !prenotaAutorizzata);
+
+  if (operatoreMatch) {
+    sel.value = operatoreMatch;
+    sel.disabled = true;
+    return;
+  }
+
+  sel.value = '';
+  sel.disabled = true;
+  showToast(
+    'Operatore non autorizzato: "' + (displayName || 'utente sconosciuto') + '" non è nella lista prenotazioni.',
+    'error',
+    8000
+  );
 }
 
 async function apiCrud(payload) {
@@ -955,7 +995,13 @@ function cognomeOperatore(name) {
 }
 
 function resetFormInserimento() {
-  document.getElementById('ins-operatore').value = '';
+  const sel = document.getElementById('ins-operatore');
+  if (operatoreMatch) {
+    sel.value = operatoreMatch;
+  } else {
+    sel.value = '';
+  }
+  sel.disabled = true;
   document.getElementById('ins-tipo').value = '';
   document.getElementById('ins-note').value = '';
   rangeStart = rangeEnd = null;
@@ -965,6 +1011,7 @@ function resetFormInserimento() {
 function apriDettaglioPrenotazione(id) {
   const p = prenotazioni.find(x => Number(x.id) === Number(id));
   if (!p) return;
+  detailBookingId = Number(p.id);
   const col = colorOperatore(p.operatore);
   const tagCls = p.tipo_utilizzo === 'Roma e dintorni' ? 'tag-roma' : 'tag-trasferta';
   document.getElementById('detail-body').innerHTML = `
@@ -1059,44 +1106,32 @@ function renderMonitoraggio() {
   });
 }
 
-function renderModifica() {
-  const filtro = document.getElementById('mod-filtro-op').value;
-  const list = document.getElementById('mod-list');
-  const empty = document.getElementById('mod-empty');
-
-  if (!filtro) {
-    list.innerHTML = '';
-    empty.textContent = 'Seleziona un operatore per visualizzare le prenotazioni';
-    empty.style.display = 'block';
-    return;
+function refreshMonitoraggioSeAttivo() {
+  if (!document.getElementById('view-monitoraggio').classList.contains('hidden')) {
+    renderMonitoraggio();
   }
+}
 
-  const rows = [...prenotazioni]
-    .filter(p => p.operatore === filtro)
-    .sort((a, b) => (a.data_da || '').localeCompare(b.data_da || ''));
-
-  if (!rows.length) {
-    list.innerHTML = '';
-    empty.textContent = 'Nessuna prenotazione per questo operatore';
-    empty.style.display = 'block';
-    return;
+async function eliminaPrenotazione(id) {
+  if (!confirm('Eliminare questa prenotazione?')) return;
+  try {
+    const resp = await SRAuth.fetch(WEBHOOK_UPDATE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'erase', id: Number(id) })
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.action === 'error' || data.ok === false) {
+      throw new Error(data.message || ('Eliminazione fallita: ' + resp.status));
+    }
+    showToast('Prenotazione eliminata', 'success');
+    document.getElementById('detail-backdrop').classList.remove('open');
+    detailBookingId = null;
+    await caricaPrenotazioni(true);
+    refreshMonitoraggioSeAttivo();
+  } catch (e) {
+    showToast('Errore: ' + (e.message || e), 'error');
   }
-  empty.style.display = 'none';
-  list.innerHTML = rows.map(p => `
-    <div class="edit-item">
-      <div class="edit-item-meta">
-        <strong>${esc(p.operatore)}</strong> · ${esc(p.tipo_utilizzo)}<br>
-        ${fmtDateIt(p.data_da)} → ${fmtDateIt(p.data_a)}
-        ${p.note ? '<br><em>' + esc(p.note) + '</em>' : ''}
-      </div>
-      <div class="edit-item-actions">
-        <button type="button" class="btn btn-ghost btn-mod-edit" data-id="${p.id}">Modifica</button>
-      </div>
-    </div>`).join('');
-
-  list.querySelectorAll('.btn-mod-edit').forEach(btn => {
-    btn.addEventListener('click', () => apriEditModal(Number(btn.dataset.id)));
-  });
 }
 
 function apriConflictModal(conflitto, richiesta) {
@@ -1136,6 +1171,9 @@ function apriConflictModal(conflitto, richiesta) {
 }
 
 async function inviaPrenotazione() {
+  if (!prenotaAutorizzata) {
+    return showToast('Non puoi prenotare: operatore non presente nella lista.', 'error', 6000);
+  }
   const operatore = document.getElementById('ins-operatore').value;
   const tipo_utilizzo = document.getElementById('ins-tipo').value;
   const note = document.getElementById('ins-note').value.trim();
@@ -1218,7 +1256,7 @@ async function salvaEdit() {
   if (!data_da || !data_a) return showToast('Seleziona il periodo', 'warn');
   if (data_a < data_da) return showToast('La data fine non può precedere la data inizio', 'warn');
 
-  const payload = { id, operatore, tipo_utilizzo, data_da, data_a, note };
+  const payload = { action: 'update', id, operatore, tipo_utilizzo, data_da, data_a, note };
   const conflitto = trovaConflitto(payload.data_da, payload.data_a, id);
   if (conflitto) return showToast('Conflitto con ' + conflitto.operatore, 'warn');
 
@@ -1234,26 +1272,14 @@ async function salvaEdit() {
   showToast('Prenotazione aggiornata', 'success');
   document.getElementById('edit-backdrop').classList.remove('open');
   await caricaPrenotazioni(true);
-  renderModifica();
-}
-
-async function eliminaEdit() {
-  const id = Number(document.getElementById('edit-id').value);
-  if (!confirm('Eliminare questa prenotazione?')) return;
-  await apiCrud({ action: 'delete', id });
-  showToast('Prenotazione eliminata', 'success');
-  document.getElementById('edit-backdrop').classList.remove('open');
-  await caricaPrenotazioni(true);
-  renderModifica();
+  refreshMonitoraggioSeAttivo();
 }
 
 function switchSection(name) {
   document.querySelectorAll('.topbar-nav').forEach(b => b.classList.toggle('is-active', b.dataset.section === name));
   document.getElementById('view-inserimento').classList.toggle('hidden', name !== 'inserimento');
   document.getElementById('view-monitoraggio').classList.toggle('hidden', name !== 'monitoraggio');
-  document.getElementById('view-modifica').classList.toggle('hidden', name !== 'modifica');
   if (name === 'monitoraggio') renderMonitoraggio();
-  if (name === 'modifica') renderModifica();
 }
 
 document.querySelectorAll('.topbar-nav').forEach(btn => {
@@ -1273,7 +1299,6 @@ document.getElementById('cal-grid').addEventListener('click', e => {
 document.getElementById('btn-prenota').addEventListener('click', inviaPrenotazione);
 document.getElementById('conflict-chiudi').addEventListener('click', () => document.getElementById('conflict-backdrop').classList.remove('open'));
 document.getElementById('btn-richiedi-modifica').addEventListener('click', richiediModifica);
-document.getElementById('mod-filtro-op').addEventListener('change', renderModifica);
 document.getElementById('tim-prev').addEventListener('click', () => {
   timMonth--;
   if (timMonth < 0) { timMonth = 11; timYear--; }
@@ -1290,11 +1315,21 @@ document.getElementById('tim-zoom-out').addEventListener('click', () => {
 document.getElementById('tim-zoom-in').addEventListener('click', () => {
   if (timZoomIdx < TL_ZOOM_STEPS.length - 1) { timZoomIdx++; renderMonitoraggio(); }
 });
-document.getElementById('detail-chiudi').addEventListener('click', () => document.getElementById('detail-backdrop').classList.remove('open'));
+document.getElementById('detail-chiudi').addEventListener('click', () => {
+  document.getElementById('detail-backdrop').classList.remove('open');
+  detailBookingId = null;
+});
+document.getElementById('detail-modifica').addEventListener('click', () => {
+  if (!detailBookingId) return;
+  document.getElementById('detail-backdrop').classList.remove('open');
+  apriEditModal(detailBookingId);
+});
+document.getElementById('detail-elimina').addEventListener('click', () => {
+  if (detailBookingId) eliminaPrenotazione(detailBookingId);
+});
 
 document.getElementById('edit-cancel').addEventListener('click', () => document.getElementById('edit-backdrop').classList.remove('open'));
 document.getElementById('edit-save').addEventListener('click', salvaEdit);
-document.getElementById('edit-delete').addEventListener('click', eliminaEdit);
 
 let resizeTimer;
 window.addEventListener('resize', () => {
@@ -1315,6 +1350,7 @@ window.addEventListener('resize', () => {
       throw new Error('Sessione API non disponibile');
     }
     popolaSelectOperatori();
+    await initOperatorePrenota();
     await caricaPrenotazioni();
   } catch (ex) {
     console.error('Macchina auth/load:', ex);
