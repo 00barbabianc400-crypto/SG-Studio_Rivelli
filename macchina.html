@@ -621,6 +621,12 @@ const WEBHOOK_CRUD = SR_CONFIG.WEBHOOK_CRUD;
 const WEBHOOK_RICHIESTA = SR_CONFIG.WEBHOOK_RICHIESTA;
 const WEBHOOK_UPDATE = SR_CONFIG.WEBHOOK_UPDATE;
 
+const MACCHINA_EDITORS = [
+  'f.j.migliazza@studiorivelli.it',
+  's.rocca@studiorivelli.it',
+  'l.rivelli@studiorivelli.it'
+].map(e => e.toLowerCase());
+
 const OPERATORI = [
   'Javier Migliazza',
   'Alessandro Lambiase',
@@ -803,6 +809,34 @@ async function initOperatorePrenota() {
     'error',
     8000
   );
+}
+
+function emailUtenteSessione() {
+  const u = SRAuth.getUser();
+  return String(u?.email || '').trim().toLowerCase();
+}
+
+function isMacchinaEditor() {
+  const email = emailUtenteSessione();
+  return email && MACCHINA_EDITORS.includes(email);
+}
+
+function emailPrenotazione(p) {
+  return String(p?.email || p?.creato_da || '').trim().toLowerCase();
+}
+
+function isPrenotazioneMia(p) {
+  const mine = emailUtenteSessione();
+  const row = emailPrenotazione(p);
+  return !!(mine && row && mine === row);
+}
+
+function canEliminarePrenotazione(p) {
+  return isMacchinaEditor() || isPrenotazioneMia(p);
+}
+
+function canModificarePrenotazione(p) {
+  return isMacchinaEditor();
 }
 
 async function apiCrud(payload) {
@@ -1029,6 +1063,8 @@ function apriDettaglioPrenotazione(id) {
         <dd>${esc(p.note || '—')}</dd>
       </dl>
     </div>`;
+  document.getElementById('detail-elimina').style.display = canEliminarePrenotazione(p) ? '' : 'none';
+  document.getElementById('detail-modifica').style.display = canModificarePrenotazione(p) ? '' : 'none';
   document.getElementById('detail-backdrop').classList.add('open');
 }
 
@@ -1113,12 +1149,17 @@ function refreshMonitoraggioSeAttivo() {
 }
 
 async function eliminaPrenotazione(id) {
+  const p = prenotazioni.find(x => Number(x.id) === Number(id));
+  if (!p || !canEliminarePrenotazione(p)) {
+    return showToast('Non autorizzato a cancellare questa prenotazione', 'error');
+  }
   if (!confirm('Eliminare questa prenotazione?')) return;
+  const own = !isMacchinaEditor();
   try {
     const resp = await SRAuth.fetch(WEBHOOK_UPDATE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'erase', id: Number(id) })
+      body: JSON.stringify({ action: 'erase', id: Number(id), own })
     });
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok || data.action === 'error' || data.ok === false) {
@@ -1192,7 +1233,15 @@ async function inviaPrenotazione() {
   const btn = document.getElementById('btn-prenota');
   btn.disabled = true;
   try {
-    await apiCrud({ action: 'insert', operatore, tipo_utilizzo, data_da, data_a, note });
+    await apiCrud({
+      action: 'insert',
+      operatore,
+      tipo_utilizzo,
+      data_da,
+      data_a,
+      note,
+      email: emailUtenteSessione()
+    });
     showToast('Prenotazione registrata', 'success');
     await caricaPrenotazioni(true);
     resetFormInserimento();
