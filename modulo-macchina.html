@@ -111,6 +111,55 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   opacity: .7;
 }
 .field input[readonly] { background: #f4f6fa; color: var(--text-2); }
+.date-box input[type="date"][readonly] { cursor: pointer; }
+.range-trigger {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  border: 1.5px solid var(--border); background: var(--surface); color: var(--navy);
+  font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 10px 12px; border-radius: var(--r2);
+  cursor: pointer; text-align: left; transition: border-color .15s, box-shadow .15s;
+}
+.range-trigger:hover { border-color: var(--blue-lt); box-shadow: var(--shadow-sm); }
+.range-trigger svg { flex-shrink: 0; color: var(--blue-lt); }
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(10,22,40,.45); z-index: 1000;
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-backdrop.open { display: flex; }
+.modal {
+  background: var(--surface); border-radius: var(--r3); box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border); width: min(380px, calc(100vw - 32px));
+}
+.modal-head { padding: 18px 20px 12px; border-bottom: 1px solid var(--border); }
+.modal-head h2 { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; color: var(--navy); }
+.modal-head p { font-size: 13px; color: var(--text-2); margin-top: 6px; line-height: 1.45; }
+.modal-body { padding: 16px 20px; }
+.modal-foot {
+  padding: 12px 20px 18px; border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end; gap: 10px;
+}
+.mon-cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.mon-cal-nav button {
+  border: 1px solid var(--border); background: var(--surface); border-radius: 6px;
+  width: 32px; height: 32px; cursor: pointer; font-size: 16px; color: var(--navy);
+}
+.mon-cal-nav span { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: var(--navy); }
+.mon-cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 6px; }
+.mon-cal-weekdays span {
+  text-align: center; font-size: 10px; font-weight: 600; text-transform: uppercase;
+  color: var(--text-3); padding: 4px 0;
+}
+.mon-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.mon-cal-day {
+  aspect-ratio: 1; border: 1px solid transparent; border-radius: 8px; background: transparent;
+  font-size: 12px; color: var(--navy); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s; touch-action: none;
+}
+.mon-cal-day.is-empty { visibility: hidden; pointer-events: none; }
+.mon-cal-day:hover:not(.is-empty) { background: #f0f4ff; border-color: var(--border); }
+.mon-cal-day.in-range { background: #e8f0fe; border-color: #c5d9f7; }
+.mon-cal-day.range-start, .mon-cal-day.range-end { background: var(--navy); color: #fff; border-color: var(--navy); }
+.mon-cal-day.is-weekend { color: #b45309; }
 .req { color: var(--blue-lt); }
 .scale-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); margin-bottom: 6px; }
 .scale-btns { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -232,17 +281,26 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
           <label>KM contachilometri <span class="req">*</span></label>
           <input type="number" id="f-km" min="0" step="1" required inputmode="numeric">
         </div>
+        <div class="field">
+          <label>Periodo utilizzo <span class="req">*</span></label>
+          <button type="button" class="range-trigger" id="f-range-trigger">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3"/>
+            </svg>
+            <span id="f-range-label">Seleziona periodo prelievo e restituzione</span>
+          </button>
+        </div>
         <div class="date-row">
           <div class="field field-date">
             <label>Data prelievo chiavi <span class="req">*</span></label>
             <div class="date-box">
-              <input type="date" id="f-prelievo" required>
+              <input type="date" id="f-prelievo" required readonly>
             </div>
           </div>
           <div class="field field-date">
             <label>Data restituzione chiavi <span class="req">*</span></label>
             <div class="date-box">
-              <input type="date" id="f-restituzione" required>
+              <input type="date" id="f-restituzione" required readonly>
             </div>
           </div>
         </div>
@@ -341,6 +399,28 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="modal-backdrop" id="range-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-labelledby="range-modal-title">
+    <div class="modal-head">
+      <h2 id="range-modal-title">Seleziona periodo</h2>
+      <p>Tieni premuto e trascina sui giorni, oppure clicca inizio e fine (anche mesi diversi)</p>
+    </div>
+    <div class="modal-body">
+      <div class="mon-cal-nav">
+        <button type="button" id="cal-prev" aria-label="Mese precedente">‹</button>
+        <span id="cal-month-label">—</span>
+        <button type="button" id="cal-next" aria-label="Mese successivo">›</button>
+      </div>
+      <div class="mon-cal-weekdays" id="cal-weekdays"></div>
+      <div class="mon-cal-grid" id="cal-grid"></div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" id="range-cancel">Annulla</button>
+      <button type="button" class="btn btn-primary" id="range-applica">Applica</button>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js"></script>

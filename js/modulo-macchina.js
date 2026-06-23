@@ -11,6 +11,15 @@
   let userEmail = '';
   let userName = '';
 
+  const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  const WD = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+  let calYear = new Date().getFullYear();
+  let calMonth = new Date().getMonth();
+  let calPickPhase = 0;
+  let rangeStart = null;
+  let rangeEnd = null;
+  let calDrag = { active: false, anchor: null, previewTo: null };
+
   const $ = id => document.getElementById(id);
 
   function toast(msg, type) {
@@ -19,6 +28,164 @@
     el.className = 'toast show' + (type === 'ok' ? ' ok' : type === 'err' ? ' err' : '');
     clearTimeout(toast._t);
     toast._t = setTimeout(() => el.classList.remove('show'), 3500);
+  }
+
+  function toISO(y, m, d) {
+    return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+
+  function fmtDateIt(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso + 'T12:00:00');
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  function formatRangeLabel(start, end) {
+    if (!start) return 'Seleziona periodo prelievo e restituzione';
+    if (!end || start === end) return fmtDateIt(start);
+    return fmtDateIt(start) + ' → ' + fmtDateIt(end);
+  }
+
+  function syncRangeToFields() {
+    if (rangeStart) $('f-prelievo').value = rangeStart;
+    if (rangeEnd) $('f-restituzione').value = rangeEnd;
+    $('f-range-label').textContent = formatRangeLabel(rangeStart, rangeEnd);
+  }
+
+  function loadRangeFromFields() {
+    rangeStart = $('f-prelievo').value || null;
+    rangeEnd = $('f-restituzione').value || rangeStart;
+    if (rangeStart && rangeEnd && rangeEnd < rangeStart) {
+      [rangeStart, rangeEnd] = [rangeEnd, rangeStart];
+    }
+  }
+
+  function renderCalendario() {
+    $('cal-month-label').textContent = MESI[calMonth] + ' ' + calYear;
+    $('cal-weekdays').innerHTML = WD.map((w, i) =>
+      `<span class="${i >= 5 ? 'is-weekend' : ''}">${w}</span>`).join('');
+
+    const first = new Date(calYear, calMonth, 1);
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const pad = (first.getDay() + 6) % 7;
+    let html = '';
+    for (let i = 0; i < pad; i++) html += '<span class="mon-cal-day is-empty"></span>';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = toISO(calYear, calMonth, d);
+      const dow = new Date(calYear, calMonth, d).getDay();
+      const isWk = dow === 0 || dow === 6;
+      let cls = 'mon-cal-day' + (isWk ? ' is-weekend' : '');
+      if (rangeStart && rangeEnd) {
+        if (iso >= rangeStart && iso <= rangeEnd) cls += ' in-range';
+        if (iso === rangeStart) cls += ' range-start';
+        if (iso === rangeEnd) cls += ' range-end';
+      } else if (rangeStart && iso === rangeStart) {
+        cls += ' range-start range-end';
+      }
+      html += `<button type="button" class="${cls}" data-iso="${iso}">${d}</button>`;
+    }
+    $('cal-grid').innerHTML = html;
+  }
+
+  function apriRangeModal() {
+    loadRangeFromFields();
+    const anchor = rangeStart ? new Date(rangeStart + 'T12:00:00') : new Date();
+    calYear = anchor.getFullYear();
+    calMonth = anchor.getMonth();
+    calPickPhase = 0;
+    calDrag = { active: false, anchor: null, previewTo: null };
+    renderCalendario();
+    $('range-backdrop').classList.add('open');
+  }
+
+  function chiudiRangeModal(apply) {
+    if (apply) {
+      if (!rangeStart || !rangeEnd) {
+        toast('Seleziona il periodo', 'err');
+        return;
+      }
+      syncRangeToFields();
+    } else {
+      loadRangeFromFields();
+    }
+    calDrag = { active: false, anchor: null, previewTo: null };
+    $('range-backdrop').classList.remove('open');
+  }
+
+  function onCalDayClick(iso) {
+    if (!rangeStart || calPickPhase === 0) {
+      rangeStart = iso;
+      rangeEnd = iso;
+      calPickPhase = 1;
+    } else {
+      rangeEnd = iso;
+      if (rangeEnd < rangeStart) [rangeStart, rangeEnd] = [rangeEnd, rangeStart];
+      calPickPhase = 0;
+    }
+    renderCalendario();
+  }
+
+  function setRangeFromDrag(anchor, previewTo) {
+    if (!anchor || !previewTo) return;
+    rangeStart = anchor <= previewTo ? anchor : previewTo;
+    rangeEnd = anchor <= previewTo ? previewTo : anchor;
+    renderCalendario();
+  }
+
+  function initRangePicker() {
+    $('f-range-trigger').addEventListener('click', apriRangeModal);
+    $('f-prelievo').addEventListener('click', apriRangeModal);
+    $('f-restituzione').addEventListener('click', apriRangeModal);
+    $('range-cancel').addEventListener('click', () => chiudiRangeModal(false));
+    $('range-applica').addEventListener('click', () => chiudiRangeModal(true));
+    $('cal-prev').addEventListener('click', () => {
+      calMonth--;
+      if (calMonth < 0) { calMonth = 11; calYear--; }
+      renderCalendario();
+    });
+    $('cal-next').addEventListener('click', () => {
+      calMonth++;
+      if (calMonth > 11) { calMonth = 0; calYear++; }
+      renderCalendario();
+    });
+
+    const grid = $('cal-grid');
+    grid.addEventListener('click', e => {
+      if (calDrag.active) return;
+      const btn = e.target.closest('[data-iso]');
+      if (btn) onCalDayClick(btn.dataset.iso);
+    });
+
+    grid.addEventListener('pointerdown', e => {
+      const btn = e.target.closest('[data-iso]');
+      if (!btn) return;
+      e.preventDefault();
+      calDrag = { active: true, anchor: btn.dataset.iso, previewTo: btn.dataset.iso };
+      setRangeFromDrag(calDrag.anchor, calDrag.previewTo);
+      try { grid.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    });
+
+    grid.addEventListener('pointermove', e => {
+      if (!calDrag.active) return;
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const btn = el?.closest?.('[data-iso]');
+      if (btn && btn.dataset.iso !== calDrag.previewTo) {
+        calDrag.previewTo = btn.dataset.iso;
+        setRangeFromDrag(calDrag.anchor, calDrag.previewTo);
+      }
+    });
+
+    grid.addEventListener('pointerup', e => {
+      if (!calDrag.active) return;
+      try { grid.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+      calDrag = { active: false, anchor: null, previewTo: null };
+      calPickPhase = 0;
+    });
+
+    grid.addEventListener('pointercancel', () => {
+      calDrag = { active: false, anchor: null, previewTo: null };
+    });
   }
 
   function showStep(n) {
@@ -167,6 +334,8 @@
     renderPhotos();
     $('modulo-form').reset();
     $('f-nome').value = userName;
+    rangeStart = rangeEnd = null;
+    $('f-range-label').textContent = formatRangeLabel(null, null);
     showStep(1);
     $('form-wrap').classList.remove('hidden');
     $('success-wrap').classList.add('hidden');
@@ -233,5 +402,10 @@
 
   $('btn-nuovo').addEventListener('click', resetForm);
 
-  initUser().then(ok => { if (ok) showStep(1); });
+  initUser().then(ok => {
+    if (ok) {
+      initRangePicker();
+      showStep(1);
+    }
+  });
 })();
