@@ -96,7 +96,9 @@
     calPickPhase = 0;
     calDrag = { active: false, anchor: null, previewTo: null };
     renderCalendario();
+    document.body.classList.add('modal-open');
     $('range-backdrop').classList.add('open');
+    $('range-backdrop').setAttribute('aria-hidden', 'false');
   }
 
   function chiudiRangeModal(apply) {
@@ -111,6 +113,8 @@
     }
     calDrag = { active: false, anchor: null, previewTo: null };
     $('range-backdrop').classList.remove('open');
+    $('range-backdrop').setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
   }
 
   function onCalDayClick(iso) {
@@ -133,10 +137,24 @@
     renderCalendario();
   }
 
+  function bindOpenRange(el) {
+    if (!el) return;
+    let last = 0;
+    const open = e => {
+      e.preventDefault();
+      const now = Date.now();
+      if (now - last < 450) return;
+      last = now;
+      apriRangeModal();
+    };
+    el.addEventListener('touchend', open, { passive: false });
+    el.addEventListener('click', open);
+  }
+
   function initRangePicker() {
-    $('f-range-trigger').addEventListener('click', apriRangeModal);
-    $('f-prelievo').addEventListener('click', apriRangeModal);
-    $('f-restituzione').addEventListener('click', apriRangeModal);
+    bindOpenRange($('f-range-trigger'));
+    bindOpenRange($('f-prelievo'));
+    bindOpenRange($('f-restituzione'));
     $('range-cancel').addEventListener('click', () => chiudiRangeModal(false));
     $('range-applica').addEventListener('click', () => chiudiRangeModal(true));
     $('cal-prev').addEventListener('click', () => {
@@ -402,10 +420,6 @@
 
   $('btn-nuovo').addEventListener('click', resetForm);
 
-  initUser().then(ok => {
-    if (ok) {
-      initRangePicker();
-      showStep(1);
-    }
-  });
+  initRangePicker();
+  initUser().then(ok => { if (ok) showStep(1); });
 })();

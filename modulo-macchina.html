@@ -117,14 +117,31 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   border: 1.5px solid var(--border); background: var(--surface); color: var(--navy);
   font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 10px 12px; border-radius: var(--r2);
   cursor: pointer; text-align: left; transition: border-color .15s, box-shadow .15s;
+  -webkit-appearance: none; appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
-.range-trigger:hover { border-color: var(--blue-lt); box-shadow: var(--shadow-sm); }
+@media (hover: hover) {
+  .range-trigger:hover { border-color: var(--blue-lt); box-shadow: var(--shadow-sm); }
+}
+.range-trigger:active { border-color: var(--blue-lt); background: #f8faff; }
 .range-trigger svg { flex-shrink: 0; color: var(--blue-lt); }
 .modal-backdrop {
-  position: fixed; inset: 0; background: rgba(10,22,40,.45); z-index: 1000;
-  display: none; align-items: center; justify-content: center; padding: 20px;
+  position: fixed; inset: 0; z-index: 9999;
+  width: 100%; height: 100%; height: 100dvh;
+  min-height: -webkit-fill-available;
+  background: rgba(10,22,40,.45);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+  visibility: hidden; opacity: 0; pointer-events: none;
+  transition: opacity .2s, visibility .2s;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
-.modal-backdrop.open { display: flex; }
+.modal-backdrop.open {
+  visibility: visible; opacity: 1; pointer-events: auto;
+}
+body.modal-open { overflow: hidden; position: fixed; width: 100%; }
 .modal {
   background: var(--surface); border-radius: var(--r3); box-shadow: var(--shadow-sm);
   border: 1px solid var(--border); width: min(380px, calc(100vw - 32px));
