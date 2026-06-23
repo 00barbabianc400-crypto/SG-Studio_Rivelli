@@ -127,25 +127,18 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .range-trigger:active { border-color: var(--blue-lt); background: #f8faff; }
 .range-trigger svg { flex-shrink: 0; color: var(--blue-lt); }
 .modal-backdrop {
-  position: fixed; inset: 0; z-index: 9999;
-  width: 100%; height: 100%; height: 100dvh;
-  min-height: -webkit-fill-available;
-  background: rgba(10,22,40,.45);
-  display: flex; align-items: center; justify-content: center; padding: 20px;
-  padding-bottom: max(20px, env(safe-area-inset-bottom));
-  visibility: hidden; opacity: 0; pointer-events: none;
-  transition: opacity .2s, visibility .2s;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  position: fixed; inset: 0; background: rgba(10,22,40,.45); z-index: 1000;
+  display: none; align-items: center; justify-content: center; padding: 20px;
 }
-.modal-backdrop.open {
-  visibility: visible; opacity: 1; pointer-events: auto;
-}
-body.modal-open { overflow: hidden; position: fixed; width: 100%; }
+.modal-backdrop.open { display: flex; }
+#range-backdrop { z-index: 1100; }
 .modal {
   background: var(--surface); border-radius: var(--r3); box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border); width: min(380px, calc(100vw - 32px));
+  border: 1px solid var(--border); width: min(420px, calc(100vw - 32px));
+  transform: translateY(10px); transition: transform .2s;
 }
+.modal-backdrop.open .modal { transform: none; }
+.modal-lg { width: min(380px, calc(100vw - 32px)); }
 .modal-head { padding: 18px 20px 12px; border-bottom: 1px solid var(--border); }
 .modal-head h2 { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; color: var(--navy); }
 .modal-head p { font-size: 13px; color: var(--text-2); margin-top: 6px; line-height: 1.45; }
@@ -258,6 +251,8 @@ body.modal-open { overflow: hidden; position: fixed; width: 100%; }
     max-width: none;
   }
   .toast.show { transform: translateY(0); }
+  .modal-backdrop { padding: 12px; align-items: flex-end; }
+  .modal-backdrop.open .modal { max-height: calc(100dvh - 24px); overflow-y: auto; }
 }
 </style>
 </head>
@@ -311,13 +306,13 @@ body.modal-open { overflow: hidden; position: fixed; width: 100%; }
           <div class="field field-date">
             <label>Data prelievo chiavi <span class="req">*</span></label>
             <div class="date-box">
-              <input type="date" id="f-prelievo" required readonly>
+              <input type="date" id="f-prelievo" readonly tabindex="-1">
             </div>
           </div>
           <div class="field field-date">
             <label>Data restituzione chiavi <span class="req">*</span></label>
             <div class="date-box">
-              <input type="date" id="f-restituzione" required readonly>
+              <input type="date" id="f-restituzione" readonly tabindex="-1">
             </div>
           </div>
         </div>
@@ -418,7 +413,7 @@ body.modal-open { overflow: hidden; position: fixed; width: 100%; }
 <div class="toast" id="toast"></div>
 
 <div class="modal-backdrop" id="range-backdrop" aria-hidden="true">
-  <div class="modal" role="dialog" aria-labelledby="range-modal-title">
+  <div class="modal modal-lg" role="dialog" aria-labelledby="range-modal-title">
     <div class="modal-head">
       <h2 id="range-modal-title">Seleziona periodo</h2>
       <p>Tieni premuto e trascina sui giorni, oppure clicca inizio e fine (anche mesi diversi)</p>

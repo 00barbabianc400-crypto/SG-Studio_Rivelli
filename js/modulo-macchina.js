@@ -96,9 +96,7 @@
     calPickPhase = 0;
     calDrag = { active: false, anchor: null, previewTo: null };
     renderCalendario();
-    document.body.classList.add('modal-open');
     $('range-backdrop').classList.add('open');
-    $('range-backdrop').setAttribute('aria-hidden', 'false');
   }
 
   function chiudiRangeModal(apply) {
@@ -113,8 +111,6 @@
     }
     calDrag = { active: false, anchor: null, previewTo: null };
     $('range-backdrop').classList.remove('open');
-    $('range-backdrop').setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('modal-open');
   }
 
   function onCalDayClick(iso) {
@@ -137,24 +133,8 @@
     renderCalendario();
   }
 
-  function bindOpenRange(el) {
-    if (!el) return;
-    let last = 0;
-    const open = e => {
-      e.preventDefault();
-      const now = Date.now();
-      if (now - last < 450) return;
-      last = now;
-      apriRangeModal();
-    };
-    el.addEventListener('touchend', open, { passive: false });
-    el.addEventListener('click', open);
-  }
-
   function initRangePicker() {
-    bindOpenRange($('f-range-trigger'));
-    bindOpenRange($('f-prelievo'));
-    bindOpenRange($('f-restituzione'));
+    $('f-range-trigger')?.addEventListener('click', () => apriRangeModal());
     $('range-cancel').addEventListener('click', () => chiudiRangeModal(false));
     $('range-applica').addEventListener('click', () => chiudiRangeModal(true));
     $('cal-prev').addEventListener('click', () => {
@@ -241,6 +221,10 @@
     if (n === 1) {
       const pre = $('f-prelievo').value;
       const res = $('f-restituzione').value;
+      if (!pre || !res) {
+        toast('Seleziona il periodo di utilizzo', 'err');
+        return false;
+      }
       if (res && pre && res < pre) {
         toast('La data restituzione non può precedere il prelievo', 'err');
         return false;
