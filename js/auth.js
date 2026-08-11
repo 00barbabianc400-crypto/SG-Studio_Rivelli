@@ -63,6 +63,9 @@
     sessionStorage.removeItem(C.TOKEN_KEY || 'sr_jwt');
     sessionStorage.removeItem(C.TOKEN_EXP_KEY || 'sr_jwt_exp');
     sessionStorage.removeItem(C.USER_KEY || 'sr_user');
+    if (global.SRPush && typeof global.SRPush.clearServerState === 'function') {
+      global.SRPush.clearServerState();
+    }
   }
 
   function clearMsalCache() {
@@ -176,28 +179,40 @@
     let data = {};
     try { data = raw ? JSON.parse(raw) : {}; } catch { data = {}; }
 
-    /* n8n Respond */
-    const token = data.token || data.body?.token;
-    const expiresAt = data.expiresAt || data.body?.expiresAt;
-    const expiresInSec = data.expiresInSec ?? data.body?.expiresInSec;
-    const user = data.user || data.body?.user;
+    /* n8n può rispondere oggetto { token } oppure array [auth, push_subscription] */
+    const rows = Array.isArray(data)
+      ? data
+      : (Array.isArray(data.body) ? data.body : null);
+    const authObj = rows
+      ? (rows.find(r => r && r.token) || rows[0] || {})
+      : (data.body && data.body.token ? data.body : data);
+    const pushRow = rows
+      ? rows.find(r => r && r.endpoint && (r.p256dh || r.keys?.p256dh))
+      : (data.endpoint ? data : null);
+
+    const token = authObj.token || data.token;
+    const expiresAt = authObj.expiresAt || data.expiresAt;
+    const expiresInSec = authObj.expiresInSec ?? data.expiresInSec;
+    const user = authObj.user || data.user;
 
     if (!resp.ok) {
-      throw new Error(data.message || data.body?.message || 'Accesso API non autorizzato (' + resp.status + ')');
+      throw new Error(authObj.message || data.message || data.body?.message || 'Accesso API non autorizzato (' + resp.status + ')');
     }
     if (!token) {
-      throw new Error(
-        'n8n ha risposto senza token.'
-      );
+      throw new Error('n8n ha risposto senza token.');
     }
 
     saveN8nSession({ token, expiresAt, expiresInSec, user });
-    return { token, expiresAt, expiresInSec, user };
+    if (global.SRPush && typeof global.SRPush.applyFromAuth === 'function') {
+      global.SRPush.applyFromAuth(pushRow || null);
+    }
+    return { token, expiresAt, expiresInSec, user, push: pushRow || null };
   }
 
   /** Macchina */
-  async function ensureN8nSession() {
-    if (hasN8nToken()) return true;
+  async function ensureN8nSession(options) {
+    const force = !!(options && options.force);
+    if (!force && hasN8nToken()) return true;
 
     const azure = await getAzureAccessToken();
     if (!azure || !azure.accessToken) {

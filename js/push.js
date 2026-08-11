@@ -8,6 +8,7 @@
 (function (global) {
   const C = global.SR_CONFIG || {};
   const FLAG_KEY = 'sr_push_ore_optin';
+  const SERVER_KEY = 'sr_push_server'; /* '1' = riga DT presente, '0' = assente, null = sconosciuto */
 
   function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -38,6 +39,15 @@
       || (global.navigator.platform === 'MacIntel' && global.navigator.maxTouchPoints > 1);
   }
 
+  function isAndroid() {
+    return /Android/i.test(global.navigator.userAgent);
+  }
+
+  /** iPhone/iPad/Android — dove ha senso il promemoria push */
+  function isMobilePushTarget() {
+    return isIos() || isAndroid();
+  }
+
   function isSupported() {
     return !!(global.Notification && global.navigator.serviceWorker);
   }
@@ -49,6 +59,43 @@
   function setOptedIn() {
     try { localStorage.setItem(FLAG_KEY, '1'); } catch { /* ignore */ }
     sessionStorage.setItem(FLAG_KEY, '1');
+    setServerActive(true);
+  }
+
+  /** Aggiorna stato da risposta auth (Get push_subscriptions) */
+  function applyFromAuth(row) {
+    if (row && row.endpoint && String(row.active) !== 'false' && row.active !== false) {
+      setServerActive(true);
+      try { localStorage.setItem(FLAG_KEY, '1'); } catch { /* ignore */ }
+      sessionStorage.setItem(FLAG_KEY, '1');
+    } else {
+      setServerActive(false);
+    }
+  }
+
+  function setServerActive(on) {
+    const v = on ? '1' : '0';
+    sessionStorage.setItem(SERVER_KEY, v);
+    try { localStorage.setItem(SERVER_KEY, v); } catch { /* ignore */ }
+  }
+
+  function clearServerState() {
+    sessionStorage.removeItem(SERVER_KEY);
+    sessionStorage.removeItem(FLAG_KEY);
+    try {
+      localStorage.removeItem(SERVER_KEY);
+      localStorage.removeItem(FLAG_KEY);
+    } catch { /* ignore */ }
+  }
+
+  function isRegisteredOnServer() {
+    const v = sessionStorage.getItem(SERVER_KEY) || localStorage.getItem(SERVER_KEY);
+    return v === '1';
+  }
+
+  /** Già attiva: riga in DT oppure opt-in locale dopo enable */
+  function isActive() {
+    return isRegisteredOnServer() || (hasOptedIn() && permissionState() === 'granted');
   }
 
   function permissionState() {
@@ -212,7 +259,13 @@
     isSupported,
     isStandalone,
     isIos,
+    isAndroid,
+    isMobilePushTarget,
     hasOptedIn,
+    isActive,
+    isRegisteredOnServer,
+    applyFromAuth,
+    clearServerState,
     permissionState,
     debugInfo,
     enableOreReminders,
