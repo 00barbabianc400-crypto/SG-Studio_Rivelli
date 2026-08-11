@@ -114,19 +114,6 @@ body {
   background: #f0f4ff; color: var(--blue);
 }
 .hub-card-loading { display: block; margin-top: 8px; font-size: 12px; color: var(--blue); font-weight: 600; }
-.hub-card-push {
-  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
-}
-.hub-card-push-btn {
-  width: 100%; padding: 10px 14px; border-radius: var(--r2); font-family: inherit;
-  font-size: 13px; font-weight: 600; cursor: pointer;
-  border: 1.5px solid var(--blue-lt); background: #fff; color: var(--blue);
-}
-.hub-card-push-btn:disabled { opacity: .55; cursor: default; }
-.hub-card-push-ok {
-  font-size: 13px; color: #0d7a3f; font-weight: 600; line-height: 1.4;
-}
-.hub-card-push-status { font-size: 12px; margin-top: 8px; line-height: 1.35; min-height: 0; }
 .hub-error { font-size: 13px; color: var(--danger); margin-bottom: 12px; min-height: 0; }
 .hub-error:not(:empty) { padding: 10px 12px; background: #fef2f2; border-radius: var(--r2); border: 1px solid #fecaca; }
 </style>
@@ -166,19 +153,12 @@ body {
   <main class="hub-body">
     <p class="hub-error" id="hub-error" aria-live="polite"></p>
     <div class="hub-grid">
-      <div class="hub-card" id="card-timesheet">
-        <a class="hub-card-link" href="timesheet_rivelli.html" id="link-timesheet" style="display:block;color:inherit;text-decoration:none">
+      <a class="hub-card" href="timesheet_rivelli.html" id="link-timesheet" style="display:block;color:inherit;text-decoration:none">
           <div class="hub-card-icon">⏱️</div>
           <div class="hub-card-title">Foglio presenze</div>
           <p class="hub-card-desc">Inserimento, monitoraggio e modifica delle ore lavorate.</p>
           <span class="hub-card-loading hidden" id="timesheet-loading">Connessione API…</span>
         </a>
-        <div class="hub-card-push hidden" id="ts-push-wrap">
-          <button type="button" class="hub-card-push-btn" id="btn-push-ore">Attiva promemoria ore</button>
-          <p class="hub-card-push-ok hidden" id="push-already">✓ Promemoria ore già attivo</p>
-          <p class="hub-card-push-status" id="push-status" aria-live="polite"></p>
-        </div>
-      </div>
       <a class="hub-card" href="macchina.html" id="link-macchina">
         <div class="hub-card-icon">🚗</div>
         <div class="hub-card-title">Auto aziendale</div>
@@ -208,33 +188,6 @@ function showHub() {
     el.textContent = u.name ? u.name + (u.email ? ' · ' + u.email : '') : u.email;
   } else {
     el.textContent = '';
-  }
-  syncPushUi();
-}
-
-function syncPushUi() {
-  const wrap = document.getElementById('ts-push-wrap');
-  const btn = document.getElementById('btn-push-ore');
-  const ok = document.getElementById('push-already');
-  const st = document.getElementById('push-status');
-  if (!wrap || !window.SRPush) return;
-
-  if (!SRPush.isMobilePushTarget()) {
-    wrap.classList.add('hidden');
-    return;
-  }
-  wrap.classList.remove('hidden');
-
-  if (SRPush.isActive()) {
-    btn.classList.add('hidden');
-    btn.disabled = true;
-    ok.classList.remove('hidden');
-    if (st) st.textContent = '';
-  } else {
-    btn.classList.remove('hidden');
-    btn.disabled = false;
-    btn.textContent = 'Attiva promemoria ore';
-    ok.classList.add('hidden');
   }
 }
 
@@ -301,7 +254,6 @@ document.getElementById('link-timesheet').addEventListener('click', async e => {
     if (!SRAuth.hasN8nToken()) {
       throw new Error('Token non salvato in sessione');
     }
-    syncPushUi();
     SRPush.syncIfEnabled();
     location.assign('timesheet_rivelli.html');
   } catch (ex) {
@@ -309,7 +261,6 @@ document.getElementById('link-timesheet').addEventListener('click', async e => {
     err.textContent = ex.message || 'Errore connessione API n8n';
     link.style.pointerEvents = '';
     loading.classList.add('hidden');
-    syncPushUi();
   }
 });
 
@@ -326,7 +277,6 @@ document.getElementById('link-macchina').addEventListener('click', async e => {
     if (!SRAuth.hasN8nToken()) {
       throw new Error('Token non salvato in sessione');
     }
-    syncPushUi();
     SRPush.syncIfEnabled();
     location.assign('macchina.html');
   } catch (ex) {
@@ -337,29 +287,8 @@ document.getElementById('link-macchina').addEventListener('click', async e => {
   }
 });
 
-document.getElementById('btn-push-ore').addEventListener('click', async e => {
-  e.preventDefault();
-  e.stopPropagation();
-  if (!SRPush.isMobilePushTarget() || SRPush.isActive()) return;
-  const btn = document.getElementById('btn-push-ore');
-  const st = document.getElementById('push-status');
-  st.style.color = 'var(--text-2)';
-  st.textContent = 'Avvio…';
-  btn.disabled = true;
-  try {
-    await SRPush.enableOreReminders();
-    syncPushUi();
-  } catch (ex) {
-    st.style.color = 'var(--danger)';
-    st.textContent = ex.message || 'Attivazione fallita';
-    btn.disabled = false;
-  }
-});
-
-syncPushUi();
-
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=17').then(reg => reg.update()).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=18').then(reg => reg.update()).catch(() => {});
 }
 </script>
 </body>

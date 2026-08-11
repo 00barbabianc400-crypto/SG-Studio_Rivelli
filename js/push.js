@@ -70,6 +70,8 @@
       sessionStorage.setItem(FLAG_KEY, '1');
     } else {
       setServerActive(false);
+      sessionStorage.removeItem(FLAG_KEY);
+      try { localStorage.removeItem(FLAG_KEY); } catch { /* ignore */ }
     }
   }
 
@@ -93,9 +95,12 @@
     return v === '1';
   }
 
-  /** Già attiva: riga in DT oppure opt-in locale dopo enable */
+  /** Attiva solo se server dice sì (o opt-in locale se stato ancora sconosciuto) */
   function isActive() {
-    return isRegisteredOnServer() || (hasOptedIn() && permissionState() === 'granted');
+    const v = sessionStorage.getItem(SERVER_KEY) || localStorage.getItem(SERVER_KEY);
+    if (v === '0') return false;
+    if (v === '1') return true;
+    return hasOptedIn() && permissionState() === 'granted';
   }
 
   function permissionState() {
@@ -240,6 +245,67 @@
     return true;
   }
 
+  async function disableOreReminders() {
+    await global.SRAuth.ensureN8nSession();
+    const url = C.WEBHOOK_PUSH_SUBSCRIBE;
+    if (!url || !global.SRAuth) throw new Error('WEBHOOK_PUSH_SUBSCRIBE / SRAuth non disponibili');
+    const user = global.SRAuth.getUser() || {};
+    let subscription = null;
+    try { subscription = await getSubscriptionJson(); } catch { /* ignore */ }
+
+    const resp = await global.SRAuth.fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        action: 'deactivate',
+        active: false,
+        email: String(user.email || '').toLowerCase(),
+        name: String(user.name || ''),
+        subscription: subscription || undefined,
+        platform: isIos() ? 'ios'
+          : /Android/i.test(navigator.userAgent) ? 'android' : 'desktop'
+      })
+    });
+    if (!resp.ok) {
+      const t = await resp.text().catch(() => '');
+      throw new Error('Disattivazione fallita (' + resp.status + ') ' + t.slice(0, 120));
+    }
+
+    setServerActive(false);
+    sessionStorage.removeItem(FLAG_KEY);
+    try { localStorage.removeItem(FLAG_KEY); } catch { /* ignore */ }
+
+    try {
+      const reg = await getRegistration();
+      const sub = reg && (await reg.pushManager.getSubscription());
+      if (sub) await sub.unsubscribe();
+    } catch { /* ignore */ }
+    return true;
+  }
+
+  async function toggleOreReminders() {
+    if (isActive()) return disableOreReminders();
+    return enableOreReminders();
+  }
+
+  /** Aggiorna bottone icona (verde check / rosso x). Solo mobile. */
+  function paintToggleButton(btn) {
+    if (!btn) return;
+    const show = isMobilePushTarget();
+    btn.classList.toggle('hidden', !show);
+    btn.classList.toggle('is-visible', show);
+    if (!show) return;
+    const on = isActive();
+    btn.classList.toggle('is-on', on);
+    btn.classList.toggle('is-off', !on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.setAttribute(
+      'aria-label',
+      on ? 'Promemoria ore attivo. Tocca per disattivare.' : 'Promemoria ore disattivo. Tocca per attivare.'
+    );
+    btn.title = on ? 'Promemoria attivo — disattiva' : 'Promemoria spento — attiva';
+  }
+
   async function syncIfEnabled() {
     if (!isSupported() || !hasOptedIn()) return false;
     if (permissionState() !== 'granted') return false;
@@ -269,6 +335,9 @@
     permissionState,
     debugInfo,
     enableOreReminders,
+    disableOreReminders,
+    toggleOreReminders,
+    paintToggleButton,
     syncIfEnabled,
     getSubscriptionJson
   };

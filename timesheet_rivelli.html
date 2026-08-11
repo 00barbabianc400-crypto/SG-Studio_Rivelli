@@ -46,6 +46,39 @@ select, input { font: inherit; }
   height: 52px; position: sticky; top: 0; z-index: 50;
 }
 .topbar-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.topbar-push {
+  display: none;
+  margin-left: auto;
+  flex-shrink: 0;
+  position: relative;
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,.08);
+  align-items: center; justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  padding: 0;
+}
+.topbar-push.is-visible { display: none; }
+.topbar-push svg.topbar-push-bell {
+  width: 20px; height: 20px;
+  stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+}
+.topbar-push-badge {
+  position: absolute; right: 4px; bottom: 4px;
+  width: 14px; height: 14px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid #0a1628;
+}
+.topbar-push-badge svg { width: 9px; height: 9px; stroke: #fff; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.topbar-push.is-on { color: #4ade80; }
+.topbar-push.is-on .topbar-push-badge { background: #16a34a; }
+.topbar-push.is-on .badge-x { display: none; }
+.topbar-push.is-off { color: #f87171; }
+.topbar-push.is-off .topbar-push-badge { background: #dc2626; }
+.topbar-push.is-off .badge-check { display: none; }
+.topbar-push:disabled { opacity: .55; cursor: wait; }
 .topbar-home {
   color: rgba(255,255,255,.85); text-decoration: none; font-size: 13px; font-weight: 500;
   padding: 6px 10px; border-radius: 6px; flex-shrink: 0;
@@ -568,6 +601,8 @@ tr:hover .btn-del { opacity: 1; }
     padding: 10px 4px; font-size: 11px; line-height: 1.2; min-height: 44px;
     white-space: normal; text-align: center;
   }
+  .topbar-brand { width: 100%; }
+  .topbar-push.is-visible { display: inline-flex; }
 }
 </style>
 </head>
@@ -584,6 +619,16 @@ tr:hover .btn-del { opacity: 1; }
       </svg>
     </div>
     <span class="topbar-name">Studio Rivelli <span>Consulting</span></span>
+    <button type="button" class="topbar-push hidden" id="btn-push-toggle" aria-label="Promemoria ore">
+      <svg class="topbar-push-bell" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6 9a6 6 0 0 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/>
+        <path d="M10 21a2 2 0 0 0 4 0"/>
+      </svg>
+      <span class="topbar-push-badge" aria-hidden="true">
+        <svg class="badge-check" viewBox="0 0 12 12"><path d="M2.5 6.5 5 9l4.5-5.5"/></svg>
+        <svg class="badge-x" viewBox="0 0 12 12"><path d="M3 3l6 6M9 3 3 9"/></svg>
+      </span>
+    </button>
   </div>
   <div class="topbar-right">
     <span class="topbar-meta" id="topbar-date"></span>
@@ -955,6 +1000,7 @@ tr:hover .btn-del { opacity: 1; }
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/push.js"></script>
 <script>
 /* ═══════════════════════════════════════════════
    DATI 
@@ -3076,6 +3122,12 @@ function showToast(msg, type, ms) {
     document.body.classList.remove('app-loading');
     initSetup();
     initMonRangeCalendario();
+    if (window.SRPush) {
+      SRPush.paintToggleButton(document.getElementById('btn-push-toggle'));
+      SRPush.syncIfEnabled().finally(() => {
+        SRPush.paintToggleButton(document.getElementById('btn-push-toggle'));
+      });
+    }
     if (timesheetAutorizzato) {
       showToast(`✓ Dati caricati (${DIPENDENTI.length} dip., ${CLIENTI.length} clienti)`);
     }
@@ -3086,6 +3138,22 @@ function showToast(msg, type, ms) {
     console.error('[retrieve-data]', err);
   }
 })();
+
+document.getElementById('btn-push-toggle')?.addEventListener('click', async () => {
+  if (!window.SRPush || !SRPush.isMobilePushTarget()) return;
+  const btn = document.getElementById('btn-push-toggle');
+  btn.disabled = true;
+  try {
+    await SRPush.toggleOreReminders();
+    SRPush.paintToggleButton(btn);
+    showToast(SRPush.isActive() ? '✓ Promemoria ore attivo' : 'Promemoria ore disattivato');
+  } catch (ex) {
+    showToast('⚠ ' + (ex.message || 'Operazione notifiche fallita'));
+  } finally {
+    btn.disabled = false;
+    SRPush.paintToggleButton(btn);
+  }
+});
 </script>
 </body>
 </html>
