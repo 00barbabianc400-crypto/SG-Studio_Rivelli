@@ -1,4 +1,4 @@
-const CACHE = 'sr-pwa-v16';
+const CACHE = 'sr-pwa-v17';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -12,23 +12,29 @@ self.addEventListener('activate', e => {
   );
 });
 
-/* Web Push — payload JSON { title, body, url, tag } oppure Declarative Web Push */
+/* Web Push — JSON classico o Declarative { web_push, notification } */
 self.addEventListener('push', event => {
-  let data = {};
-  try {
-    data = event.data ? event.data.json() : {};
-  } catch {
-    data = { body: event.data ? event.data.text() : '' };
-  }
-  const title = data.title || data.notification?.title || 'Studio Rivelli';
-  const options = {
-    body: data.body || data.notification?.body || 'Hai una notifica',
-    tag: data.tag || data.notification?.tag || 'sr-push',
-    data: { url: data.url || data.notification?.navigate || './timesheet_rivelli.html' },
-    icon: './assets/logo_app.jpg',
-    badge: './assets/logo_app.jpg'
-  };
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil((async () => {
+    let data = {};
+    try {
+      data = event.data ? event.data.json() : {};
+    } catch {
+      try { data = { body: event.data ? event.data.text() : '' }; } catch { data = {}; }
+    }
+    const n = data.notification || {};
+    const title = n.title || data.title || 'Studio Rivelli';
+    const body = n.body || data.body || 'Hai una notifica';
+    const url = n.navigate || data.url || './timesheet_rivelli.html';
+    const tag = n.tag || data.tag || 'sr-push';
+    await self.registration.showNotification(title, {
+      body,
+      tag,
+      data: { url },
+      icon: './assets/logo_app.jpg',
+      badge: './assets/logo_app.jpg',
+      renotify: true
+    });
+  })());
 });
 
 self.addEventListener('notificationclick', event => {
@@ -39,7 +45,7 @@ self.addEventListener('notificationclick', event => {
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       for (const client of list) {
         if ('focus' in client) {
-          client.navigate(abs);
+          if ('navigate' in client) client.navigate(abs);
           return client.focus();
         }
       }
