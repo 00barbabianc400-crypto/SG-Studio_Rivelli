@@ -62,9 +62,17 @@
     setServerActive(true);
   }
 
+  /** true solo se riga subscription attiva */
+  function isPushRowActive(row) {
+    if (!row || !row.endpoint) return false;
+    const a = row.active;
+    if (a === false || a === 'false' || a === 0 || a === '0' || a === 'False') return false;
+    return true;
+  }
+
   /** Aggiorna stato da risposta auth (Get push_subscriptions) */
   function applyFromAuth(row) {
-    if (row && row.endpoint && String(row.active) !== 'false' && row.active !== false) {
+    if (isPushRowActive(row)) {
       setServerActive(true);
       try { localStorage.setItem(FLAG_KEY, '1'); } catch { /* ignore */ }
       sessionStorage.setItem(FLAG_KEY, '1');

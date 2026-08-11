@@ -179,16 +179,34 @@
     let data = {};
     try { data = raw ? JSON.parse(raw) : {}; } catch { data = {}; }
 
-    /* n8n può rispondere oggetto { token } oppure array [auth, push_subscription] */
+    /*
+     * Formati supportati:
+     *  A) { token, user, pushSubscription: {...} }  ← preferito (Code Auth Merge Push)
+     *  B) [ { token, user }, { endpoint, active, ... } ]
+     *  C) { token, user } solo (niente push → campanella rossa)
+     */
     const rows = Array.isArray(data)
       ? data
       : (Array.isArray(data.body) ? data.body : null);
+
     const authObj = rows
       ? (rows.find(r => r && r.token) || rows[0] || {})
-      : (data.body && data.body.token ? data.body : data);
-    const pushRow = rows
-      ? rows.find(r => r && r.endpoint && (r.p256dh || r.keys?.p256dh))
-      : (data.endpoint ? data : null);
+      : (data.body && typeof data.body === 'object' && data.body.token ? data.body : data);
+
+    let pushRow =
+      authObj.pushSubscription ||
+      authObj.subscription ||
+      authObj.push ||
+      data.pushSubscription ||
+      data.subscription ||
+      null;
+
+    if (!pushRow && rows) {
+      pushRow = rows.find(r => r && r.endpoint && (r.p256dh || r.keys?.p256dh)) || null;
+    }
+    if (!pushRow && data.endpoint && (data.p256dh || data.keys?.p256dh)) {
+      pushRow = data;
+    }
 
     const token = authObj.token || data.token;
     const expiresAt = authObj.expiresAt || data.expiresAt;
@@ -203,9 +221,10 @@
     }
 
     saveN8nSession({ token, expiresAt, expiresInSec, user });
-    /* pushRow.active true → icona verde; false/assente → rossa */
     if (global.SRPush && typeof global.SRPush.applyFromAuth === 'function') {
       global.SRPush.applyFromAuth(pushRow || null);
+    } else {
+      console.warn('[auth] SRPush non pronto: stato campanella non aggiornato');
     }
     return { token, expiresAt, expiresInSec, user, push: pushRow || null };
   }
