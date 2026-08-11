@@ -20,8 +20,13 @@
       || global.navigator.standalone === true;
   }
 
+  function isIos() {
+    return /iPhone|iPad|iPod/i.test(global.navigator.userAgent)
+      || (global.navigator.platform === 'MacIntel' && global.navigator.maxTouchPoints > 1);
+  }
+
   function isSupported() {
-    return !!(global.Notification && global.PushManager && global.navigator.serviceWorker);
+    return !!(global.Notification && 'PushManager' in global && global.navigator.serviceWorker);
   }
 
   function hasOptedIn() {
@@ -45,16 +50,46 @@
     return sub ? sub.toJSON() : null;
   }
 
+  /**
+   * Su iOS il permesso va chiesto NEL gesto utente (niente await prima).
+   * Se chiami requestPermission dopo ensureN8nSession, Safari risponde denied senza dialog.
+   */
   async function subscribe() {
     if (!isSupported()) throw new Error('Push non supportato su questo browser');
+    if (isIos() && !isStandalone()) {
+      throw new Error(
+        'Su iPhone apri l’app dalla Home (icona), non da Safari, poi riprova.'
+      );
+    }
+
     const pub = String(C.VAPID_PUBLIC || '').trim();
     if (!pub) throw new Error('VAPID_PUBLIC mancante in config.js');
 
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') throw new Error('Permesso notifiche negato');
+    if (Notification.permission === 'denied') {
+      throw new Error(
+        isIos()
+          ? 'Notifiche bloccate. Impostazioni → Studio Rivelli → Notifiche → Consenti, poi riprova.'
+          : 'Permesso notifiche negato nelle impostazioni del browser.'
+      );
+    }
+
+    let perm = Notification.permission;
+    if (perm !== 'granted') {
+      perm = await Notification.requestPermission();
+    }
+    if (perm !== 'granted') {
+      throw new Error(
+        isIos()
+          ? 'Permesso non concesso. Chiudi e riapri dalla Home, poi tocca di nuovo Attiva.'
+          : 'Permesso notifiche negato'
+      );
+    }
 
     const reg = await getRegistration();
-    if (!reg) throw new Error('Service worker non pronto');
+    if (!reg) throw new Error('Service worker non pronto — ricarica l’app dalla Home');
+    if (!reg.pushManager) {
+      throw new Error('PushManager assente: apri dalla Home (PWA), non dal browser');
+    }
 
     let sub = await reg.pushManager.getSubscription();
     if (!sub) {
@@ -90,10 +125,10 @@
     return true;
   }
 
-  /** Attiva (gesto utente) + salva su n8n */
+  /** Attiva: prima permesso/subscribe (gesto iOS), poi JWT + salvataggio n8n */
   async function enableOreReminders() {
-    await global.SRAuth.ensureN8nSession();
     const subscription = await subscribe();
+    await global.SRAuth.ensureN8nSession();
     await saveSubscription(subscription);
     return true;
   }
