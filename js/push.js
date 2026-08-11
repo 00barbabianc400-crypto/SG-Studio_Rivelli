@@ -1,9 +1,9 @@
 /**
  * Web Push — promemoria ore (< 8h).
- * Richiede: VAPID_PUBLIC, WEBHOOK_PUSH_SUBSCRIBE, service worker con evento "push".
  *
- * iOS/Chrome: Notification.requestPermission() deve partire nel click handler
- * (vedi index.html) PRIMA di qualsiasi altro await.
+ * Desktop Chrome: non usare requestPermission isolato (spesso "quiet UI" → default
+ * senza dialog). Meglio pushManager.subscribe(), che chiede il permesso nel flusso.
+ * iOS: serve PWA standalone; requestPermission con timeout (altrimenti hang infinito).
  */
 (function (global) {
   const C = global.SR_CONFIG || {};
@@ -16,6 +16,16 @@
     const out = new Uint8Array(raw.length);
     for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
     return out;
+  }
+
+  function withTimeout(promise, ms, message) {
+    return new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error(message)), ms);
+      Promise.resolve(promise).then(
+        v => { clearTimeout(t); resolve(v); },
+        e => { clearTimeout(t); reject(e); }
+      );
+    });
   }
 
   function isStandalone() {
@@ -55,35 +65,14 @@
     ].join(' · ');
   }
 
-  /**
-   * Avvia la richiesta permesso in modo sincrono dal click.
-   * Ritorna una Promise — chiamare SUBITO nel listener, senza await prima.
-   */
-  function beginPermissionRequest() {
-    if (!global.Notification) {
-      return Promise.reject(new Error('Notification API assente'));
-    }
-    if (!global.isSecureContext) {
-      return Promise.reject(new Error('Serve HTTPS (contesto non sicuro)'));
-    }
-    const cur = Notification.permission;
-    if (cur === 'granted') return Promise.resolve('granted');
-    if (cur === 'denied') {
-      return Promise.reject(new Error(
-        isIos()
-          ? 'Notifiche bloccate per l’app. Impostazioni iPhone → Notifiche → Studio Rivelli → Consenti.'
-          : 'Notifiche bloccate per il sito. Lucchetto URL → Notifiche → Consenti (o Reset autorizzazioni), poi ricarica.'
-      ));
-    }
-    // 'default' → deve aprire il dialog del browser
-    return Notification.requestPermission();
-  }
-
   async function getRegistration() {
     if (!global.navigator.serviceWorker) return null;
-    const existing = await global.navigator.serviceWorker.getRegistration();
-    if (existing) return existing;
-    return global.navigator.serviceWorker.ready;
+    let reg = await global.navigator.serviceWorker.getRegistration();
+    if (!reg) {
+      reg = await global.navigator.serviceWorker.register('sw.js?v=14');
+    }
+    await global.navigator.serviceWorker.ready;
+    return reg || global.navigator.serviceWorker.getRegistration();
   }
 
   async function getSubscriptionJson() {
@@ -93,29 +82,66 @@
     return sub ? sub.toJSON() : null;
   }
 
-  async function createSubscription() {
-    if (isIos() && !isStandalone()) {
-      throw new Error('Su iPhone apri l’app dall’icona Home (non da Safari).');
+  async function ensureNotificationPermission() {
+    if (!global.Notification) throw new Error('Notification API assente');
+    if (!global.isSecureContext) throw new Error('Serve HTTPS');
+
+    const cur = Notification.permission;
+    if (cur === 'granted') return 'granted';
+    if (cur === 'denied') {
+      throw new Error(
+        isIos()
+          ? 'Notifiche bloccate. Impostazioni → Notifiche → Studio Rivelli → Consenti.'
+          : 'Notifiche bloccate. Lucchetto URL → Notifiche → Consenti, poi ricarica.'
+      );
     }
+
+    /* iOS: prompt esplicito con timeout (senza timeout resta in hang) */
+    if (isIos()) {
+      if (!isStandalone()) {
+        throw new Error('Apri l’app dall’icona Home (standalone), non da Safari.');
+      }
+      const perm = await withTimeout(
+        Notification.requestPermission(),
+        15000,
+        'Timeout permesso iOS — riprova o Controlla Impostazioni → Notifiche'
+      );
+      if (perm !== 'granted') {
+        throw new Error('Permesso iOS: ' + perm + '. ' + debugInfo());
+      }
+      return perm;
+    }
+
+    /*
+     * Desktop: NON chiamare requestPermission() da solo.
+     * Chrome "quieter UI" risponde default senza dialog.
+     * Il permesso verrà richiesto da pushManager.subscribe().
+     */
+    return 'default';
+  }
+
+  async function createSubscription() {
     const pub = String(C.VAPID_PUBLIC || '').trim();
     if (!pub) throw new Error('VAPID_PUBLIC mancante in config.js');
 
-    const reg = await getRegistration();
-    if (!reg) throw new Error('Service worker assente — ricarica la pagina');
-    if (!reg.pushManager) {
+    /* ready di solito è già risolto se SW registrato al load — evita await lunghi prima del prompt */
+    const reg = await global.navigator.serviceWorker.ready;
+    if (!reg || !reg.pushManager) {
       throw new Error(
-        isIos()
-          ? 'Push non disponibile: riapri dalla Home (PWA). ' + debugInfo()
-          : 'PushManager assente. ' + debugInfo()
+        'PushManager assente (su iPhone solo dalla Home). ' + debugInfo()
       );
     }
 
     let sub = await reg.pushManager.getSubscription();
     if (!sub) {
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(pub)
-      });
+      sub = await withTimeout(
+        reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(pub)
+        }),
+        20000,
+        'Timeout subscribe — lucchetto URL → Notifiche → Consenti, poi riprova'
+      );
     }
     setOptedIn();
     return sub.toJSON();
@@ -144,15 +170,24 @@
     return true;
   }
 
-  /**
-   * @param {string} [permissionAlready] se il click handler ha già chiamato beginPermissionRequest
-   */
-  async function enableOreReminders(permissionAlready) {
-    let perm = permissionAlready || permissionState();
-    if (perm !== 'granted') {
-      throw new Error('Permesso non granted (' + perm + '). ' + debugInfo());
+  async function enableOreReminders() {
+    /* Desktop: vai subito a subscribe (prompt Chrome). iOS: permesso esplicito prima. */
+    if (isIos()) {
+      await ensureNotificationPermission();
+    } else if (Notification.permission === 'denied') {
+      throw new Error(
+        'Notifiche bloccate. Lucchetto URL → Notifiche → Consenti, poi ricarica. ' + debugInfo()
+      );
     }
+
     const subscription = await createSubscription();
+    if (Notification.permission !== 'granted') {
+      throw new Error(
+        'Dopo subscribe perm=' + Notification.permission + '. '
+        + 'Abilita: lucchetto URL → Notifiche → Consenti. '
+        + debugInfo()
+      );
+    }
     await global.SRAuth.ensureN8nSession();
     await saveSubscription(subscription);
     return true;
@@ -180,7 +215,6 @@
     hasOptedIn,
     permissionState,
     debugInfo,
-    beginPermissionRequest,
     enableOreReminders,
     syncIfEnabled,
     getSubscriptionJson

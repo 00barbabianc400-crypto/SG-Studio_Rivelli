@@ -294,39 +294,27 @@ document.getElementById('link-macchina').addEventListener('click', async e => {
   }
 });
 
-document.getElementById('btn-push-ore').addEventListener('click', () => {
+document.getElementById('btn-push-ore').addEventListener('click', async () => {
   const btn = document.getElementById('btn-push-ore');
   const st = document.getElementById('push-status');
-  st.style.color = '';
-  st.textContent = SRPush.debugInfo();
-
-  /* Avvia il dialog QUI, in modo sincrono — prima di qualsiasi await */
-  const permPromise = SRPush.beginPermissionRequest();
-
-  (async () => {
-    btn.disabled = true;
-    try {
-      const perm = await permPromise;
-      if (perm === 'granted' && Notification.permission === 'granted') {
-        st.textContent = 'Permesso ok, registro… (' + SRPush.debugInfo() + ')';
-      } else {
-        throw new Error('Nessun consenso (perm=' + perm + '). ' + SRPush.debugInfo());
-      }
-      await SRPush.enableOreReminders(perm);
-      st.style.color = 'var(--blue)';
-      st.textContent = 'Promemoria ore attivo.';
-      btn.textContent = 'Promemoria già attivo';
-    } catch (ex) {
-      st.style.color = 'var(--danger)';
-      st.textContent = (ex.message || 'Attivazione fallita') + ' | ' + SRPush.debugInfo();
-    } finally {
-      btn.disabled = false;
-    }
-  })();
+  st.style.color = 'var(--text-2)';
+  st.textContent = 'Avvio… ' + SRPush.debugInfo();
+  btn.disabled = true;
+  try {
+    await SRPush.enableOreReminders();
+    st.style.color = 'var(--blue)';
+    st.textContent = 'Promemoria ore attivo. ' + SRPush.debugInfo();
+    btn.textContent = 'Promemoria già attivo';
+  } catch (ex) {
+    st.style.color = 'var(--danger)';
+    st.textContent = (ex.message || 'Attivazione fallita') + ' | ' + SRPush.debugInfo();
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=13').then(reg => reg.update()).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=14').then(reg => reg.update()).catch(() => {});
 }
 </script>
 </body>
