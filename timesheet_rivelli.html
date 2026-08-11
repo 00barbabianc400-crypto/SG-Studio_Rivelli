@@ -3109,8 +3109,10 @@ function showToast(msg, type, ms) {
 ═══════════════════════════════════════════════ */
 (async function boot() {
   try {
-    if (!SRAuth.hasN8nToken()) {
-      await SRAuth.ensureN8nSession();
+    /* Su mobile: forza re-auth così arriva sempre [token, subscription.active] e l’icona è allineata */
+    const forcePushState = !!(window.SRPush && SRPush.isMobilePushTarget());
+    if (!SRAuth.hasN8nToken() || forcePushState) {
+      await SRAuth.ensureN8nSession(forcePushState ? { force: true } : undefined);
     }
     if (!SRAuth.hasN8nToken()) {
       throw new Error('Sessione API non disponibile');

@@ -203,6 +203,7 @@
     }
 
     saveN8nSession({ token, expiresAt, expiresInSec, user });
+    /* pushRow.active true → icona verde; false/assente → rossa */
     if (global.SRPush && typeof global.SRPush.applyFromAuth === 'function') {
       global.SRPush.applyFromAuth(pushRow || null);
     }
