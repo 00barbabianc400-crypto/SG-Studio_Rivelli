@@ -171,12 +171,23 @@ body {
         <p class="hub-card-desc">Scheda prelievo/restituzione chiavi, stato carrozzeria e foto danni.</p>
       </a>
     </div>
+    <div class="hub-push" style="margin-top:20px;padding:14px 16px;border:1px solid var(--border);border-radius:var(--r3);background:var(--surface)">
+      <p style="font-size:13px;color:var(--text-2);margin-bottom:10px;line-height:1.4">
+        Promemoria ore: se a fine giornata hai meno di 8 ore registrate, ricevi una notifica.
+        Su iPhone serve l’app aggiunta alla Home.
+      </p>
+      <button type="button" class="btn-ms" id="btn-push-ore" style="border-color:var(--blue-lt);color:var(--blue)">
+        Attiva promemoria ore
+      </button>
+      <p class="hub-error" id="push-status" style="margin-top:8px;min-height:0" aria-live="polite"></p>
+    </div>
   </main>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/push.js"></script>
 <script>
 function showHub() {
   document.getElementById('gate-screen').classList.add('hidden');
@@ -249,6 +260,7 @@ document.getElementById('link-timesheet').addEventListener('click', async e => {
     if (!SRAuth.hasN8nToken()) {
       throw new Error('Token non salvato in sessione');
     }
+    SRPush.syncIfEnabled();
     location.assign('timesheet_rivelli.html');
   } catch (ex) {
     console.error('ensureN8nSession:', ex);
@@ -271,6 +283,7 @@ document.getElementById('link-macchina').addEventListener('click', async e => {
     if (!SRAuth.hasN8nToken()) {
       throw new Error('Token non salvato in sessione');
     }
+    SRPush.syncIfEnabled();
     showHub();
     location.assign('macchina.html');
   } catch (ex) {
@@ -281,8 +294,30 @@ document.getElementById('link-macchina').addEventListener('click', async e => {
   }
 });
 
+document.getElementById('btn-push-ore').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-push-ore');
+  const st = document.getElementById('push-status');
+  st.textContent = '';
+  st.style.color = '';
+  btn.disabled = true;
+  try {
+    if (!SRPush.isSupported()) {
+      throw new Error('Questo browser non supporta le notifiche push');
+    }
+    await SRPush.enableOreReminders();
+    st.style.color = 'var(--blue)';
+    st.textContent = 'Promemoria ore attivo.';
+    btn.textContent = 'Promemoria già attivo';
+  } catch (ex) {
+    st.style.color = 'var(--danger)';
+    st.textContent = ex.message || 'Attivazione fallita';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=8').then(reg => reg.update()).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=11').then(reg => reg.update()).catch(() => {});
 }
 </script>
 </body>

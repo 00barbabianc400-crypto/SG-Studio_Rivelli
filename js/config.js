@@ -12,6 +12,10 @@ window.SR_CONFIG = {
   WEBHOOK_TS_MONITOR: 'https://studiorivelli.app.n8n.cloud/webhook/monitor-data-auth',
   WEBHOOK_TS_LOAD: 'https://studiorivelli.app.n8n.cloud/webhook/load-timesheet-auth',
 
+  /* Push: crea webhook JWT-auth "push-subscribe-auth" in n8n; VAPID_PRIVATE solo in Variables n8n */
+  WEBHOOK_PUSH_SUBSCRIBE: 'https://studiorivelli.app.n8n.cloud/webhook/push-subscribe-auth',
+  VAPID_PUBLIC: 'BKEDDuiZTy1wDbZWK_VPB47Mc8fwylHJYcX7hwIfWBNz_AUuRsGA4VRwQE8JvwWdspiQ7TNZIgzq3gCIxoq3qa8',
+
   AZURE_CLIENT_ID: 'f16e7f48-7775-4461-b27d-53e95aa61b82',
   AZURE_TENANT_ID: '6598f73a-3511-440a-bb95-3482c4fc5676',
   AZURE_SCOPES: ['User.Read'],
