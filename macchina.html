@@ -477,8 +477,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
         </div>
         <div class="field-row">
           <div class="field">
-            <label>Note (opzionale)</label>
-            <textarea id="ins-note" rows="2" placeholder="es. Destinazione, cliente…"></textarea>
+            <label>Cliente <span class="req">*</span></label>
+            <textarea id="ins-cliente" rows="2" placeholder="es. Nome cliente…" required></textarea>
           </div>
         </div>
         <div class="action-bar">
@@ -602,7 +602,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
           </button>
         </div>
       </div>
-      <div class="field"><label>Note</label><textarea id="edit-note" rows="2"></textarea></div>
+      <div class="field"><label>Cliente <span class="req">*</span></label><textarea id="edit-cliente" rows="2" placeholder="es. Nome cliente…" required></textarea></div>
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-ghost" id="edit-cancel">Annulla</button>
@@ -722,6 +722,13 @@ function toISO(y, m, d) {
   return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 }
 
+/** UI "Cliente"; colonna/webhook resta `note`. */
+function pickCliente(row) {
+  if (!row) return '';
+  const v = row.note ?? row.Cliente ?? row.cliente;
+  return v != null ? String(v).trim() : '';
+}
+
 function parseRows(data) {
   if (!data) return [];
   let rows = [];
@@ -732,6 +739,7 @@ function parseRows(data) {
   else rows = [data];
   return rows.filter(r => r && (r.id != null || r.operatore)).map(r => ({
     ...r,
+    Cliente: pickCliente(r),
     data_da: pickDateField(r, ['data_da', 'dataDa', 'Data_da', 'dal', 'data_inizio']),
     data_a: pickDateField(r, ['data_a', 'dataA', 'Data_a', 'al', 'data_fine'])
   }));
@@ -1037,7 +1045,7 @@ function resetFormInserimento() {
   }
   sel.disabled = true;
   document.getElementById('ins-tipo').value = '';
-  document.getElementById('ins-note').value = '';
+  document.getElementById('ins-cliente').value = '';
   rangeStart = rangeEnd = null;
   aggiornaRangeLabel();
 }
@@ -1059,8 +1067,8 @@ function apriDettaglioPrenotazione(id) {
         <dd><span class="tag ${tagCls}">${esc(p.tipo_utilizzo)}</span></dd>
         <dt>Periodo</dt>
         <dd>${fmtPeriodoIt(p.data_da, p.data_a)}</dd>
-        <dt>Note</dt>
-        <dd>${esc(p.note || '—')}</dd>
+        <dt>Cliente</dt>
+        <dd>${esc(pickCliente(p) || '—')}</dd>
       </dl>
     </div>`;
   document.getElementById('detail-elimina').style.display = canEliminarePrenotazione(p) ? '' : 'none';
@@ -1176,6 +1184,8 @@ async function eliminaPrenotazione(id) {
 }
 
 function apriConflictModal(conflitto, richiesta) {
+  const confCliente = pickCliente(conflitto);
+  const reqCliente = pickCliente(richiesta);
   conflictPending = {
     conflitto: {
       id: conflitto.id,
@@ -1183,14 +1193,14 @@ function apriConflictModal(conflitto, richiesta) {
       tipo_utilizzo: conflitto.tipo_utilizzo,
       data_da: conflitto.data_da,
       data_a: conflitto.data_a,
-      note: conflitto.note || ''
+      note: confCliente
     },
     richiesta: {
       operatore: richiesta.operatore,
       tipo_utilizzo: richiesta.tipo_utilizzo,
       data_da: richiesta.data_da,
       data_a: richiesta.data_a,
-      note: richiesta.note || ''
+      note: reqCliente
     }
   };
   const tagCls = conflitto.tipo_utilizzo === 'Roma e dintorni' ? 'tag-roma' : 'tag-trasferta';
@@ -1200,14 +1210,14 @@ function apriConflictModal(conflitto, richiesta) {
     <div class="conflict-name">${esc(richiesta.operatore)}</div>
     <div class="conflict-meta"><span class="tag ${reqTagCls}">${esc(richiesta.tipo_utilizzo)}</span></div>
     <div class="conflict-dates">${fmtPeriodoIt(richiesta.data_da, richiesta.data_a)}</div>
-    ${richiesta.note ? `<div class="conflict-note">${esc(richiesta.note)}</div>` : ''}
+    ${reqCliente ? `<div class="conflict-note">${esc(reqCliente)}</div>` : ''}
     <div class="conflict-lbl" style="margin-top:16px">In conflitto con</div>
     <div class="conflict-name">${esc(conflitto.operatore)}</div>
     <div class="conflict-meta">
       <span class="tag ${tagCls}">${esc(conflitto.tipo_utilizzo)}</span>
     </div>
     <div class="conflict-dates">${fmtPeriodoIt(conflitto.data_da, conflitto.data_a)}</div>
-    ${conflitto.note ? `<div class="conflict-note">${esc(conflitto.note)}</div>` : ''}`;
+    ${confCliente ? `<div class="conflict-note">${esc(confCliente)}</div>` : ''}`;
   document.getElementById('conflict-backdrop').classList.add('open');
 }
 
@@ -1217,9 +1227,10 @@ async function inviaPrenotazione() {
   }
   const operatore = document.getElementById('ins-operatore').value;
   const tipo_utilizzo = document.getElementById('ins-tipo').value;
-  const note = document.getElementById('ins-note').value.trim();
+  const note = document.getElementById('ins-cliente').value.trim();
   if (!operatore) return showToast('Seleziona operatore', 'warn');
   if (!tipo_utilizzo) return showToast('Seleziona tipo utilizzo', 'warn');
+  if (!note) return showToast('Inserisci il cliente', 'warn');
   if (!rangeStart || !rangeEnd) return showToast('Seleziona il periodo', 'warn');
 
   const data_da = rangeStart;
@@ -1279,7 +1290,7 @@ function apriEditModal(id) {
     tipo_utilizzo: p.tipo_utilizzo || '',
     data_da: pickDateField(p, ['data_da', 'dataDa', 'Data_da', 'dal', 'data_inizio']),
     data_a: pickDateField(p, ['data_a', 'dataA', 'Data_a', 'al', 'data_fine']),
-    note: p.note != null ? String(p.note).trim() : ''
+    note: pickCliente(p)
   };
   editRangeStart = editBookingSnapshot.data_da || null;
   editRangeEnd = editBookingSnapshot.data_a || editBookingSnapshot.data_da || null;
@@ -1287,7 +1298,7 @@ function apriEditModal(id) {
   document.getElementById('edit-id').value = editBookingSnapshot.id;
   document.getElementById('edit-operatore').value = editBookingSnapshot.operatore;
   document.getElementById('edit-tipo').value = editBookingSnapshot.tipo_utilizzo;
-  document.getElementById('edit-note').value = editBookingSnapshot.note;
+  document.getElementById('edit-cliente').value = editBookingSnapshot.note;
   aggiornaEditRangeLabel();
   document.getElementById('edit-backdrop').classList.add('open');
 }
@@ -1298,10 +1309,11 @@ async function salvaEdit() {
   const tipo_utilizzo = document.getElementById('edit-tipo').value.trim();
   const data_da = editRangeStart || editBookingSnapshot?.data_da || '';
   const data_a = editRangeEnd || editRangeStart || editBookingSnapshot?.data_a || '';
-  const note = document.getElementById('edit-note').value.trim();
+  const note = document.getElementById('edit-cliente').value.trim();
 
   if (!operatore) return showToast('Seleziona operatore', 'warn');
   if (!tipo_utilizzo) return showToast('Seleziona tipo utilizzo', 'warn');
+  if (!note) return showToast('Inserisci il cliente', 'warn');
   if (!data_da || !data_a) return showToast('Seleziona il periodo', 'warn');
   if (data_a < data_da) return showToast('La data fine non può precedere la data inizio', 'warn');
 

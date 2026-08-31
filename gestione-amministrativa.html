@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1e4fa3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Gestione amministrativa — Studio Rivelli</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #0a1628; --blue: #1e4fa3; --blue-lt: #2d6ef0;
+  --surface: #fff; --bg: #f7f9fc; --border: #e2e7f4;
+  --text: #1e3050; --text-2: #4a6180; --text-3: #8fa3be;
+  --ok: #1aaa6b; --warn: #b86e00; --danger: #d93025;
+  --r2: 8px; --r3: 12px; --shadow-sm: 0 1px 4px rgba(10,22,40,.06);
+  --shadow-md: 0 4px 20px rgba(10,22,40,.10);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+.topbar {
+  background: linear-gradient(135deg, #0a1628, #1a3a6b 60%, #1e4fa3);
+  padding: 0 28px; height: 56px; display: flex; align-items: center; justify-content: space-between;
+  box-shadow: 0 4px 20px rgba(10,22,40,.25); position: sticky; top: 0; z-index: 100;
+}
+.topbar-brand { display: flex; align-items: center; gap: 12px; }
+.topbar-logo {
+  width: 36px; height: 36px; background: var(--blue-lt); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+.topbar-name { color: #fff; font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+.topbar-name span { font-weight: 400; opacity: .75; }
+.topbar-home {
+  color: rgba(255,255,255,.85); text-decoration: none; font-size: 13px; font-weight: 500;
+  padding: 6px 10px; border-radius: 6px;
+}
+.topbar-home:hover { background: rgba(255,255,255,.1); color: #fff; }
+
+.shell { max-width: min(960px, calc(100vw - 40px)); margin: 0 auto; padding: 28px 20px 60px; }
+.page-head { margin-bottom: 22px; }
+.page-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: var(--navy); }
+.page-sub { font-size: 13px; color: var(--text-2); margin-top: 4px; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3);
+  box-shadow: var(--shadow-sm); margin-bottom: 20px; overflow: hidden;
+}
+.card-head {
+  background: #f0f4ff; border-bottom: 1px solid var(--border); padding: 14px 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.card-icon {
+  width: 28px; height: 28px; background: var(--blue); border-radius: 7px;
+  display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff;
+}
+.card-title { font-size: 12px; font-weight: 600; color: var(--blue); text-transform: uppercase; letter-spacing: .04em; }
+.card-body { padding: 22px; }
+
+.field-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
+.field { flex: 1; min-width: 160px; }
+.field label {
+  display: block; font-size: 11px; font-weight: 600; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px;
+}
+.field select, .field input {
+  width: 100%; border: 1.5px solid var(--border); border-radius: var(--r2);
+  padding: 9px 12px; font-family: inherit; font-size: 14px; color: var(--text);
+  background: var(--surface); outline: none;
+}
+.field select:focus, .field input:focus {
+  border-color: var(--blue-lt); box-shadow: 0 0 0 3px rgba(45,110,240,.12);
+}
+
+.btn {
+  padding: 10px 20px; border-radius: var(--r2); font-family: inherit; font-size: 14px;
+  font-weight: 500; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 8px;
+}
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-primary { background: var(--blue-lt); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--blue); }
+.btn-ghost { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+.action-bar { display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap; padding-top: 4px; }
+
+.status-line { font-size: 13px; color: var(--text-2); margin-bottom: 14px; min-height: 1.2em; }
+.status-line.is-error { color: var(--danger); }
+.status-line.is-empty { color: var(--text-3); }
+
+.tag {
+  display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 8px;
+  border-radius: 999px; letter-spacing: .02em;
+}
+.tag-trasferta { background: #eef2ff; color: #3730a3; }
+.tag-roma { background: #ecfdf5; color: #047857; }
+
+.result-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3);
+  box-shadow: var(--shadow-sm); margin-bottom: 14px; padding: 16px 18px;
+}
+.result-head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.result-op { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: var(--navy); }
+.result-meta { font-size: 13px; color: var(--text-2); line-height: 1.45; }
+.result-meta strong { color: var(--text); font-weight: 600; }
+.result-cliente { margin-top: 8px; font-size: 14px; }
+
+.tappe-box {
+  margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border);
+}
+.tappe-title {
+  font-size: 11px; font-weight: 600; color: var(--blue); text-transform: uppercase;
+  letter-spacing: .04em; margin-bottom: 10px;
+}
+.tappa {
+  background: #f8fafc; border: 1px solid var(--border); border-radius: var(--r2);
+  padding: 10px 12px; margin-bottom: 8px; font-size: 13px;
+}
+.tappa:last-child { margin-bottom: 0; }
+.tappa-row { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--text-2); }
+.tappa-row b { color: var(--text); font-weight: 600; }
+.tappa-note { margin-top: 6px; font-style: italic; color: var(--text-3); }
+
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+  background: var(--navy); color: #fff; padding: 12px 18px; border-radius: 10px;
+  font-size: 13px; opacity: 0; pointer-events: none; transition: .2s; z-index: 200;
+  max-width: min(420px, calc(100vw - 32px));
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.error { background: var(--danger); }
+.toast.success { background: var(--ok); }
+.toast.warn { background: var(--warn); }
+
+@media (max-width: 640px) {
+  .topbar { padding: 0 12px; }
+  .shell { padding: 20px 14px 48px; max-width: 100%; }
+  .field { min-width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <a class="topbar-home" href="index.html">← Home</a>
+    <div class="topbar-logo">📊</div>
+    <span class="topbar-name">Gestione amministrativa <span>· Studio Rivelli</span></span>
+  </div>
+</div>
+
+<div class="shell">
+  <div class="page-head">
+    <h1 class="page-title">Gestione amministrativa</h1>
+    <p class="page-sub">Incrocio prenotazioni auto aziendale e tappe trasferte per operatore e periodo</p>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-icon">🔍</div>
+      <span class="card-title">Filtri</span>
+    </div>
+    <div class="card-body">
+      <div class="field-row">
+        <div class="field">
+          <label>Operatore</label>
+          <select id="f-operatore">
+            <option value="">— tutti —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Tipo</label>
+          <select id="f-tipo">
+            <option value="">— tutti —</option>
+            <option value="Trasferta">Trasferta</option>
+            <option value="Roma e dintorni">Roma e dintorni</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Dal</label>
+          <input type="date" id="f-dal">
+        </div>
+        <div class="field">
+          <label>Al</label>
+          <input type="date" id="f-al">
+        </div>
+      </div>
+      <div class="action-bar">
+        <button type="button" class="btn btn-ghost" id="btn-reset">Azzera</button>
+        <button type="button" class="btn btn-primary" id="btn-cerca">Cerca</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="status-line" id="status-line" aria-live="polite">Carica i dati e applica i filtri.</p>
+  <div id="results"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+const WEBHOOK = SR_CONFIG.WEBHOOK_GESTIONE_AMMINISTRATIVA;
+
+const OPERATORI = [
+  'Javier Migliazza',
+  'Alessandro Lambiase',
+  'Simone Rocca',
+  'Luca Figliolini',
+  "Simone D'Innocenzo",
+  'Costanza Arvigo',
+  'Francesco Catracchia',
+  'Luca Rivelli',
+  'Andrea Castellan',
+  'Simona Rivagli',
+  'Fabiola Leone',
+  'Claudia Nuccitelli'
+];
+
+let rawPrenotazioni = [];
+let rawTappe = [];
+let dataLoaded = false;
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showToast(msg, type, ms) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove('show'), ms || 3200);
+}
+
+function normalizeDateStr(val) {
+  if (val == null || val === '') return '';
+  const s = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const it = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/);
+  if (it) {
+    return `${it[3]}-${String(it[2]).padStart(2, '0')}-${String(it[1]).padStart(2, '0')}`;
+  }
+  const d = new Date(s);
+  if (isNaN(d)) return '';
+  return d.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
+}
+
+function pickDateField(row, keys) {
+  for (const k of keys) {
+    if (row[k] != null && row[k] !== '') return normalizeDateStr(row[k]);
+  }
+  return '';
+}
+
+function pickCliente(row) {
+  if (!row) return '';
+  const v = row.note ?? row.Cliente ?? row.cliente;
+  return v != null ? String(v).trim() : '';
+}
+
+function fmtDateIt(val) {
+  const iso = normalizeDateStr(val);
+  if (!iso) return '—';
+  const d = new Date(iso + 'T12:00:00');
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString('it-IT', {
+    weekday: 'short', day: 'numeric', month: 'long', year: 'numeric'
+  });
+}
+
+function fmtPeriodoIt(da, a) {
+  const d1 = normalizeDateStr(da);
+  const d2 = normalizeDateStr(a);
+  if (!d1 && !d2) return '—';
+  if (!d2 || d1 === d2) return fmtDateIt(d1);
+  return `${fmtDateIt(d1)} → ${fmtDateIt(d2)}`;
+}
+
+function rangesOverlap(a1, a2, b1, b2) {
+  if (!a1 || !a2 || !b1 || !b2) return false;
+  return a1 <= b2 && b1 <= a2;
+}
+
+function normName(s) {
+  return String(s || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Match operatore ↔ nome_persona (ordine parti variabile). Evita match per sottostringa corta. */
+function namesMatch(a, b) {
+  const na = normName(a);
+  const nb = normName(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  const pa = na.split(' ').filter(Boolean);
+  const pb = nb.split(' ').filter(Boolean);
+  if (!pa.length || !pb.length) return false;
+  const cognA = pa[pa.length - 1];
+  const cognB = pb[pb.length - 1];
+  if (cognA !== cognB) return false;
+  /* Stesso cognome + almeno un altro token in comune (es. Javier / Francisco Javier). */
+  const setB = new Set(pb);
+  const shared = pa.filter(p => p !== cognA && setB.has(p));
+  return shared.length > 0 || (pa.length === 1 && pb.length === 1);
+}
+
+function unwrapRows(data) {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.body)) return data.body;
+  if (Array.isArray(data.data)) return data.data;
+  if (data.json) return unwrapRows(data.json);
+  return [data];
+}
+
+function isPrenotazioneMacchina(row) {
+  return !!(row && (row.tipo_utilizzo != null || (row.operatore != null && row.data_da != null && !row.trasferta_id)));
+}
+
+function isTappaTrasferta(row) {
+  return !!(row && (row.trasferta_id != null || (row.nome_persona != null && row.citta != null)));
+}
+
+function splitPayload(data) {
+  const rows = unwrapRows(data).filter(Boolean);
+  const prenotazioni = [];
+  const tappe = [];
+  rows.forEach(r => {
+    if (isPrenotazioneMacchina(r)) {
+      prenotazioni.push({
+        ...r,
+        Cliente: pickCliente(r),
+        data_da: pickDateField(r, ['data_da', 'dataDa', 'Data_da', 'dal', 'data_inizio']),
+        data_a: pickDateField(r, ['data_a', 'dataA', 'Data_a', 'al', 'data_fine'])
+          || pickDateField(r, ['data_da', 'dataDa', 'Data_da', 'dal', 'data_inizio'])
+      });
+    } else if (isTappaTrasferta(r)) {
+      tappe.push({
+        ...r,
+        data_arrivo: pickDateField(r, ['data_arrivo', 'dataArrivo', 'arrivo', 'data_da', 'dal']),
+        data_partenza: pickDateField(r, ['data_partenza', 'dataPartenza', 'partenza', 'data_a', 'al'])
+          || pickDateField(r, ['data_arrivo', 'dataArrivo', 'arrivo', 'data_da', 'dal'])
+      });
+    }
+  });
+  return { prenotazioni, tappe };
+}
+
+function filterPrenotazioni(list, { operatore, tipo, dal, al }) {
+  return list.filter(p => {
+    if (operatore && !namesMatch(p.operatore, operatore)) return false;
+    if (tipo && p.tipo_utilizzo !== tipo) return false;
+    if (dal && al) {
+      if (!rangesOverlap(p.data_da, p.data_a, dal, al)) return false;
+    } else if (dal) {
+      if (!p.data_a || p.data_a < dal) return false;
+    } else if (al) {
+      if (!p.data_da || p.data_da > al) return false;
+    }
+    return true;
+  });
+}
+
+function tappePerPrenotazione(p, tappe) {
+  if (p.tipo_utilizzo !== 'Trasferta') return [];
+  return tappe
+    .filter(t => namesMatch(t.nome_persona, p.operatore)
+      && rangesOverlap(p.data_da, p.data_a, t.data_arrivo, t.data_partenza))
+    .sort((a, b) => Number(a.tappa_numero || 0) - Number(b.tappa_numero || 0)
+      || (a.data_arrivo || '').localeCompare(b.data_arrivo || ''));
+}
+
+function setStatus(msg, cls) {
+  const el = document.getElementById('status-line');
+  el.textContent = msg;
+  el.className = 'status-line' + (cls ? ' ' + cls : '');
+}
+
+function renderResults(items, tappe) {
+  const wrap = document.getElementById('results');
+  if (!items.length) {
+    wrap.innerHTML = '';
+    setStatus('Nessun risultato con i filtri selezionati.', 'is-empty');
+    return;
+  }
+  setStatus(`${items.length} prenotazion${items.length === 1 ? 'e' : 'i'} trovate.`);
+  wrap.innerHTML = items.map(p => {
+    const tagCls = p.tipo_utilizzo === 'Roma e dintorni' ? 'tag-roma' : 'tag-trasferta';
+    const cliente = pickCliente(p) || '—';
+    const linked = tappePerPrenotazione(p, tappe);
+    let tappeHtml = '';
+    if (p.tipo_utilizzo === 'Trasferta') {
+      if (!linked.length) {
+        tappeHtml = `<div class="tappe-box"><div class="tappe-title">Tappe trasferte</div>
+          <p class="result-meta">Nessuna tappa collegata (stesso operatore + date sovrapposte).</p></div>`;
+      } else {
+        tappeHtml = `<div class="tappe-box"><div class="tappe-title">Tappe trasferte · ${linked.length}</div>`
+          + linked.map(t => `
+            <div class="tappa">
+              <div class="tappa-row">
+                <span><b>Tappa ${esc(t.tappa_numero || '—')}</b> · ${esc(t.citta || '—')}</span>
+                <span>${esc(fmtPeriodoIt(t.data_arrivo, t.data_partenza))}</span>
+              </div>
+              <div class="tappa-row" style="margin-top:6px">
+                <span>Cliente: <b>${esc(t.cliente_tappa || '—')}</b></span>
+                <span>Mezzo: <b>${esc(t.mezzo_raggiungimento || '—')}</b></span>
+                <span>Stato: <b>${esc(t.stato_prenotazioni || '—')}</b></span>
+              </div>
+              ${t.note_tappa ? `<div class="tappa-note">${esc(t.note_tappa)}</div>` : ''}
+            </div>`).join('')
+          + '</div>';
+      }
+    }
+    return `<article class="result-card">
+      <div class="result-head">
+        <span class="result-op">${esc(p.operatore || '—')}</span>
+        <span class="tag ${tagCls}">${esc(p.tipo_utilizzo || '—')}</span>
+      </div>
+      <div class="result-meta">Periodo auto: <strong>${esc(fmtPeriodoIt(p.data_da, p.data_a))}</strong></div>
+      <div class="result-cliente result-meta">Cliente: <strong>${esc(cliente)}</strong></div>
+      ${tappeHtml}
+    </article>`;
+  }).join('');
+}
+
+async function caricaDati(force) {
+  if (dataLoaded && !force) return;
+  const btn = document.getElementById('btn-cerca');
+  btn.disabled = true;
+  setStatus('Caricamento dati…');
+  try {
+    await SRAuth.ensureN8nSession();
+    const resp = await SRAuth.fetch(WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await resp.json().catch(() => ([]));
+    if (!resp.ok) throw new Error((data && data.message) || ('HTTP ' + resp.status));
+    const split = splitPayload(data);
+    rawPrenotazioni = split.prenotazioni;
+    rawTappe = split.tappe;
+    dataLoaded = true;
+    setStatus(`Dati caricati: ${rawPrenotazioni.length} prenotazioni auto, ${rawTappe.length} tappe.`);
+  } catch (e) {
+    setStatus('Errore caricamento: ' + (e.message || e), 'is-error');
+    showToast('Errore: ' + (e.message || e), 'error');
+    throw e;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function leggiFiltri() {
+  let dal = document.getElementById('f-dal').value || '';
+  let al = document.getElementById('f-al').value || '';
+  if (dal && al && al < dal) {
+    const tmp = dal; dal = al; al = tmp;
+    document.getElementById('f-dal').value = dal;
+    document.getElementById('f-al').value = al;
+  }
+  return {
+    operatore: document.getElementById('f-operatore').value,
+    tipo: document.getElementById('f-tipo').value,
+    dal,
+    al
+  };
+}
+
+async function eseguiCerca() {
+  try {
+    await caricaDati(false);
+  } catch (_) {
+    return;
+  }
+  const f = leggiFiltri();
+  const filtered = filterPrenotazioni(rawPrenotazioni, f)
+    .sort((a, b) => (a.data_da || '').localeCompare(b.data_da || '') || Number(a.id) - Number(b.id));
+  renderResults(filtered, rawTappe);
+}
+
+function popolaOperatori() {
+  const sel = document.getElementById('f-operatore');
+  sel.innerHTML = '<option value="">— tutti —</option>'
+    + OPERATORI.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+}
+
+(async function boot() {
+  popolaOperatori();
+  try {
+    await SRAuth.init();
+    if (!(await SRAuth.isMsalLoggedIn())) {
+      location.replace('index.html');
+      return;
+    }
+    await SRAuth.ensureN8nSession();
+    await caricaDati(true);
+    await eseguiCerca();
+  } catch (e) {
+    setStatus('Sessione non disponibile. Torna alla Home e accedi.', 'is-error');
+  }
+})();
+
+document.getElementById('btn-cerca').addEventListener('click', () => eseguiCerca());
+document.getElementById('btn-reset').addEventListener('click', () => {
+  document.getElementById('f-operatore').value = '';
+  document.getElementById('f-tipo').value = '';
+  document.getElementById('f-dal').value = '';
+  document.getElementById('f-al').value = '';
+  if (dataLoaded) eseguiCerca();
+});
+</script>
+</body>
+</html>

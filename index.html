@@ -170,6 +170,12 @@ body {
         <div class="hub-card-title">Modulo utilizzo 308</div>
         <p class="hub-card-desc">Scheda prelievo/restituzione chiavi, stato carrozzeria e foto danni.</p>
       </a>
+      <a class="hub-card" href="gestione-amministrativa.html" id="link-amm">
+        <div class="hub-card-icon">📊</div>
+        <div class="hub-card-title">Gestione amministrativa</div>
+        <p class="hub-card-desc">Incrocio prenotazioni auto e trasferte per operatore e periodo.</p>
+        <span class="hub-card-loading hidden" id="amm-loading">Connessione API…</span>
+      </a>
     </div>
   </main>
 </div>
@@ -287,8 +293,30 @@ document.getElementById('link-macchina').addEventListener('click', async e => {
   }
 });
 
+document.getElementById('link-amm').addEventListener('click', async e => {
+  e.preventDefault();
+  const link = e.currentTarget;
+  const loading = document.getElementById('amm-loading');
+  const err = document.getElementById('hub-error');
+  err.textContent = '';
+  link.style.pointerEvents = 'none';
+  loading.classList.remove('hidden');
+  try {
+    await SRAuth.ensureN8nSession();
+    if (!SRAuth.hasN8nToken()) {
+      throw new Error('Token non salvato in sessione');
+    }
+    location.assign('gestione-amministrativa.html');
+  } catch (ex) {
+    console.error('ensureN8nSession:', ex);
+    err.textContent = ex.message || 'Errore connessione API n8n';
+    link.style.pointerEvents = '';
+    loading.classList.add('hidden');
+  }
+});
+
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=19').then(reg => reg.update()).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=20').then(reg => reg.update()).catch(() => {});
 }
 </script>
 </body>
