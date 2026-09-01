@@ -281,6 +281,19 @@ body {
 .tappa-row { display: flex; flex-wrap: wrap; gap: 8px 14px; color: var(--muted); }
 .tappa-row b { color: var(--text); font-weight: 600; }
 .tappa-note { margin-top: 6px; font-style: italic; color: var(--faint); }
+.svc-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.svc-card {
+  background: var(--hover); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+}
+.svc-card h4 {
+  font-size: 12px; font-weight: 700; margin-bottom: 8px; color: var(--text);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.svc-rows { display: grid; gap: 4px 12px; }
+.svc-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.svc-row span { color: var(--muted); }
+.svc-row b { color: var(--text); font-weight: 600; text-align: right; }
 
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(12px);
@@ -885,10 +898,132 @@ function apriDettaglioMacchina(id) {
 }
 
 function fmtEuro(val) {
-  if (val == null || val === '') return '—';
+  if (val == null || val === '') return '';
   const n = Number(String(val).replace(',', '.'));
-  if (isNaN(n)) return esc(String(val));
+  if (isNaN(n)) return String(val);
+  if (n === 0) return '';
   return n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+function costoHaValore(v) {
+  if (v == null || String(v).trim() === '') return false;
+  const n = Number(String(v).replace(',', '.'));
+  if (!isNaN(n) && n === 0) return false;
+  return true;
+}
+
+const SERVIZI_LABEL = {
+  hotel: 'Hotel',
+  aereo: 'Aereo',
+  treno: 'Treno',
+  noleggio: 'Noleggio auto',
+  parcheggio: 'Parcheggio',
+  bus: 'Bus',
+  moto: 'Moto',
+  auto_az: 'Auto aziendale',
+  spostamento: 'Spostamento'
+};
+
+const STATO_LABEL = {
+  da_prenotare: 'Da prenotare',
+  prenotato: 'Prenotato',
+  acquistato: 'Acquistato',
+  da_richiedere: 'Da richiedere',
+  confermato: 'Confermato'
+};
+
+const CAMPO_LABEL = {
+  nome: 'Struttura',
+  notti: 'Notti',
+  stato: 'Stato',
+  tratta: 'Tratta',
+  ritiro: 'Ritiro',
+  restituzione: 'Restituzione',
+  luogo: 'Luogo',
+  mezzo_viaggio: 'Mezzo',
+  prenotato: 'Prenotato',
+  metodo_pagamento: 'Pagamento',
+  costo_servizio: 'Costo',
+  valore_voucher: 'Voucher',
+  differenza_pagamento: 'Differenza',
+  metodo_pagamento_differenza: 'Pagamento differenza',
+  giornate_da: 'Dal',
+  giornate_a: 'Al'
+};
+
+const METODO_LABEL = {
+  carta_aziendale: 'Carta aziendale',
+  voucher: 'Voucher',
+  carta_credito: 'Carta di credito',
+  bonifico: 'Bonifico',
+  conto_corrente: 'Conto corrente'
+};
+
+function labelStato(v) {
+  const k = String(v || '').toLowerCase();
+  return STATO_LABEL[k] || String(v);
+}
+
+function labelMetodo(v) {
+  const k = String(v || '').toLowerCase();
+  return METODO_LABEL[k] || String(v);
+}
+
+function valoreCampoServizio(key, val) {
+  if (val == null || val === '' || val === false) return '';
+  if (key === 'stato') return labelStato(val);
+  if (key === 'metodo_pagamento' || key === 'metodo_pagamento_differenza') return labelMetodo(val);
+  if (key === 'prenotato') return val ? 'Sì' : '';
+  if (key === 'giornate_da' || key === 'giornate_a') return fmtDateIt(val);
+  if (key === 'costo_servizio' || key === 'valore_voucher' || key === 'differenza_pagamento') {
+    return fmtEuro(val) || '';
+  }
+  if (typeof val === 'number' && val === 0) return '';
+  return String(val);
+}
+
+function flattenServizio(dati) {
+  const rows = [];
+  if (!dati || typeof dati !== 'object') return rows;
+  Object.entries(dati).forEach(([k, v]) => {
+    if (k === 'prenotazione_operatrice' && v && typeof v === 'object') {
+      Object.entries(v).forEach(([pk, pv]) => {
+        const shown = valoreCampoServizio(pk, pv);
+        if (shown) rows.push([CAMPO_LABEL[pk] || pk, shown]);
+      });
+      return;
+    }
+    if (v && typeof v === 'object') return;
+    const shown = valoreCampoServizio(k, v);
+    if (shown) rows.push([CAMPO_LABEL[k] || k, shown]);
+  });
+  return rows;
+}
+
+function parseServizi(raw) {
+  if (!raw) return null;
+  if (typeof raw === 'object') return raw;
+  try { return JSON.parse(raw); } catch (_) { return null; }
+}
+
+function renderServiziHtml(raw) {
+  const sj = parseServizi(raw);
+  if (!sj || typeof sj !== 'object') return '';
+  const cards = Object.entries(sj).map(([key, dati]) => {
+    const rows = flattenServizio(dati);
+    if (!rows.length) return '';
+    const title = SERVIZI_LABEL[key] || key;
+    const statoRow = rows.find(r => r[0] === 'Stato');
+    const stato = statoRow ? statoRow[1] : '';
+    const rest = rows.filter(r => r[0] !== 'Stato');
+    return `<div class="svc-card">
+      <h4>${esc(title)}${stato ? `<span class="tag tag-trasferta">${esc(stato)}</span>` : ''}</h4>
+      ${rest.length ? `<div class="svc-rows">${rest.map(([l, v]) =>
+        `<div class="svc-row"><span>${esc(l)}</span><b>${esc(v)}</b></div>`).join('')}</div>` : ''}
+    </div>`;
+  }).filter(Boolean);
+  if (!cards.length) return '';
+  return `<div class="tappe-box"><div class="tappe-title">Servizi</div><div class="svc-list">${cards.join('')}</div></div>`;
 }
 
 function apriDettaglioTappa(id) {
@@ -905,16 +1040,7 @@ function apriDettaglioTappa(id) {
     ['Aereo', t.costo_aereo],
     ['Auto aziendale', t.costo_auto_az],
     ['Totale tappa', t.costo_tappa_totale]
-  ].filter(([, v]) => v != null && String(v).trim() !== '');
-  let serviziHtml = '';
-  if (t.servizi_json) {
-    try {
-      const sj = typeof t.servizi_json === 'string' ? JSON.parse(t.servizi_json) : t.servizi_json;
-      if (sj && typeof sj === 'object' && Object.keys(sj).length) {
-        serviziHtml = `<dt>Servizi</dt><dd><pre style="font-size:11px;white-space:pre-wrap;margin:0;background:var(--hover);padding:8px;border-radius:8px;border:1px solid var(--border)">${esc(JSON.stringify(sj, null, 2))}</pre></dd>`;
-      }
-    } catch (_) { /* ignore */ }
-  }
+  ].filter(([, v]) => costoHaValore(v));
   document.getElementById('detail-body').innerHTML = `
     <button type="button" class="detail-op" id="detail-filter-op" data-op="${esc(t.nome_persona)}">
       <span class="detail-op-dot" style="background:${col}"></span>
@@ -930,9 +1056,9 @@ function apriDettaglioTappa(id) {
       <dt>Mezzo</dt><dd>${esc(t.mezzo_raggiungimento || '—')}</dd>
       <dt>Stato prenotazioni</dt><dd>${esc(t.stato_prenotazioni || '—')}</dd>
       ${t.note_tappa ? `<dt>Note tappa</dt><dd>${esc(t.note_tappa)}</dd>` : ''}
-      ${costi.map(([lbl, v]) => `<dt>${lbl}</dt><dd>${fmtEuro(v)}</dd>`).join('')}
-      ${serviziHtml}
-    </dl>`;
+      ${costi.map(([lbl, v]) => `<dt>${lbl}</dt><dd>${esc(fmtEuro(v))}</dd>`).join('')}
+    </dl>
+    ${renderServiziHtml(t.servizi_json)}`;
   document.getElementById('detail-backdrop').classList.add('open');
   wireDetailFilterOp(t.nome_persona);
 }
@@ -965,6 +1091,10 @@ async function caricaDati() {
     popolaOperatoriDaRecord();
     applyFilters();
   } catch (e) {
+    if (SRAuth.isNotEnabledError(e)) {
+      SRAuth.redirectNotEnabled();
+      return;
+    }
     setStatus('Errore caricamento: ' + (e.message || e), 'is-error');
     showToast('Errore: ' + (e.message || e), 'error');
   }
@@ -979,6 +1109,10 @@ async function caricaDati() {
     }
     await caricaDati();
   } catch (e) {
+    if (SRAuth.isNotEnabledError(e)) {
+      SRAuth.redirectNotEnabled();
+      return;
+    }
     setStatus('Sessione non disponibile. Torna alla Home e accedi.', 'is-error');
   }
 })();

@@ -69,6 +69,24 @@ body {
 .btn-ms svg { flex-shrink: 0; }
 .gate-foot { margin-top: 20px; font-size: 11px; color: var(--text-3); line-height: 1.4; }
 
+#deny-screen {
+  min-height: 100vh; min-height: 100dvh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 32px 24px; background: var(--bg);
+}
+.deny-icon {
+  width: 48px; height: 48px; margin: 0 auto 16px;
+  stroke: var(--danger); fill: none; stroke-width: 1.75;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.btn-hub-back {
+  width: 100%; margin-top: 8px; padding: 12px 20px; border-radius: var(--r2);
+  font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+  border: none; background: var(--blue); color: #fff;
+  transition: background .15s;
+}
+.btn-hub-back:hover { background: var(--blue-lt); }
+
 #hub-screen { min-height: 100vh; padding: 0 0 40px; }
 .hub-top {
   background: linear-gradient(135deg, #0a1628, #1a3a6b 60%, #1e4fa3);
@@ -148,6 +166,18 @@ body {
   </div>
 </div>
 
+<div id="deny-screen" class="hidden">
+  <div class="gate-card">
+    <svg class="deny-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M12 8v5M12 16h.01"/>
+    </svg>
+    <h2 class="gate-title">Qualcosa è andato storto</h2>
+    <p class="gate-sub">Verifica che il tuo account sia abilitato all'accesso</p>
+    <button type="button" class="btn-hub-back" id="btn-back-hub">Ritorna all'hub</button>
+  </div>
+</div>
+
 <div id="hub-screen" class="hidden">
   <header class="hub-top">
     <div class="hub-top-inner">
@@ -161,7 +191,7 @@ body {
   <main class="hub-body">
     <p class="hub-error" id="hub-error" aria-live="polite"></p>
     <div class="hub-grid">
-      <a class="hub-card" href="timesheet_rivelli.html" id="link-timesheet" style="display:block;color:inherit;text-decoration:none">
+      <a class="hub-card" href="timesheet_rivelli.html" id="link-timesheet" data-hub-app="timesheet" style="display:block;color:inherit;text-decoration:none">
           <div class="hub-card-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
           </div>
@@ -169,7 +199,7 @@ body {
           <p class="hub-card-desc">Inserimento, monitoraggio e modifica delle ore lavorate.</p>
           <span class="hub-card-loading hidden" id="timesheet-loading">Connessione API…</span>
         </a>
-      <a class="hub-card" href="macchina.html" id="link-macchina">
+      <a class="hub-card" href="macchina.html" id="link-macchina" data-hub-app="macchina">
         <div class="hub-card-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M5 16l1.5-6h11L19 16"/><path d="M4 16h16v2a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H10a2 2 0 0 1-4 0H5a1 1 0 0 1-1-1v-2z"/><path d="M7.5 10l1-3h7l1 3"/></svg>
         </div>
@@ -177,20 +207,28 @@ body {
         <p class="hub-card-desc">Prenota, monitora e gestisci le prenotazioni dell'auto aziendale.</p>
         <span class="hub-card-loading hidden" id="macchina-loading">Connessione API…</span>
       </a>
-      <a class="hub-card" href="modulo-macchina.html" id="link-modulo">
+      <a class="hub-card" href="modulo-macchina.html" id="link-modulo" data-hub-app="modulo">
         <div class="hub-card-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M8 4h8a2 2 0 0 1 2 2v14l-2-1.2L14 20l-2-1.2L10 20l-2-1.2L6 20V6a2 2 0 0 1 2-2z"/><path d="M9 9h6M9 13h6"/></svg>
         </div>
         <div class="hub-card-title">Modulo utilizzo 308</div>
         <p class="hub-card-desc">Scheda prelievo/restituzione chiavi, stato carrozzeria e foto danni.</p>
       </a>
-      <a class="hub-card" href="gestione-amministrativa.html" id="link-amm">
+      <a class="hub-card" href="gestione-amministrativa.html" id="link-amm" data-hub-app="amm">
         <div class="hub-card-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-3"/></svg>
         </div>
         <div class="hub-card-title">Gestione amministrativa</div>
         <p class="hub-card-desc">Incrocio prenotazioni auto e trasferte per operatore e periodo.</p>
         <span class="hub-card-loading hidden" id="amm-loading">Connessione API…</span>
+      </a>
+      <a class="hub-card" href="gestione_trasferte.html" id="link-trasferte" data-hub-app="trasferte">
+        <div class="hub-card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8.2 16.2c3.5-2.5 4.1-7.5 7.8-10.2"/></svg>
+        </div>
+        <div class="hub-card-title">Gestione trasferte</div>
+        <p class="hub-card-desc">Itinerari, tappe, servizi e prenotazioni delle trasferte.</p>
+        <span class="hub-card-loading hidden" id="trasferte-loading">Connessione API…</span>
       </a>
     </div>
   </main>
@@ -203,19 +241,73 @@ body {
 <script>
 function showHub() {
   document.getElementById('gate-screen').classList.add('hidden');
+  document.getElementById('deny-screen').classList.add('hidden');
   document.getElementById('hub-screen').classList.remove('hidden');
   const u = SRAuth.getUser();
   const el = document.getElementById('hub-user');
   if (u && (u.name || u.email)) {
-    el.textContent = u.name ? u.name + (u.email ? ' · ' + u.email : '') : u.email;
+    const role = u.role ? ' · ' + u.role : '';
+    el.textContent = u.name ? u.name + (u.email ? ' · ' + u.email : '') + role : u.email + role;
   } else {
     el.textContent = '';
   }
+  applyHubRoles();
 }
 
 function showGate() {
   document.getElementById('gate-screen').classList.remove('hidden');
+  document.getElementById('deny-screen').classList.add('hidden');
   document.getElementById('hub-screen').classList.add('hidden');
+}
+
+function showDeny() {
+  document.getElementById('gate-screen').classList.add('hidden');
+  document.getElementById('hub-screen').classList.add('hidden');
+  document.getElementById('deny-screen').classList.remove('hidden');
+}
+
+function applyHubRoles() {
+  if (!SRAuth.hasN8nToken()) return;
+  document.querySelectorAll('[data-hub-app]').forEach(card => {
+    const app = card.dataset.hubApp;
+    card.style.display = SRAuth.canAccessHubApp(app) ? '' : 'none';
+  });
+}
+
+function handleHubNavError(ex, link, loading) {
+  if (SRAuth.isNotEnabledError(ex)) {
+    showDeny();
+    return;
+  }
+  console.error('ensureN8nSession:', ex);
+  document.getElementById('hub-error').textContent = ex.message || 'Errore connessione API n8n';
+  if (link) link.style.pointerEvents = '';
+  if (loading) loading.classList.add('hidden');
+}
+
+async function hubNavigate(link, loading, targetUrl, options) {
+  const err = document.getElementById('hub-error');
+  err.textContent = '';
+  link.style.pointerEvents = 'none';
+  loading.classList.remove('hidden');
+  try {
+    const app = link.dataset.hubApp;
+    if (app && SRAuth.hasN8nToken() && !SRAuth.canAccessHubApp(app)) {
+      throw new Error('Non hai i permessi per questa applicazione');
+    }
+    await SRAuth.ensureN8nSession(options);
+    if (!SRAuth.hasN8nToken()) {
+      throw new Error('Token non salvato in sessione');
+    }
+    applyHubRoles();
+    if (app && !SRAuth.canAccessHubApp(app)) {
+      throw new Error('Non hai i permessi per questa applicazione');
+    }
+    SRPush.syncIfEnabled();
+    location.assign(targetUrl);
+  } catch (ex) {
+    handleHubNavError(ex, link, loading);
+  }
 }
 
 function setLoading(on) {
@@ -229,7 +321,9 @@ function setLoading(on) {
     const state = await SRAuth.init();
     if (state.loggedIn) showHub();
     else showGate();
-    if (location.search.includes('err=api')) {
+    if (location.search.includes('err=not_enabled')) {
+      showDeny();
+    } else if (location.search.includes('err=api')) {
       document.getElementById('gate-error').textContent =
         'Impossibile collegarsi alle API. Verifica il workflow in n8n';
     }
@@ -259,80 +353,42 @@ document.getElementById('btn-ms-login').addEventListener('click', async () => {
 
 document.getElementById('btn-logout').addEventListener('click', () => SRAuth.logout());
 
+document.getElementById('btn-back-hub').addEventListener('click', async () => {
+  history.replaceState(null, '', location.pathname);
+  if (await SRAuth.isMsalLoggedIn()) showHub();
+  else showGate();
+});
+
 document.getElementById('link-timesheet').addEventListener('click', async e => {
   e.preventDefault();
-  const link = e.currentTarget;
-  const loading = document.getElementById('timesheet-loading');
-  const err = document.getElementById('hub-error');
-  err.textContent = '';
-  link.style.pointerEvents = 'none';
-  loading.classList.remove('hidden');
-  try {
-    /* Se non sappiamo ancora se c’è subscription in DT, forza re-auth (Get push) */
-    const needPushRefresh = SRPush.isMobilePushTarget()
-      && sessionStorage.getItem('sr_push_server') == null
-      && localStorage.getItem('sr_push_server') == null;
-    await SRAuth.ensureN8nSession(needPushRefresh ? { force: true } : undefined);
-    if (!SRAuth.hasN8nToken()) {
-      throw new Error('Token non salvato in sessione');
-    }
-    SRPush.syncIfEnabled();
-    location.assign('timesheet_rivelli.html');
-  } catch (ex) {
-    console.error('ensureN8nSession:', ex);
-    err.textContent = ex.message || 'Errore connessione API n8n';
-    link.style.pointerEvents = '';
-    loading.classList.add('hidden');
-  }
+  const needPushRefresh = SRPush.isMobilePushTarget()
+    && sessionStorage.getItem('sr_push_server') == null
+    && localStorage.getItem('sr_push_server') == null;
+  await hubNavigate(
+    e.currentTarget,
+    document.getElementById('timesheet-loading'),
+    'timesheet_rivelli.html',
+    needPushRefresh ? { force: true } : undefined
+  );
 });
 
 document.getElementById('link-macchina').addEventListener('click', async e => {
   e.preventDefault();
-  const link = e.currentTarget;
-  const loading = document.getElementById('macchina-loading');
-  const err = document.getElementById('hub-error');
-  err.textContent = '';
-  link.style.pointerEvents = 'none';
-  loading.classList.remove('hidden');
-  try {
-    await SRAuth.ensureN8nSession();
-    if (!SRAuth.hasN8nToken()) {
-      throw new Error('Token non salvato in sessione');
-    }
-    SRPush.syncIfEnabled();
-    location.assign('macchina.html');
-  } catch (ex) {
-    console.error('ensureN8nSession:', ex);
-    err.textContent = ex.message || 'Errore connessione API n8n';
-    link.style.pointerEvents = '';
-    loading.classList.add('hidden');
-  }
+  await hubNavigate(e.currentTarget, document.getElementById('macchina-loading'), 'macchina.html');
 });
 
 document.getElementById('link-amm').addEventListener('click', async e => {
   e.preventDefault();
-  const link = e.currentTarget;
-  const loading = document.getElementById('amm-loading');
-  const err = document.getElementById('hub-error');
-  err.textContent = '';
-  link.style.pointerEvents = 'none';
-  loading.classList.remove('hidden');
-  try {
-    await SRAuth.ensureN8nSession();
-    if (!SRAuth.hasN8nToken()) {
-      throw new Error('Token non salvato in sessione');
-    }
-    location.assign('gestione-amministrativa.html');
-  } catch (ex) {
-    console.error('ensureN8nSession:', ex);
-    err.textContent = ex.message || 'Errore connessione API n8n';
-    link.style.pointerEvents = '';
-    loading.classList.add('hidden');
-  }
+  await hubNavigate(e.currentTarget, document.getElementById('amm-loading'), 'gestione-amministrativa.html');
+});
+
+document.getElementById('link-trasferte').addEventListener('click', async e => {
+  e.preventDefault();
+  await hubNavigate(e.currentTarget, document.getElementById('trasferte-loading'), 'gestione_trasferte.html');
 });
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=22').then(reg => reg.update()).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=24').then(reg => reg.update()).catch(() => {});
 }
 </script>
 </body>

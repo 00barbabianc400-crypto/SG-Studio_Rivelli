@@ -1,0 +1,2275 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prenotazioni Trasferta — Studio Rivelli Consulting</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue-deep: #0a1628;
+    --blue-mid: #1a3a6b;
+    --blue-main: #1e4fa3;
+    --blue-bright: #2d6ef0;
+    --blue-light: #e8f0fe;
+    --blue-pale: #f0f4ff;
+    --white: #ffffff;
+    --gray-100: #f7f9fc;
+    --gray-200: #e9eef5;
+    --gray-400: #8fa3be;
+    --gray-600: #4a6180;
+    --gray-800: #1e3050;
+    --accent-glow: rgba(45,110,240,0.15);
+    --success: #1aaa6b;
+    --danger: #d93025;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --shadow: 0 2px 12px rgba(10,22,40,0.08);
+    --shadow-md: 0 4px 24px rgba(10,22,40,0.13);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--gray-100); color: var(--gray-800); min-height: 100vh; padding: 0 0 60px; }
+  .header {
+    background: linear-gradient(135deg, var(--blue-deep) 0%, var(--blue-mid) 60%, var(--blue-main) 100%);
+    padding: 28px 40px 24px; display: flex; align-items: center; gap: 18px;
+    box-shadow: 0 4px 24px rgba(10,22,40,0.25);
+  }
+  .header-logo {
+    width: 46px; height: 46px; background: var(--blue-bright); border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;
+  }
+  .header-text h1 { color: #fff; font-size: 20px; font-weight: 600; }
+  .header-text p { color: var(--gray-400); font-size: 13px; margin-top: 2px; }
+  .container { max-width: 900px; margin: 0 auto; padding: 32px 20px 0; }
+  .section {
+    background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-lg);
+    margin-bottom: 20px; overflow: hidden; box-shadow: var(--shadow);
+  }
+  .section-header {
+    background: var(--blue-pale); border-bottom: 1px solid var(--gray-200);
+    padding: 16px 22px; display: flex; align-items: center; gap: 10px;
+  }
+  .section-icon {
+    width: 28px; height: 28px; background: var(--blue-main); border-radius: 7px;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; color: white;
+  }
+  .section-title { font-size: 14px; font-weight: 600; color: var(--blue-mid); text-transform: uppercase; letter-spacing: 0.3px; }
+  .section-body { padding: 22px; }
+  .field-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
+  .field { flex: 1; min-width: 200px; }
+  .field label { display: block; font-size: 12px; font-weight: 500; color: var(--gray-600); margin-bottom: 6px; text-transform: uppercase; }
+  .field input, .field select {
+    width: 100%; border: 1.5px solid var(--gray-200); border-radius: var(--radius);
+    padding: 9px 12px; font-family: inherit; font-size: 14px; outline: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--blue-bright); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .btn {
+    padding: 11px 22px; border-radius: var(--radius); font-family: inherit; font-size: 14px;
+    font-weight: 500; cursor: pointer; border: none; transition: all 0.18s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .btn-primary { background: var(--blue-bright); color: white; }
+  .btn-primary:hover:not(:disabled) { background: var(--blue-main); transform: translateY(-1px); }
+  .btn-secondary { background: var(--gray-200); color: var(--gray-800); }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-outline { background: transparent; border: 1.5px solid var(--blue-bright); color: var(--blue-bright); }
+  .btn-ghost {
+    background: var(--white); border: 1.5px solid var(--gray-200); color: var(--gray-800);
+    font-size: 12px; padding: 7px 14px;
+  }
+  .btn-ghost:hover:not(:disabled) { border-color: var(--blue-bright); color: var(--blue-bright); }
+  .hidden { display: none !important; }
+  .loading-inline { font-size: 13px; color: var(--gray-600); margin-top: 10px; }
+  .id-badge {
+    display: inline-block; font-family: 'DM Mono', monospace; font-size: 12px;
+    background: var(--blue-light); color: var(--blue-mid); padding: 4px 10px; border-radius: 6px;
+  }
+  .riepilogo-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px;
+    background: var(--gray-100); padding: 14px; border-radius: var(--radius);
+  }
+  .riepilogo-item .lbl { font-size: 10px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; }
+  .riepilogo-item .val { font-size: 14px; font-weight: 500; margin-top: 2px; }
+  .tappa-block {
+    border: 1.5px solid var(--gray-200); border-radius: var(--radius-lg);
+    margin-bottom: 18px; overflow: hidden; background: var(--gray-100);
+  }
+  .tappa-block-header {
+    background: var(--blue-light); padding: 14px 18px; border-bottom: 1px solid var(--gray-200);
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .tappa-num {
+    width: 28px; height: 28px; background: var(--blue-main); color: white; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+  }
+  .tappa-block-title { font-weight: 600; color: var(--blue-mid); font-size: 15px; }
+  .tappa-cliente-line { font-size: 13px; color: var(--gray-800); font-weight: 600; width: 100%; margin-top: 4px; }
+  .tappa-block-meta { font-size: 12px; color: var(--gray-600); width: 100%; margin-top: 2px; }
+  .tappa-edit {
+    padding: 14px 18px; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px;
+    border-bottom: 1px dashed var(--gray-200); background: var(--white);
+  }
+  .tappa-edit .pren-field { min-width: 0; }
+  .tappa-edit-note { grid-column: 1 / -1; }
+  .tappa-edit-note textarea {
+    width: 100%; min-height: 56px; border: 1.5px solid var(--gray-200); border-radius: 8px;
+    padding: 8px 10px; font-size: 13px; font-family: inherit; resize: vertical;
+  }
+  .trasporto-intertappa {
+    display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap;
+    margin: 0 0 10px; padding: 12px 16px;
+    background: var(--blue-pale); border: 1px dashed var(--blue-light); border-radius: 8px;
+  }
+  .trasporto-intertappa label { font-size: 11px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; display: block; }
+  .trasporto-intertappa .mezzo-hint { font-size: 11px; color: var(--gray-400); font-weight: 400; text-transform: none; margin-top: 2px; }
+  .chips-group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; flex: 1; min-width: 200px; }
+  .chip-mezzo {
+    display: inline-block; padding: 5px 12px; border-radius: 99px;
+    font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+    border: 1.5px solid var(--gray-200); background: var(--white); color: var(--gray-600); user-select: none;
+  }
+  .chip-mezzo:hover { border-color: var(--blue-bright); color: var(--blue-main); }
+  .chip-mezzo.selected { background: var(--blue-main); border-color: var(--blue-main); color: white; }
+  .tappa-block-header .pren-card-remove { margin-left: auto; }
+  .tappe-toolbar { margin-top: 8px; padding-top: 12px; border-top: 1px dashed var(--gray-200); }
+  .ro-lbl { font-size: 10px; color: var(--gray-400); text-transform: uppercase; font-weight: 600; }
+  .ro-val { color: var(--gray-800); font-weight: 500; }
+  .prenotazioni-wrap { padding: 16px 18px 18px; }
+  .prenotazioni-wrap h4 {
+    font-size: 12px; font-weight: 600; color: var(--blue-mid); text-transform: uppercase;
+    margin-bottom: 12px; letter-spacing: 0.2px;
+  }
+  .prenotazione-card {
+    background: var(--white); border: 1.5px solid var(--gray-200); border-radius: var(--radius);
+    padding: 14px 16px; margin-bottom: 12px;
+  }
+  .prenotazione-card:last-child { margin-bottom: 0; }
+  .pren-card-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    margin-bottom: 12px; flex-wrap: wrap;
+  }
+  .pren-card-title { font-weight: 600; font-size: 14px; color: var(--gray-800); }
+  .pren-card-sub { font-size: 12px; color: var(--gray-600); margin-top: 4px; }
+  .pren-card-remove {
+    flex-shrink: 0; width: 28px; height: 28px; padding: 0; border: none; border-radius: 6px;
+    background: transparent; color: var(--gray-400); font-size: 18px; line-height: 1;
+    cursor: pointer; font-family: inherit; transition: color 0.15s, background 0.15s;
+  }
+  .pren-card-remove:hover { color: var(--danger); background: rgba(217, 48, 37, 0.08); }
+  .pren-card-origine {
+    font-size: 12px; color: var(--gray-600); background: var(--gray-100);
+    padding: 8px 10px; border-radius: 6px; margin-bottom: 12px; line-height: 1.5;
+  }
+  .pren-fields {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px;
+    align-items: end;
+  }
+  .pren-field label { font-size: 11px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; display: block; margin-bottom: 5px; }
+  .pren-field input, .pren-field select {
+    width: 100%; border: 1.5px solid var(--gray-200); border-radius: 8px;
+    padding: 8px 10px; font-size: 13px; font-family: inherit;
+  }
+  .switch-row { display: flex; align-items: center; gap: 10px; min-height: 38px; }
+  .switch {
+    position: relative; width: 44px; height: 24px; flex-shrink: 0;
+  }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch-slider {
+    position: absolute; inset: 0; background: var(--gray-200); border-radius: 99px; cursor: pointer; transition: 0.2s;
+  }
+  .switch-slider::before {
+    content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px;
+    background: white; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .switch input:checked + .switch-slider { background: var(--success); }
+  .switch input:checked + .switch-slider::before { transform: translateX(20px); }
+  .switch-label { font-size: 13px; font-weight: 500; color: var(--gray-800); }
+  .empty-pren { font-size: 13px; color: var(--gray-400); font-style: italic; padding: 8px 0; }
+  .pren-voucher-extra {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    padding: 12px 0 4px;
+    margin-top: 4px;
+    border-top: 1px dashed var(--gray-200);
+  }
+  .pren-voucher-extra.hidden { display: none !important; }
+  .pren-field input[readonly] { background: var(--gray-100); color: var(--gray-600); }
+  .pren-servizio-dati {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    padding: 12px 0 4px;
+    margin-bottom: 4px;
+    border-top: 1px dashed var(--gray-200);
+  }
+  .pren-servizio-dati-title {
+    grid-column: 1 / -1;
+    font-size: 11px; font-weight: 600; color: var(--gray-600);
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .pren-add-servizio {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch;
+    margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--gray-200);
+  }
+  .pren-add-servizio select.btn-ghost {
+    flex: 1; min-width: 180px; max-width: 280px;
+    font-family: inherit; font-weight: 500; cursor: pointer; outline: none;
+    appearance: none;
+    background: var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%234a6180' d='M1 1l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 12px center;
+    padding-right: 32px;
+  }
+  .pren-add-servizio select.btn-ghost:focus {
+    border-color: var(--blue-bright); box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  .pren-add-servizio.hidden { display: none !important; }
+  .action-bar {
+    display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;
+    padding: 22px; background: var(--white); border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow); margin-top: 20px;
+  }
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; background: var(--blue-deep); color: white;
+    padding: 12px 20px; border-radius: 10px; font-size: 14px; box-shadow: var(--shadow-md);
+    display: none; z-index: 1000; max-width: min(420px, calc(100vw - 32px));
+  }
+  .toast.show { display: block; }
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--danger); }
+  .toast.warn { background: #b86e00; }
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(10,22,40,0.45); z-index: 2000;
+    display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: white; border-radius: var(--radius-lg); padding: 24px; max-width: 420px; width: 100%;
+    box-shadow: var(--shadow-md);
+  }
+  .modal h3 { font-size: 18px; margin-bottom: 8px; }
+  .modal p { font-size: 14px; color: var(--gray-600); margin-bottom: 20px; line-height: 1.5; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+  @media (max-width: 600px) {
+    .header { padding: 20px; }
+    .pren-fields { grid-template-columns: 1fr; }
+  }
+
+  /* ===== Nuova Trasferta ===== */
+  .req { color: var(--blue-bright); margin-left: 2px; }
+  .btn-add-tappa {
+    width: 100%; padding: 12px; border: 2px dashed var(--blue-light);
+    border-radius: var(--radius-lg); background: transparent; color: var(--blue-main);
+    font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer;
+    transition: all 0.18s; display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-add-tappa:hover { background: var(--blue-pale); border-color: var(--blue-bright); }
+  .nt-tappa-card {
+    border: 1.5px solid var(--gray-200); border-radius: var(--radius-lg);
+    margin-bottom: 14px; overflow: hidden; background: var(--gray-100); transition: box-shadow 0.18s;
+  }
+  .nt-tappa-card:hover { box-shadow: var(--shadow-md); }
+  .nt-tappa-header {
+    background: var(--blue-light); padding: 12px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--gray-200);
+  }
+  .nt-tappa-num { display: flex; align-items: center; gap: 8px; }
+  .nt-tappa-badge {
+    width: 24px; height: 24px; background: var(--blue-main); color: white;
+    border-radius: 50%; font-size: 11px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .nt-tappa-label { font-size: 13px; font-weight: 600; color: var(--blue-mid); }
+  .nt-tappa-preview { font-size: 13px; color: var(--gray-600); font-family: 'DM Mono', monospace; }
+  .nt-btn-icon {
+    width: 30px; height: 30px; border: 1.5px solid var(--gray-200); border-radius: 7px;
+    background: white; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; font-size: 14px; color: var(--gray-600); transition: all 0.15s;
+  }
+  .nt-btn-icon.danger:hover { background: #fff0f0; border-color: var(--danger); color: var(--danger); }
+  .nt-tappa-body { padding: 16px 18px; }
+  .nt-servizi-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
+    gap: 10px; margin-top: 10px;
+  }
+  .nt-srv-card {
+    border: 1.5px solid var(--gray-200); border-radius: var(--radius);
+    padding: 12px 14px; background: var(--white); cursor: pointer;
+    transition: all 0.18s; overflow: hidden;
+  }
+  .nt-srv-card:hover { border-color: var(--blue-bright); background: var(--blue-pale); }
+  .nt-srv-card.active { border-color: var(--blue-bright); background: var(--blue-light); }
+  .nt-srv-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .nt-srv-icon { font-size: 18px; flex-shrink: 0; }
+  .nt-srv-name { font-size: 12px; font-weight: 600; color: var(--gray-800); }
+  .nt-srv-check {
+    margin-left: auto; width: 18px; height: 18px;
+    border: 2px solid var(--gray-400); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; transition: all 0.15s;
+  }
+  .nt-srv-card.active .nt-srv-check { background: var(--blue-main); border-color: var(--blue-main); color: white; }
+  .nt-srv-fields { display: none; }
+  .nt-srv-card.active .nt-srv-fields { display: block; }
+  .nt-f { margin-top: 8px; }
+  .nt-f label { font-size: 11px; font-weight: 500; color: var(--gray-600); text-transform: uppercase; display: block; margin-bottom: 4px; }
+  .nt-f input, .nt-f select {
+    display: block; width: 100%; font-family: inherit; font-size: 13px;
+    padding: 7px 10px; border: 1.5px solid var(--gray-200); border-radius: var(--radius);
+    color: var(--gray-800); background: var(--white); outline: none;
+  }
+  .nt-f input:focus, .nt-f select:focus { border-color: var(--blue-bright); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .nt-intertappa {
+    display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap;
+    margin: 0 0 10px; padding: 12px 16px;
+    background: var(--blue-pale); border: 1px dashed var(--blue-light); border-radius: 8px;
+  }
+  .nt-intertappa label { font-size: 11px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; display: block; }
+  .nt-intertappa .mezzo-hint { font-size: 11px; color: var(--gray-400); font-weight: 400; margin-top: 2px; }
+  .nt-intertappa .chips-group { flex: 1; min-width: 200px; }
+  .nt-note-ta {
+    width: 100%; min-height: 60px; border: 1.5px solid var(--gray-200); border-radius: var(--radius);
+    padding: 9px 12px; font-family: inherit; font-size: 14px; color: var(--gray-800);
+    resize: vertical; outline: none;
+  }
+  .nt-note-ta:focus { border-color: var(--blue-bright); box-shadow: 0 0 0 3px var(--accent-glow); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">📋</div>
+  <div class="header-text">
+    <h1>Gestione Prenotazioni</h1>
+    <p>Studio Rivelli Consulting — Aggiornamento servizi trasferta</p>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Bottone nuova trasferta -->
+  <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+    <button class="btn btn-outline" id="btn-nuova-trasferta" onclick="ntTogglePanel()">＋ Nuova trasferta</button>
+  </div>
+
+  <!-- Pannello nuova trasferta -->
+  <div id="nt-panel" class="hidden">
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">✈</div>
+        <span class="section-title">Nuova Trasferta</span>
+      </div>
+      <div class="section-body">
+        <div style="margin-bottom:20px">
+          <div style="font-size:12px;font-weight:600;color:var(--blue-mid);text-transform:uppercase;letter-spacing:.2px;margin-bottom:12px">👤 Anagrafica</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Nome e Cognome <span class="req">*</span></label>
+              <input type="text" id="nt-nome" placeholder="es. Maria Rossi">
+            </div>
+            <div class="field">
+              <label>Data inizio <span class="req">*</span></label>
+              <input type="date" id="nt-data-inizio">
+            </div>
+            <div class="field">
+              <label>Data fine prevista <span class="req">*</span></label>
+              <input type="date" id="nt-data-fine">
+            </div>
+          </div>
+        </div>
+        <div style="margin-bottom:20px">
+          <div style="font-size:12px;font-weight:600;color:var(--blue-mid);text-transform:uppercase;letter-spacing:.2px;margin-bottom:12px">📍 Itinerario — Tappe</div>
+          <div id="nt-tappe-container"></div>
+          <button class="btn-add-tappa" onclick="ntAddTappa()">＋ Aggiungi tappa</button>
+        </div>
+        <div style="margin-bottom:20px">
+          <label style="font-size:12px;font-weight:500;color:var(--gray-600);text-transform:uppercase;display:block;margin-bottom:6px">📝 Note aggiuntive</label>
+          <textarea class="nt-note-ta" id="nt-note-generali" placeholder="Informazioni extra, richieste speciali..."></textarea>
+        </div>
+        <div style="display:flex;gap:12px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--gray-200)">
+          <button class="btn btn-secondary" onclick="ntReset()">🔄 Azzera</button>
+          <button class="btn btn-primary" id="nt-btn-invia" onclick="ntInviaDati()">📤 Invia trasferta</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fase 1: ricerca -->
+  <div class="section" id="fase-ricerca">
+    <div class="section-header">
+      <div class="section-icon">🔍</div>
+      <span class="section-title">Recupera trasferta</span>
+    </div>
+    <div class="section-body">
+      <div class="field-row">
+        <div class="field" style="flex:2">
+          <label>ID Trasferta</label>
+          <input type="text" id="input-trasferta-id" placeholder="es. TR-2026-0042" autocomplete="off">
+        </div>
+        <button class="btn btn-primary" id="btn-carica" onclick="caricaTrasferta()">Carica dati</button>
+      </div>
+      <p class="loading-inline hidden" id="msg-caricamento">⏳ Recupero in corso…</p>
+    </div>
+  </div>
+
+  <!-- Fase 2: dettaglio (nascosta finché non carica) -->
+  <div id="fase-dettaglio" class="hidden">
+
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">👤</div>
+        <span class="section-title">Riepilogo trasferta</span>
+        <span class="id-badge" id="badge-id" style="margin-left:auto"></span>
+      </div>
+      <div class="section-body">
+        <div class="riepilogo-grid" id="riepilogo-anagrafica"></div>
+        <p id="note-generali-ro" class="hidden" style="margin-top:14px;font-size:13px;color:var(--gray-600);padding:10px;background:var(--gray-100);border-radius:8px"></p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">🗺️</div>
+        <span class="section-title">Itinerario e prenotazioni</span>
+      </div>
+      <div class="section-body" id="contenitore-tappe"></div>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn btn-outline" onclick="nuovaRicerca()">↩ Altra trasferta</button>
+      <button class="btn btn-secondary" id="btn-salva" onclick="salvaProgresso()">💾 Salva progresso</button>
+      <button class="btn btn-primary" id="btn-invia" onclick="inviaPrenotazioni()">📤 Invia prenotazioni</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="modal-elimina">
+  <div class="modal">
+    <h3>✅ Prenotazioni inviate</h3>
+    <p id="modal-elimina-testo">Vuoi eliminare il record della trasferta <strong id="modal-id-testo"></strong> dal sistema?<br><br>
+    Se elimini, non dovrai gestire di nuovo questa trasferta. Se lo tieni, potrai riaprirla in seguito con lo stesso ID.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="chiudiModaleDopoInvio(false)">No, tieni il record</button>
+      <button class="btn btn-danger" id="btn-conferma-elimina" onclick="confermaElimina()">Sì, elimina record</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== Webhook (placeholder dove indicato) ==========
+const WEBHOOK_RECUPERO = 'https://studiorivelli.app.n8n.cloud/webhook/recupero-dati';
+const WEBHOOK_SALVATAGGIO = 'https://studiorivelli.app.n8n.cloud/webhook/salvataggio-dati';
+const WEBHOOK_INVIO_PRENOTAZIONI = 'https://studiorivelli.app.n8n.cloud/webhook/invio-dati';
+const WEBHOOK_CANCELLA_TRASFERTA = 'https://studiorivelli.app.n8n.cloud/webhook/cancellazione-dati';
+
+const SERVIZI_META = {
+  hotel: { icon: '🏨', nome: 'Hotel' },
+  aereo: { icon: '✈️', nome: 'Aereo' },
+  treno: { icon: '🚆', nome: 'Treno' },
+  noleggio: { icon: '🚗', nome: 'Noleggio auto' },
+  parcheggio: { icon: '🅿️', nome: 'Parcheggio' },
+  bus: { icon: '🚌', nome: 'Bus' },
+  moto: { icon: '🏍️', nome: 'Moto' },
+  auto_az: { icon: '🏢', nome: 'Auto aziendale' },
+  spostamento: { icon: '🛤️', nome: 'Spostamento' }
+};
+
+const STATO_PRENOTAZIONE_OPTS = [
+  { val: '', text: '— seleziona —' },
+  { val: 'da_prenotare', text: 'Da prenotare' },
+  { val: 'prenotato', text: 'Prenotato ✓' }
+];
+const STATO_BIGLIETTO_OPTS = [
+  ...STATO_PRENOTAZIONE_OPTS,
+  { val: 'acquistato', text: 'Acquistato ✓' }
+];
+const STATO_AUTO_AZ_OPTS = [
+  { val: '', text: '— seleziona —' },
+  { val: 'da_richiedere', text: 'Da richiedere' },
+  { val: 'confermato', text: 'Confermato ✓' }
+];
+
+/** Campi allineati al form trasferte_rivelli (per servizio) */
+const SERVIZI_CAMPI = {
+  hotel: [
+    { id: 'nome', label: 'Nome struttura', type: 'text', placeholder: 'es. Hotel Bologna' },
+    { id: 'notti', label: 'N° notti', type: 'number', placeholder: '1' },
+    { id: 'stato', label: 'Stato richiesta', type: 'select', options: STATO_PRENOTAZIONE_OPTS }
+  ],
+  aereo: [
+    { id: 'tratta', label: 'Tratta', type: 'text', placeholder: 'es. FCO → LIN' },
+    { id: 'stato', label: 'Stato', type: 'select', options: STATO_BIGLIETTO_OPTS }
+  ],
+  treno: [
+    { id: 'tratta', label: 'Tratta', type: 'text', placeholder: 'es. Roma → Bologna' },
+    { id: 'stato', label: 'Stato', type: 'select', options: STATO_BIGLIETTO_OPTS }
+  ],
+  noleggio: [
+    { id: 'ritiro', label: 'Ritiro', type: 'text', placeholder: 'Luogo ritiro' },
+    { id: 'restituzione', label: 'Restituzione', type: 'text', placeholder: 'Luogo restituzione' },
+    { id: 'stato', label: 'Stato', type: 'select', options: STATO_PRENOTAZIONE_OPTS }
+  ],
+  parcheggio: [
+    { id: 'luogo', label: 'Luogo', type: 'text', placeholder: 'es. Aeroporto' },
+    { id: 'stato', label: 'Stato', type: 'select', options: STATO_PRENOTAZIONE_OPTS }
+  ],
+  bus: [
+    { id: 'tratta', label: 'Tratta', type: 'text', placeholder: 'es. Bologna → Milano' },
+    { id: 'stato', label: 'Stato', type: 'select', options: STATO_BIGLIETTO_OPTS }
+  ],
+  moto: [
+    { id: 'tratta', label: 'Tratta', type: 'text', placeholder: 'es. Bologna → Milano' },
+    { id: 'stato', label: 'Stato', type: 'select', options: STATO_BIGLIETTO_OPTS }
+  ],
+  spostamento: [
+    { id: 'tratta', label: 'Tratta', type: 'text', placeholder: 'es. Bologna → Milano' },
+    { id: 'stato', label: 'Stato', type: 'select', options: STATO_BIGLIETTO_OPTS }
+  ],
+  auto_az: [
+    { id: 'tratta', label: 'Tratta', type: 'text', placeholder: 'es. Roma → Bologna' },
+    { id: 'stato', label: 'Stato', type: 'select', options: STATO_AUTO_AZ_OPTS }
+  ]
+};
+
+const METODI_PAGAMENTO = [
+  { val: '', text: '— seleziona —' },
+  { val: 'carta_aziendale', text: 'Carta aziendale' },
+  { val: 'voucher', text: 'Voucher' },
+  { val: 'carta_credito', text: 'Carta di credito' },
+  { val: 'bonifico', text: 'Bonifico' },
+  { val: 'conto_corrente', text: 'Conto corrente' }
+];
+
+/** Metodi per la differenza non coperta dal voucher (senza voucher) */
+const METODI_PAGAMENTO_DIFFERENZA = METODI_PAGAMENTO.filter(m => m.val && m.val !== 'voucher');
+
+/** Chip mezzi — stesso set di trasferte_rivelli (+ Parcheggio per prenotazioni) */
+const MEZZI_CHIP_OPTIONS = [
+  { label: '🚆 Treno', value: 'Treno' },
+  { label: '✈️ Aereo', value: 'Aereo' },
+  { label: '🚗 Auto propria', value: 'Auto propria' },
+  { label: '🚘 Noleggio', value: 'Noleggio' },
+  { label: '🅿️ Parcheggio', value: 'Parcheggio' },
+  { label: '🚌 Bus', value: 'Bus' },
+  { label: '🏍️ Moto', value: 'Moto' }
+];
+const TIPI_ATTIVITA = [
+  { val: 'sopralluogo', text: 'Sopralluogo' },
+  { val: 'assistenza', text: 'Assistenza' },
+  { val: 'riunione', text: 'Riunione' },
+  { val: 'formazione', text: 'Formazione' },
+  { val: 'altro', text: 'Altro' }
+];
+
+let sessionTrasferta = null;
+let sessionTrasfertaId = null;
+
+// ========== Helpers ==========
+function esc(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function formatDateIt(d) {
+  if (!d) return '—';
+  const x = new Date(d + 'T12:00:00');
+  if (isNaN(x)) return d;
+  return x.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function addDays(iso, n) {
+  const d = new Date(iso + 'T12:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function isAutoAzMezzo(nome) {
+  const n = (nome || '').toLowerCase().replace(/\./g, '').trim();
+  return n.includes('auto az') || n === 'auto aziendale';
+}
+
+/** Mezzo del piano viaggio → chiave servizio (stesso schema form trasferte) */
+function normalizzaMezzoTesto(s) {
+  return String(s || '')
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}]/gu, '')
+    .replace(/\./g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function mezzoToServizioKey(mezzo) {
+  const n = normalizzaMezzoTesto(mezzo);
+  if (!n) return null;
+  if (isAutoAzMezzo(mezzo)) return 'auto_az';
+  if (n.includes('nolegg')) return 'noleggio';
+  if (n.includes('tren')) return 'treno';
+  if (n.includes('aereo') || n.includes('volo')) return 'aereo';
+  if (n.includes('parchegg')) return 'parcheggio';
+  if (n.includes('bus')) return 'bus';
+  if (n.includes('moto')) return 'moto';
+  if (n.includes('auto propri')) return null;
+  return null;
+}
+
+function mezzoChipSelezionato(mezzi, value) {
+  const v = normalizzaMezzoTesto(value);
+  return (mezzi || []).some(m => {
+    const t = normalizzaMezzoTesto(m);
+    return t === v || t.includes(v) || v.includes(t);
+  });
+}
+
+const CAMPI_COSTO_SERVIZIO = {
+  costo_hotel: 'hotel',
+  costo_noleggio: 'noleggio',
+  costo_parcheggio: 'parcheggio',
+  costo_treno: 'treno',
+  costo_aereo: 'aereo',
+  costo_auto_az: 'auto_az'
+};
+
+function isRigaTabellaN8n(row) {
+  return row && row.trasferta_id != null && row.tappa_numero != null;
+}
+
+function haValoreCosto(v) {
+  if (v == null) return false;
+  const s = String(v).trim();
+  return s !== '' && s !== '0';
+}
+
+function parseCostoNum(v) {
+  if (!haValoreCosto(v)) return 0;
+  const n = parseFloat(String(v).replace(',', '.').replace(/[^\d.-]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatEuro(n) {
+  return n.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+/** Arrivo/partenza possono essere invertiti in DB: restituisce sempre da ≤ a */
+function ordinaCoppiaDate(arrivo, partenza) {
+  const a = (arrivo || '').trim();
+  const b = (partenza || '').trim();
+  if (!a && !b) return { da: '', a: '' };
+  if (!a) return { da: b, a: b };
+  if (!b) return { da: a, a: a };
+  return a <= b ? { da: a, a: b } : { da: b, a: a };
+}
+
+function sommaCostiRiga(row) {
+  return Object.keys(CAMPI_COSTO_SERVIZIO).reduce((acc, campo) => {
+    return acc + parseCostoNum(row[campo]);
+  }, 0);
+}
+
+function parseMezziRaggiungimento(s) {
+  if (!s || !String(s).trim()) return null;
+  const parts = String(s).split(/[,;|]/).map(x => x.trim()).filter(Boolean);
+  return parts.length ? parts : null;
+}
+
+function pernottamentoDaRiga(row) {
+  const p = row.pernottamento;
+  if (typeof p === 'boolean') return p;
+  const t = String(p || '').toLowerCase();
+  return t === 'sì' || t === 'si' || t === 'yes' || t === 'true' || t === '1';
+}
+
+function serviziDaJsonRiga(row) {
+  const raw = row.servizi_json;
+  if (!raw || !String(raw).trim()) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function serviziDaRiga(row) {
+  const fromJson = serviziDaJsonRiga(row);
+  const servizi = fromJson ? { ...fromJson } : {};
+  Object.entries(CAMPI_COSTO_SERVIZIO).forEach(([campo, key]) => {
+    const val = row[campo];
+    if (val != null && String(val).trim() !== '') {
+      servizi[key] = { ...(servizi[key] || {}), costo: String(val).trim() };
+    }
+  });
+  if (pernottamentoDaRiga(row) && !servizi.hotel) {
+    servizi.hotel = { ...(servizi.hotel || {}), stato: servizi.hotel?.stato || 'da_prenotare' };
+  }
+  (parseMezziRaggiungimento(row.mezzo_raggiungimento) || []).forEach(mezzo => {
+    const k = mezzoToServizioKey(mezzo);
+    if (!k) return;
+    servizi[k] = {
+      ...(servizi[k] || {}),
+      stato: servizi[k]?.stato || 'da_prenotare',
+      mezzo_viaggio: mezzo
+    };
+  });
+  return Object.keys(servizi).length ? servizi : null;
+}
+
+function serviziJsonPerTappa(tappa) {
+  if (!tappa?.servizi || !Object.keys(tappa.servizi).length) return '';
+  return JSON.stringify(tappa.servizi);
+}
+
+function statoPrenotazioniPerTappa(tappaNum, prenotazioni) {
+  const items = (prenotazioni || []).filter(p => Number(p.tappa) === Number(tappaNum));
+  if (!items.length) return 'In sospeso';
+  const ok = items.filter(p => p.prenotato).length;
+  if (ok === 0) return 'In sospeso';
+  if (ok === items.length) return 'Completato';
+  return 'In corso';
+}
+
+function giorniTraDate(d1, d2) {
+  if (!d1 || !d2) return 1;
+  const t1 = new Date(d1 + 'T12:00:00').getTime();
+  const t2 = new Date(d2 + 'T12:00:00').getTime();
+  const g = Math.ceil(Math.abs(t2 - t1) / (1000 * 3600 * 24));
+  return Math.max(1, g || 1);
+}
+
+function nottiSuggeriteHotel(tappa) {
+  const d = ordinaCoppiaDate(tappa.data_arrivo, tappa.data_partenza);
+  return giorniTraDate(d.da, d.a);
+}
+
+function optionsSelect(list, selected) {
+  const sel = selected != null ? String(selected) : '';
+  return list.map(o => {
+    const v = o.val != null ? String(o.val) : '';
+    return `<option value="${esc(v)}"${v === sel ? ' selected' : ''}>${esc(o.text)}</option>`;
+  }).join('');
+}
+
+function renderCampiServizioHtml(servizioKey, dati) {
+  const campi = SERVIZI_CAMPI[servizioKey];
+  if (!campi?.length) return '';
+  const d = dati || {};
+  const fields = campi.map(f => {
+    const val = d[f.id] != null ? String(d[f.id]) : '';
+    if (f.type === 'select') {
+      return `<div class="pren-field">
+        <label>${esc(f.label)}</label>
+        <select data-srv-field="${f.id}">${optionsSelect(f.options, val)}</select>
+      </div>`;
+    }
+    return `<div class="pren-field">
+      <label>${esc(f.label)}</label>
+      <input type="${f.type}" data-srv-field="${f.id}" value="${esc(val)}" placeholder="${esc(f.placeholder || '')}">
+    </div>`;
+  }).join('');
+  return `<div class="pren-servizio-dati" data-srv-dati>
+    <span class="pren-servizio-dati-title">Dettaglio servizio (modificabile)</span>
+    ${fields}
+  </div>`;
+}
+
+function leggiDatiServizioDaCard(card) {
+  const out = {};
+  card.querySelectorAll('[data-srv-field]').forEach(el => {
+    out[el.getAttribute('data-srv-field')] = el.value.trim();
+  });
+  const costo = readCostoServizioCard(card);
+  if (costo) out.costo = costo;
+  return out;
+}
+
+/** Converte righe flat n8n (una riga = una tappa) nel formato usato dalla UI */
+function normalizzaDaRigheN8n(righe) {
+  const rows = righe.filter(isRigaTabellaN8n).slice().sort((a, b) => {
+    return Number(a.tappa_numero) - Number(b.tappa_numero);
+  });
+  if (!rows.length) return null;
+
+  const itinerario = rows.map(row => {
+    const date = ordinaCoppiaDate(row.data_arrivo, row.data_partenza);
+    const calc = sommaCostiRiga(row);
+    const dbTot = parseCostoNum(row.costo_tappa_totale);
+    return {
+      tappa: parseInt(row.tappa_numero, 10) || 1,
+      citta: row.citta || '',
+      data_arrivo: date.da,
+      data_partenza: date.a,
+      cliente_attivita: row.cliente_tappa || '',
+      tipo_attivita: row.tipo_attivita || '',
+      pernottamento: pernottamentoDaRiga(row),
+      mezzo_per_raggiungere: parseMezziRaggiungimento(row.mezzo_raggiungimento),
+      servizi: serviziDaRiga(row),
+      note: row.note_tappa || '',
+      stato_prenotazioni: row.stato_prenotazioni || '',
+      costo_tappa_totale_db: row.costo_tappa_totale || '',
+      costo_tappa_calcolato: calc,
+      costo_tappa_disallineato: dbTot > 0 && Math.abs(calc - dbTot) > 0.01,
+      _db_id: row.id
+    };
+  });
+
+  const tutteLeDate = itinerario.flatMap(t => [t.data_arrivo, t.data_partenza].filter(Boolean)).sort();
+  const span = ordinaCoppiaDate(
+    tutteLeDate[0] || '',
+    tutteLeDate[tutteLeDate.length - 1] || ''
+  );
+
+  return {
+    anagrafica: {
+      nome_cognome: rows[0].nome_persona || '—',
+      data_inizio: span.da,
+      data_fine_prevista: span.a
+    },
+    itinerario,
+    note_generali: '',
+    meta: {
+      trasferta_id: rows[0].trasferta_id,
+      data_creazione: rows[0].data_creazione,
+      formato: 'n8n_righe'
+    },
+    _righe_db: rows
+  };
+}
+
+function estraiPayloadRisposta(data) {
+  if (data == null) return null;
+  if (Array.isArray(data)) {
+    if (!data.length) return null;
+    if (isRigaTabellaN8n(data[0])) return normalizzaDaRigheN8n(data);
+    return estraiPayloadRisposta(data[0]);
+  }
+  if (data.trasferta) return data.trasferta;
+  if (data.body) return estraiPayloadRisposta(data.body);
+  if (data.data) return estraiPayloadRisposta(data.data);
+  if (data.anagrafica && data.itinerario) return data;
+  if (data.json && typeof data.json === 'object') return estraiPayloadRisposta(data.json);
+  return data;
+}
+
+function servizioDettaglioTesto(key, dati) {
+  if (!dati) return '';
+  const parti = [];
+  if (dati.mezzo_viaggio) parti.push('Mezzo viaggio: ' + dati.mezzo_viaggio);
+  if (dati.nome) parti.push(dati.nome);
+  if (dati.tratta || dati.tratto) parti.push(dati.tratta || dati.tratto);
+  if (dati.ritiro) parti.push('Ritiro: ' + dati.ritiro);
+  if (dati.restituzione) parti.push('Rest.: ' + dati.restituzione);
+  if (dati.luogo) parti.push(dati.luogo);
+  if (dati.notti) parti.push(dati.notti + ' notti');
+  if (dati.costo) parti.push('Costo indicato: ' + dati.costo + ' €');
+  return parti.join(' · ') || SERVIZI_META[key]?.nome || key;
+}
+
+function suggerisciGiornate(tappa, tipo, key, dati) {
+  const date = ordinaCoppiaDate(tappa.data_arrivo, tappa.data_partenza);
+  if (!date.da) return { da: '', a: '' };
+
+  if (tipo === 'servizio') {
+    if (key === 'hotel' && dati?.notti) {
+      const n = parseInt(dati.notti, 10);
+      if (n > 0) return { da: date.da, a: addDays(date.da, n - 1) };
+    }
+    if (key === 'noleggio' || key === 'hotel') return date;
+    return { da: date.da, a: date.da };
+  }
+  return { da: date.da, a: date.da };
+}
+
+function prenotatoInizialeDaStato(stato) {
+  if (!stato) return false;
+  const s = String(stato).toLowerCase();
+  if (s.includes('sospes') || s.includes('attes')) return false;
+  return s.includes('prenotat') || s.includes('acquistat') || s.includes('confermat') || s.includes('completat');
+}
+
+function optionsPagamento(list, selected) {
+  const sel = selected != null ? String(selected) : '';
+  return list.map(m => {
+    const v = m.val != null ? String(m.val) : '';
+    return `<option value="${esc(v)}"${v === sel ? ' selected' : ''}>${esc(m.text)}</option>`;
+  }).join('');
+}
+
+function costoServizioDaItem(item) {
+  const c = item.costo_servizio ?? item.dati_servizio?.costo ?? item.dati_origine?.costo;
+  return c != null && String(c).trim() !== '' ? String(c).trim() : '';
+}
+
+function buildItemServizio(tappa, key, datiRaw) {
+  const dati = { ...(datiRaw || {}) };
+  const po = dati.prenotazione_operatrice || {};
+  if (key === 'hotel' && !dati.notti && tappa.pernottamento) {
+    dati.notti = String(nottiSuggeriteHotel(tappa));
+  }
+  if (!dati.stato && key === 'hotel' && tappa.pernottamento) {
+    dati.stato = 'da_prenotare';
+  }
+  const meta = SERVIZI_META[key] || { icon: '📌', nome: key };
+  const n = tappa.tappa;
+  const citta = tappa.citta || 'Tappa ' + n;
+  const cliente = tappa.cliente_attivita || '';
+  const gg = (po.giornate_da || po.giornate_a)
+    ? ordinaCoppiaDate(po.giornate_da || '', po.giornate_a || '')
+    : suggerisciGiornate(tappa, 'servizio', key, dati);
+  const costoSrv = po.costo_servizio || dati.costo || '';
+  const prenDef = po.prenotato != null ? !!po.prenotato : prenotatoInizialeDaStato(dati.stato);
+  return {
+    id: `t${n}-srv-${key}`,
+    tipo: 'servizio',
+    tappa: n,
+    citta,
+    cliente,
+    servizio_key: key,
+    icon: meta.icon,
+    titolo: meta.nome,
+    sottotitolo: (cliente ? cliente + ' · ' : '') + citta + ' · Tappa ' + n,
+    dettaglio_origine: servizioDettaglioTesto(key, dati),
+    giornate_da: gg.da,
+    giornate_a: gg.a,
+    prenotato_default: prenDef,
+    costo_servizio: costoSrv,
+    metodo_pagamento: po.metodo_pagamento || '',
+    valore_voucher: po.valore_voucher || '',
+    metodo_pagamento_differenza: po.metodo_pagamento_differenza || '',
+    dati_servizio: { ...dati },
+    dati_origine: dati,
+    db_row_id: tappa._db_id
+  };
+}
+
+// ========== UI: card prenotazione ==========
+function renderPrenotazioneCard(item) {
+  const meta = JSON.stringify(item).replace(/"/g, '&quot;');
+  const prenOn = item.prenotato_default ? 'checked' : '';
+  const datiSrv = item.dati_servizio || item.dati_origine || {};
+  const costoSrv = costoServizioDaItem(item);
+  const metodoSel = item.metodo_pagamento || '';
+  const valVoucher = item.valore_voucher || '';
+  const metodoDiffSel = item.metodo_pagamento_differenza || '';
+  const diffOpts = optionsPagamento(METODI_PAGAMENTO_DIFFERENZA, metodoDiffSel);
+  const srvKey = item.servizio_key || (item.tipo === 'tratta' ? (mezzoToServizioKey(item.mezzo) || 'spostamento') : null);
+  const isServizio = item.tipo === 'servizio' || !!srvKey;
+  const srvFields = srvKey ? renderCampiServizioHtml(srvKey, datiSrv) : '';
+
+  return `
+    <div class="prenotazione-card" data-item-id="${esc(item.id)}" data-meta="${meta}" data-costo-servizio="${esc(costoSrv)}">
+      <div class="pren-card-head">
+        <div>
+          <div class="pren-card-title">${esc(item.icon)} ${esc(item.titolo)}</div>
+          <div class="pren-card-sub">${esc(item.sottotitolo)}</div>
+        </div>
+        ${isServizio && item.servizio_key ? `
+        <button type="button" class="pren-card-remove" title="Rimuovi servizio"
+          data-tappa="${item.tappa}" data-srv-key="${esc(item.servizio_key)}"
+          onclick="rimuoviServizioPrenotazioneDaBtn(this)" aria-label="Rimuovi servizio">×</button>
+        ` : ''}
+      </div>
+      <div class="pren-fields">
+        ${srvFields}
+        <div class="pren-field">
+          <label>Prenotato</label>
+          <div class="switch-row">
+            <label class="switch">
+              <input type="checkbox" data-field="prenotato" ${prenOn}>
+              <span class="switch-slider"></span>
+            </label>
+            <span class="switch-label" data-switch-label>No</span>
+          </div>
+        </div>
+        ${isServizio ? `
+        <div class="pren-field">
+          <label>Costo servizio (€)</label>
+          <input type="text" data-field="costo_servizio" value="${esc(costoSrv)}" placeholder="es. 120,00" inputmode="decimal" autocomplete="off">
+        </div>` : ''}
+        <div class="pren-field">
+          <label>Metodo pagamento</label>
+          <select data-field="metodo_pagamento">${optionsPagamento(METODI_PAGAMENTO, metodoSel)}</select>
+        </div>
+        <div class="pren-field">
+          <label>Giorno / da</label>
+          <input type="date" data-field="giornate_da" value="${esc(item.giornate_da)}">
+        </div>
+        <div class="pren-field">
+          <label>Giorno / a</label>
+          <input type="date" data-field="giornate_a" value="${esc(item.giornate_a)}">
+        </div>
+        ${isServizio ? `
+        <div class="pren-voucher-extra hidden" data-voucher-panel>
+          <div class="pren-field">
+            <label>Valore voucher (€)</label>
+            <input type="text" data-field="valore_voucher" value="${esc(valVoucher)}" placeholder="es. 100,00" inputmode="decimal">
+          </div>
+          <div class="pren-field">
+            <label>Differenza da pagare</label>
+            <input type="text" data-field="differenza_display" readonly value="—" title="Costo servizio meno voucher">
+          </div>
+          <div class="pren-field" data-diff-metodo-wrap>
+            <label>Metodo pagamento differenza</label>
+            <select data-field="metodo_pagamento_differenza">${diffOpts}</select>
+          </div>
+        </div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function readCostoServizioCard(card) {
+  const inp = card.querySelector('[data-field=costo_servizio]');
+  if (inp) return inp.value.trim();
+  return card.dataset.costoServizio || '';
+}
+
+function calcDifferenzaPagamento(card) {
+  const costo = parseCostoNum(readCostoServizioCard(card));
+  const voucher = parseCostoNum(card.querySelector('[data-field=valore_voucher]')?.value);
+  return Math.max(0, Math.round((costo - voucher) * 100) / 100);
+}
+
+function syncVoucherPanel(card) {
+  const panel = card.querySelector('[data-voucher-panel]');
+  if (!panel) return;
+  const metodo = card.querySelector('[data-field=metodo_pagamento]')?.value;
+  const diffDisplay = card.querySelector('[data-field=differenza_display]');
+  const diffWrap = card.querySelector('[data-diff-metodo-wrap]');
+  const diffSelect = card.querySelector('[data-field=metodo_pagamento_differenza]');
+
+  if (metodo === 'voucher') {
+    panel.classList.remove('hidden');
+    const diff = calcDifferenzaPagamento(card);
+    if (diffDisplay) diffDisplay.value = formatEuro(diff) + ' €';
+    if (diffWrap && diffSelect) {
+      const serveDiff = diff > 0.009;
+      diffWrap.style.display = serveDiff ? '' : 'none';
+      diffSelect.required = serveDiff;
+    }
+  } else {
+    panel.classList.add('hidden');
+    if (diffSelect) diffSelect.required = false;
+  }
+}
+
+function bindPrenotazioneCards(root) {
+  root.querySelectorAll('.prenotazione-card').forEach(card => {
+    const cb = card.querySelector('[data-field=prenotato]');
+    const lbl = card.querySelector('[data-switch-label]');
+    if (cb && lbl) {
+      const syncLbl = () => { lbl.textContent = cb.checked ? 'Sì' : 'No'; };
+      cb.addEventListener('change', syncLbl);
+      syncLbl();
+    }
+    const selPag = card.querySelector('[data-field=metodo_pagamento]');
+    if (selPag) selPag.addEventListener('change', () => syncVoucherPanel(card));
+    const inpCosto = card.querySelector('[data-field=costo_servizio]');
+    if (inpCosto) {
+      inpCosto.addEventListener('input', () => {
+        card.dataset.costoServizio = inpCosto.value.trim();
+        syncVoucherPanel(card);
+      });
+    }
+    const inpVoucher = card.querySelector('[data-field=valore_voucher]');
+    if (inpVoucher) inpVoucher.addEventListener('input', () => syncVoucherPanel(card));
+    syncVoucherPanel(card);
+  });
+}
+
+function bindSwitchLabels(root) {
+  bindPrenotazioneCards(root);
+}
+
+function renderRiepilogoCosti(itinerario) {
+  if (!itinerario?.length) return '';
+  const totCalc = itinerario.reduce((s, t) => s + (t.costo_tappa_calcolato || 0), 0);
+  const totDb = itinerario.reduce((s, t) => s + parseCostoNum(t.costo_tappa_totale_db), 0);
+  const warn = itinerario.some(t => t.costo_tappa_disallineato);
+  let html = `<div class="riepilogo-item"><div class="lbl">Somma costi servizi</div><div class="val">${formatEuro(totCalc)} €</div></div>`;
+  if (totDb > 0 && warn) {
+    html += `<div class="riepilogo-item"><div class="lbl">Totale DB</div><div class="val" style="color:var(--danger)">${formatEuro(totDb)} € ⚠</div></div>`;
+  }
+  return html;
+}
+
+function renderCostoTappa(tappa) {
+  const calc = tappa.costo_tappa_calcolato ?? 0;
+  let s = `<div><div class="ro-lbl">Somma costi servizi</div><div class="ro-val">${formatEuro(calc)} €</div></div>`;
+  if (tappa.costo_tappa_disallineato && parseCostoNum(tappa.costo_tappa_totale_db) > 0) {
+    s += `<div><div class="ro-lbl">Totale salvato (DB)</div><div class="ro-val" style="color:var(--danger)">${esc(tappa.costo_tappa_totale_db)} € — verifica costo treno</div></div>`;
+  }
+  return s;
+}
+
+function serviziKeysPerTappa(tappa) {
+  const keys = new Set();
+  if (tappa.pernottamento) keys.add('hotel');
+  (tappa.mezzo_per_raggiungere || []).forEach(mezzo => {
+    if (isAutoAzMezzo(mezzo)) return;
+    const k = mezzoToServizioKey(mezzo);
+    if (k) keys.add(k);
+  });
+  // Servizi aggiunti manualmente (+ Aggiungi): non legati ai chip inter-tappa
+  if (tappa.servizi) {
+    Object.keys(tappa.servizi).forEach(key => {
+      if (keys.has(key)) return;
+      if (isServizioLegatoAMezzoIntertappa(key)) return;
+      keys.add(key);
+    });
+  }
+  return [...keys];
+}
+
+function datiServizioPerTappa(tappa, key) {
+  const dati = (tappa.servizi && tappa.servizi[key]) ? { ...tappa.servizi[key] } : {};
+  const mezzo = (tappa.mezzo_per_raggiungere || []).find(m => mezzoToServizioKey(m) === key);
+  if (mezzo && !dati.mezzo_viaggio) dati.mezzo_viaggio = mezzo;
+  if (!dati.stato && SERVIZI_META[key]) dati.stato = 'da_prenotare';
+  return dati;
+}
+
+function renderAggiungiServizioBar(tappaNum, keysPresenti) {
+  const mancanti = Object.keys(SERVIZI_META).filter(k => !keysPresenti.includes(k));
+  if (!mancanti.length) return '';
+  const opts = mancanti.map(k => `<option value="${k}">${esc(SERVIZI_META[k].nome)}</option>`).join('');
+  return `<div class="pren-add-servizio" data-pren-add-bar="${tappaNum}">
+    <select id="pren-add-sel-${tappaNum}" class="btn btn-ghost" aria-label="Tipo servizio da aggiungere">
+      <option value="">Servizio da aggiungere…</option>
+      ${opts}
+    </select>
+    <button type="button" class="btn btn-ghost" onclick="aggiungiServizioPrenotazione(${tappaNum})">+ Aggiungi</button>
+  </div>`;
+}
+
+function aggiungiServizioPrenotazione(tappaNum) {
+  const sel = document.getElementById(`pren-add-sel-${tappaNum}`);
+  const key = sel?.value;
+  if (!key || !sessionTrasferta) return;
+  const tappa = (sessionTrasferta.itinerario || []).find(t => t.tappa === tappaNum);
+  if (!tappa) return;
+  const wrap = document.querySelector(`[data-pren-list="${tappaNum}"]`);
+  if (!wrap) return;
+  if (wrap.querySelector(`[data-item-id="t${tappaNum}-srv-${key}"]`)) {
+    showToast('Servizio già presente in questa tappa', 'warn');
+    return;
+  }
+  const empty = wrap.querySelector('.empty-pren');
+  if (empty) empty.remove();
+  if (!tappa.servizi) tappa.servizi = {};
+  tappa.servizi[key] = { ...(tappa.servizi[key] || {}), stato: 'da_prenotare' };
+  const item = buildItemServizio(tappa, key, tappa.servizi[key]);
+  const tmp = document.createElement('div');
+  tmp.innerHTML = renderPrenotazioneCard(item);
+  wrap.appendChild(tmp.firstElementChild);
+  bindPrenotazioneCards(wrap);
+  sel.value = '';
+  showToast(SERVIZI_META[key].nome + ' aggiunto', 'success');
+  refreshAggiungiServizioBar(tappaNum);
+}
+
+function serviziKeysPresentiInDom(tappaNum) {
+  const wrap = document.querySelector(`[data-pren-list="${tappaNum}"]`);
+  if (!wrap) return [];
+  const keys = [];
+  wrap.querySelectorAll('.prenotazione-card').forEach(card => {
+    try {
+      const m = JSON.parse(card.getAttribute('data-meta').replace(/&quot;/g, '"'));
+      if (m.tipo === 'servizio' && m.servizio_key) keys.push(m.servizio_key);
+    } catch (_) {}
+  });
+  return keys;
+}
+
+function refreshAggiungiServizioBar(tappaNum) {
+  const bar = document.querySelector(`[data-pren-add-bar="${tappaNum}"]`);
+  if (!bar) return;
+  const keys = serviziKeysPresentiInDom(tappaNum);
+  const mancanti = Object.keys(SERVIZI_META).filter(k => !keys.includes(k));
+  if (!mancanti.length) {
+    bar.innerHTML = '';
+    bar.classList.add('hidden');
+    return;
+  }
+  bar.classList.remove('hidden');
+  const opts = mancanti.map(k => `<option value="${k}">${esc(SERVIZI_META[k].nome)}</option>`).join('');
+  bar.innerHTML = `
+    <select id="pren-add-sel-${tappaNum}" class="btn btn-ghost" aria-label="Tipo servizio da aggiungere">
+      <option value="">Servizio da aggiungere…</option>
+      ${opts}
+    </select>
+    <button type="button" class="btn btn-ghost" onclick="aggiungiServizioPrenotazione(${tappaNum})">+ Aggiungi</button>
+  `;
+}
+
+/** Valori chip collegati a una chiave servizio inter-tappa */
+function mezziChipPerServizioKey(key) {
+  if (key === 'spostamento') return ['Auto propria'];
+  return MEZZI_CHIP_OPTIONS
+    .filter(m => mezzoToServizioKey(m.value) === key)
+    .map(m => m.value);
+}
+
+function isServizioLegatoAMezzoIntertappa(key) {
+  return mezziChipPerServizioKey(key).length > 0;
+}
+
+function deselezionaChipsPerServizio(tappaNum, key) {
+  const trasporto = document.querySelector(`.trasporto-intertappa[data-trasporto-tappa="${tappaNum}"]`);
+  if (!trasporto) return;
+  const targets = new Set(mezziChipPerServizioKey(key));
+  trasporto.querySelectorAll('.chip-mezzo').forEach(chip => {
+    if (targets.has(chip.getAttribute('data-mezzo'))) chip.classList.remove('selected');
+  });
+}
+
+function rimuoviMezziIntertappaPerServizio(tappa, key) {
+  const targets = new Set(mezziChipPerServizioKey(key).map(normalizzaMezzoTesto));
+  if (!targets.size || !tappa) return;
+  const rest = (tappa.mezzo_per_raggiungere || []).filter(m => !targets.has(normalizzaMezzoTesto(m)));
+  tappa.mezzo_per_raggiungere = rest.length ? rest : null;
+}
+
+function rimuoviServizioPrenotazioneDaBtn(btn) {
+  if (!btn?.dataset) return;
+  rimuoviServizioPrenotazione(Number(btn.dataset.tappa), btn.dataset.srvKey);
+}
+
+function rimuoviServizioPrenotazione(tappaNum, key) {
+  if (!sessionTrasferta || !key) return;
+  const tappa = (sessionTrasferta.itinerario || []).find(t => t.tappa === tappaNum);
+  const nome = SERVIZI_META[key]?.nome || key;
+
+  if (isServizioLegatoAMezzoIntertappa(key)) {
+    deselezionaChipsPerServizio(tappaNum, key);
+    document.querySelector(`[data-item-id="t${tappaNum}-srv-${key}"]`)?.remove();
+    rimuoviMezziIntertappaPerServizio(tappa, key);
+    if (tappa?.servizi) delete tappa.servizi[key];
+    refreshPrenListTappa(tappaNum);
+    showToast(nome + ' rimosso', 'success', 2200);
+    return;
+  }
+
+  const card = document.querySelector(`[data-item-id="t${tappaNum}-srv-${key}"]`);
+  if (!card) return;
+  if (tappa?.servizi) delete tappa.servizi[key];
+  card.remove();
+  const wrap = document.querySelector(`[data-pren-list="${tappaNum}"]`);
+  if (wrap && !wrap.querySelector('.prenotazione-card')) {
+    wrap.innerHTML = `<p class="empty-pren">${tappaNum > 1 ? 'Nessun servizio — seleziona un mezzo sopra o aggiungi sotto.' : 'Nessun servizio — aggiungi sotto.'}</p>`;
+  }
+  refreshAggiungiServizioBar(tappaNum);
+  showToast(nome + ' rimosso', 'success', 2200);
+}
+
+// ========== Costruzione item prenotabili ==========
+function raccogliItemPrenotabili(trasferta) {
+  const items = [];
+  const itinerario = trasferta.itinerario || [];
+
+  itinerario.forEach(tappa => {
+    const n = tappa.tappa;
+    const citta = tappa.citta || 'Tappa ' + n;
+
+    const keysFatte = new Set();
+    serviziKeysPerTappa(tappa).forEach(key => {
+      keysFatte.add(key);
+      items.push(buildItemServizio(tappa, key, datiServizioPerTappa(tappa, key)));
+    });
+
+    // Mezzi senza chiave (es. auto propria) → card spostamento generica
+    (tappa.mezzo_per_raggiungere || []).forEach(mezzo => {
+      if (isAutoAzMezzo(mezzo) || mezzoToServizioKey(mezzo)) return;
+      const dati = { mezzo_viaggio: mezzo, stato: 'da_prenotare', ...(tappa.servizi?.spostamento || {}) };
+      const item = buildItemServizio(tappa, 'spostamento', dati);
+      item.titolo = 'Spostamento: ' + mezzo;
+      item.sottotitolo = (tappa.cliente_attivita ? tappa.cliente_attivita + ' · ' : '') + 'Verso ' + citta + ' (tappa ' + n + ')';
+      items.push(item);
+    });
+  });
+
+  return items;
+}
+
+function renderTrasportoIntertappa(tappa) {
+  const mezzi = tappa.mezzo_per_raggiungere || [];
+  const chips = MEZZI_CHIP_OPTIONS.map(m => {
+    const sel = mezzoChipSelezionato(mezzi, m.value) ? ' selected' : '';
+    return `<span class="chip-mezzo${sel}" data-mezzo="${esc(m.value)}" onclick="toggleChipMezzo(this, ${tappa.tappa})">${m.label}</span>`;
+  }).join('');
+  return `
+    <div class="trasporto-intertappa" data-trasporto-tappa="${tappa.tappa}">
+      <div>
+        <label>Come arrivi a questa tappa</label>
+        <div class="mezzo-hint">Seleziona uno o più mezzi dal tratto precedente</div>
+      </div>
+      <div class="chips-group">${chips}</div>
+    </div>
+  `;
+}
+
+function toggleChipMezzo(el, tappaNum) {
+  el.classList.toggle('selected');
+  refreshPrenListTappa(tappaNum);
+}
+
+function leggiMezziTrasportoTappa(tappaNum, orig) {
+  if (tappaNum <= 1) return null;
+  const mezzi = [];
+  const trasporto = document.querySelector(`.trasporto-intertappa[data-trasporto-tappa="${tappaNum}"]`);
+  trasporto?.querySelectorAll('.chip-mezzo.selected').forEach(chip => {
+    mezzi.push(chip.getAttribute('data-mezzo'));
+  });
+  (orig.mezzo_per_raggiungere || []).forEach(m => {
+    if (isAutoAzMezzo(m) && !mezzi.some(x => normalizzaMezzoTesto(x) === normalizzaMezzoTesto(m))) {
+      mezzi.push(m);
+    }
+  });
+  return mezzi.length ? mezzi : null;
+}
+
+function renderTappaEditForm(tappa) {
+  const tipoOpts = TIPI_ATTIVITA.map(o => {
+    const sel = (tappa.tipo_attivita || '') === o.val ? ' selected' : '';
+    return `<option value="${esc(o.val)}"${sel}>${esc(o.text)}</option>`;
+  }).join('');
+  const pernOn = tappa.pernottamento ? 'checked' : '';
+  return `
+    <div class="tappa-edit">
+      <div class="pren-field"><label>Città</label><input type="text" data-tappa-field="citta" value="${esc(tappa.citta || '')}"></div>
+      <div class="pren-field"><label>Data arrivo</label><input type="date" data-tappa-field="data_arrivo" value="${esc(tappa.data_arrivo || '')}"></div>
+      <div class="pren-field"><label>Data partenza</label><input type="date" data-tappa-field="data_partenza" value="${esc(tappa.data_partenza || '')}"></div>
+      <div class="pren-field" style="grid-column:1/-1"><label>Cliente / attività</label><input type="text" data-tappa-field="cliente_attivita" value="${esc(tappa.cliente_attivita || '')}"></div>
+      <div class="pren-field"><label>Tipo attività</label><select data-tappa-field="tipo_attivita">${tipoOpts}</select></div>
+      <div class="pren-field">
+        <label>Pernottamento</label>
+        <div class="switch-row">
+          <label class="switch"><input type="checkbox" data-tappa-field="pernottamento" ${pernOn}><span class="switch-slider"></span></label>
+          <span class="switch-label" data-tappa-pern-lbl>${tappa.pernottamento ? 'Sì' : 'No'}</span>
+        </div>
+      </div>
+      <div class="tappa-edit-note"><label class="ro-lbl" style="display:block;margin-bottom:6px">Note tappa</label>
+        <textarea data-tappa-field="note" placeholder="Note per questa tappa">${esc(tappa.note || '')}</textarea>
+      </div>
+    </div>
+  `;
+}
+
+function renderTappaBlockHtml(tappa, prenItems) {
+  const srvKeys = prenItems.filter(p => p.tipo === 'servizio').map(p => p.servizio_key);
+  const prenHtml = prenItems.length
+    ? prenItems.map(renderPrenotazioneCard).join('')
+    : `<p class="empty-pren">${tappa.tappa > 1 ? 'Nessun servizio — seleziona un mezzo sopra o aggiungi sotto.' : 'Nessun servizio — aggiungi sotto.'}</p>`;
+  const dbAttr = tappa._db_id != null ? ` data-db-id="${tappa._db_id}"` : '';
+  return `
+    <div class="tappa-block" data-tappa="${tappa.tappa}"${dbAttr}>
+      <div class="tappa-block-header">
+        <div class="tappa-num">${tappa.tappa}</div>
+        <div class="tappa-block-title">${esc(tappa.citta || 'Nuova tappa')}</div>
+        <div class="tappa-cliente-line">Cliente: ${esc(tappa.cliente_attivita || '—')}</div>
+        <div class="tappa-block-meta">${formatDateIt(tappa.data_arrivo)} → ${formatDateIt(tappa.data_partenza || tappa.data_arrivo)}</div>
+        <button type="button" class="pren-card-remove" title="Elimina tappa" onclick="rimuoviTappa(${tappa.tappa})" aria-label="Elimina tappa">×</button>
+      </div>
+      ${renderTappaEditForm(tappa)}
+      <div class="prenotazioni-wrap">
+        <h4>✏️ Aggiorna prenotazioni</h4>
+        <div data-pren-list="${tappa.tappa}">${prenHtml}</div>
+        ${renderAggiungiServizioBar(tappa.tappa, srvKeys)}
+      </div>
+    </div>
+  `;
+}
+
+function leggiItinerarioDaDom() {
+  const out = [];
+  document.querySelectorAll('.tappa-block[data-tappa]').forEach(block => {
+    const n = Number(block.dataset.tappa);
+    const orig = (sessionTrasferta?.itinerario || []).find(t => t.tappa === n) || {};
+    const pernEl = block.querySelector('[data-tappa-field=pernottamento]');
+    out.push({
+      tappa: n,
+      _db_id: block.dataset.dbId ? Number(block.dataset.dbId) : (orig._db_id ?? null),
+      citta: block.querySelector('[data-tappa-field=citta]')?.value.trim() || '',
+      data_arrivo: block.querySelector('[data-tappa-field=data_arrivo]')?.value || '',
+      data_partenza: block.querySelector('[data-tappa-field=data_partenza]')?.value || '',
+      cliente_attivita: block.querySelector('[data-tappa-field=cliente_attivita]')?.value.trim() || '',
+      tipo_attivita: block.querySelector('[data-tappa-field=tipo_attivita]')?.value || '',
+      pernottamento: !!pernEl?.checked,
+      mezzo_per_raggiungere: leggiMezziTrasportoTappa(n, orig),
+      servizi: orig.servizi || null,
+      note: block.querySelector('[data-tappa-field=note]')?.value.trim() || '',
+      stato_prenotazioni: orig.stato_prenotazioni || ''
+    });
+  });
+  return out.sort((a, b) => a.tappa - b.tappa);
+}
+
+function syncSessionDaDom() {
+  if (!sessionTrasferta) return;
+  const prenotazioni = raccogliPrenotazioniRuntime();
+  const itinerario = leggiItinerarioDaDom();
+  const righeDb = sessionTrasferta._righe_db;
+  const eliminate = sessionTrasferta._tappe_eliminate;
+  sessionTrasferta = applicaPrenotazioniATrasferta({ ...sessionTrasferta, itinerario }, prenotazioni);
+  sessionTrasferta._righe_db = righeDb;
+  sessionTrasferta._tappe_eliminate = eliminate;
+}
+
+function aggiungiTappa() {
+  if (!sessionTrasferta) return;
+  syncSessionDaDom();
+  const it = sessionTrasferta.itinerario || [];
+  const last = it[it.length - 1];
+  const newNum = it.length + 1;
+  const newTappa = {
+    tappa: newNum,
+    citta: '',
+    data_arrivo: last?.data_partenza || last?.data_arrivo || '',
+    data_partenza: last?.data_partenza || last?.data_arrivo || '',
+    cliente_attivita: '',
+    tipo_attivita: 'sopralluogo',
+    pernottamento: false,
+    mezzo_per_raggiungere: null,
+    servizi: null,
+    note: '',
+    _db_id: null
+  };
+  sessionTrasferta.itinerario = [...it, newTappa];
+  renderTrasferta(sessionTrasferta, sessionTrasfertaId);
+  showToast('Tappa ' + newNum + ' aggiunta', 'success');
+}
+
+function rimuoviTappa(tappaNum) {
+  if (!sessionTrasferta) return;
+  const it = sessionTrasferta.itinerario || [];
+  if (it.length <= 1) {
+    showToast('Serve almeno una tappa', 'warn');
+    return;
+  }
+  syncSessionDaDom();
+  const tappa = sessionTrasferta.itinerario.find(t => t.tappa === tappaNum);
+  if (tappa?._db_id) {
+    if (!sessionTrasferta._tappe_eliminate) sessionTrasferta._tappe_eliminate = [];
+    if (!sessionTrasferta._tappe_eliminate.includes(tappa._db_id)) {
+      sessionTrasferta._tappe_eliminate.push(tappa._db_id);
+    }
+  }
+  let nuovo = sessionTrasferta.itinerario.filter(t => t.tappa !== tappaNum);
+  nuovo.forEach((t, i) => { t.tappa = i + 1; });
+  sessionTrasferta.itinerario = nuovo;
+  renderTrasferta(sessionTrasferta, sessionTrasfertaId);
+  showToast('Tappa rimossa', 'success', 2200);
+}
+
+function pruneServiziTappa(tappa) {
+  if (!tappa?.servizi) return;
+  const allowed = new Set(serviziKeysPerTappa(tappa));
+  Object.keys(tappa.servizi).forEach(k => { if (!allowed.has(k)) delete tappa.servizi[k]; });
+  if (!Object.keys(tappa.servizi).length) tappa.servizi = null;
+}
+
+function refreshPrenListTappa(tappaNum) {
+  if (!sessionTrasferta) return;
+  syncSessionDaDom();
+  const tappa = sessionTrasferta.itinerario.find(t => t.tappa === tappaNum);
+  if (!tappa) return;
+  pruneServiziTappa(tappa);
+  const items = raccogliItemPrenotabili({ itinerario: [tappa] });
+  const block = document.querySelector(`.tappa-block[data-tappa="${tappaNum}"]`);
+  const wrap = block?.querySelector(`[data-pren-list="${tappaNum}"]`);
+  if (!wrap) return;
+  wrap.innerHTML = items.length
+    ? items.map(renderPrenotazioneCard).join('')
+    : `<p class="empty-pren">${tappaNum > 1 ? 'Nessun servizio — seleziona un mezzo sopra o aggiungi sotto.' : 'Nessun servizio — aggiungi sotto.'}</p>`;
+  bindPrenotazioneCards(wrap);
+  refreshAggiungiServizioBar(tappaNum);
+}
+
+function bindTappaEditFields(root) {
+  root.querySelectorAll('.tappa-block[data-tappa]').forEach(block => {
+    const n = Number(block.dataset.tappa);
+    block.querySelectorAll('[data-tappa-field=pernottamento]').forEach(cb => {
+      const lbl = block.querySelector('[data-tappa-pern-lbl]');
+      const sync = () => { if (lbl) lbl.textContent = cb.checked ? 'Sì' : 'No'; };
+      cb.addEventListener('change', () => { sync(); refreshPrenListTappa(n); });
+      sync();
+    });
+  });
+}
+
+// ========== Render completo ==========
+function renderTrasferta(trasferta, trasfertaId) {
+  sessionTrasferta = trasferta;
+  sessionTrasfertaId = trasfertaId;
+  if (!sessionTrasferta._tappe_eliminate) sessionTrasferta._tappe_eliminate = [];
+
+  document.getElementById('badge-id').textContent = trasfertaId;
+  const ana = trasferta.anagrafica || {};
+  document.getElementById('riepilogo-anagrafica').innerHTML = `
+    <div class="riepilogo-item"><div class="lbl">Nome</div><div class="val">${esc(ana.nome_cognome)}</div></div>
+    <div class="riepilogo-item"><div class="lbl">Inizio</div><div class="val">${formatDateIt(ana.data_inizio)}</div></div>
+    <div class="riepilogo-item"><div class="lbl">Fine prevista</div><div class="val">${formatDateIt(ana.data_fine_prevista)}</div></div>
+    <div class="riepilogo-item"><div class="lbl">Tappe</div><div class="val">${(trasferta.itinerario || []).length}</div></div>
+    ${renderRiepilogoCosti(trasferta.itinerario)}
+  `;
+
+  const noteEl = document.getElementById('note-generali-ro');
+  if (trasferta.note_generali) {
+    noteEl.textContent = '📝 ' + trasferta.note_generali;
+    noteEl.classList.remove('hidden');
+  } else {
+    noteEl.classList.add('hidden');
+  }
+
+  const items = raccogliItemPrenotabili(trasferta);
+  const perTappa = {};
+  items.forEach(it => {
+    if (!perTappa[it.tappa]) perTappa[it.tappa] = [];
+    perTappa[it.tappa].push(it);
+  });
+
+  const container = document.getElementById('contenitore-tappe');
+  const itinerario = trasferta.itinerario || [];
+
+  if (!itinerario.length) {
+    container.innerHTML = '<p class="empty-pren">Nessuna tappa nell\'itinerario.</p>';
+    return;
+  }
+
+  container.innerHTML = itinerario.map(tappa => {
+    const trasporto = tappa.tappa > 1 ? renderTrasportoIntertappa(tappa) : '';
+    return trasporto + renderTappaBlockHtml(tappa, perTappa[tappa.tappa] || []);
+  }).join('')
+    + `<div class="tappe-toolbar"><button type="button" class="btn btn-outline" onclick="aggiungiTappa()">+ Aggiungi tappa</button></div>`;
+
+  bindSwitchLabels(container);
+  bindTappaEditFields(container);
+  document.getElementById('fase-dettaglio').classList.remove('hidden');
+}
+
+// ========== Fase 1: GET trasferta ==========
+async function fetchTrasfertaById(id) {
+  const resp = await fetch(WEBHOOK_RECUPERO, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ trasferta_id: id })
+  });
+  if (!resp.ok) {
+    const errText = await resp.text().catch(() => '');
+    throw new Error(errText || 'HTTP ' + resp.status);
+  }
+  const raw = await resp.json();
+  const trasferta = estraiPayloadRisposta(raw);
+  if (!trasferta || !Array.isArray(trasferta.itinerario)) {
+    const vuoto = Array.isArray(raw) && raw.length === 0;
+    throw new Error(
+      vuoto
+        ? 'Nessuna trasferta trovata per questo ID (risposta vuota da n8n)'
+        : 'Risposta non valida: controlla che n8n restituisca anagrafica + itinerario'
+    );
+  }
+  return trasferta;
+}
+
+async function caricaTrasfertaSilente(id) {
+  const trasferta = await fetchTrasfertaById(id);
+  renderTrasferta(trasferta, id);
+}
+
+async function caricaTrasferta() {
+  const id = document.getElementById('input-trasferta-id').value.trim();
+  if (!id) {
+    showToast('Inserisci l\'ID trasferta', 'warn');
+    return;
+  }
+
+  const btn = document.getElementById('btn-carica');
+  const msg = document.getElementById('msg-caricamento');
+  btn.disabled = true;
+  msg.classList.remove('hidden');
+
+  try {
+    await caricaTrasfertaSilente(id);
+    showToast('Trasferta caricata', 'success');
+    document.getElementById('fase-dettaglio').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    showToast('Recupero fallito: ' + (e.message || e), 'error');
+    console.error('caricaTrasferta:', e);
+  } finally {
+    btn.disabled = false;
+    msg.classList.add('hidden');
+  }
+}
+
+function nuovaRicerca() {
+  sessionTrasferta = null;
+  sessionTrasfertaId = null;
+  document.getElementById('fase-dettaglio').classList.add('hidden');
+  document.getElementById('contenitore-tappe').innerHTML = '';
+  document.getElementById('input-trasferta-id').focus();
+}
+
+// ========== Raccolta payload invio ==========
+function raccogliPrenotazioniRuntime() {
+  const out = [];
+  document.querySelectorAll('.prenotazione-card').forEach(card => {
+    let meta = {};
+    try {
+      meta = JSON.parse(card.getAttribute('data-meta').replace(/&quot;/g, '"'));
+    } catch (_) {}
+    const metodo = card.querySelector('[data-field=metodo_pagamento]').value;
+    const costoServizio = readCostoServizioCard(card) || costoServizioDaItem(meta) || '';
+    const valoreVoucher = card.querySelector('[data-field=valore_voucher]')?.value?.trim() || '';
+    const metodoDiff = card.querySelector('[data-field=metodo_pagamento_differenza]')?.value || '';
+    const differenza = metodo === 'voucher' ? calcDifferenzaPagamento(card) : 0;
+
+    let servizioKey = meta.servizio_key || null;
+    if (!servizioKey && meta.tipo === 'tratta') {
+      servizioKey = mezzoToServizioKey(meta.mezzo) || 'spostamento';
+    }
+
+    let datiServizio = null;
+    if (servizioKey) {
+      datiServizio = leggiDatiServizioDaCard(card);
+      if (meta.mezzo && !datiServizio.mezzo_viaggio) datiServizio.mezzo_viaggio = meta.mezzo;
+      if (costoServizio) datiServizio.costo = costoServizio;
+      meta.dettaglio_origine = servizioDettaglioTesto(servizioKey, datiServizio);
+      meta.servizio_key = servizioKey;
+      meta.tipo = 'servizio';
+    }
+
+    out.push({
+      ...meta,
+      prenotato: card.querySelector('[data-field=prenotato]').checked,
+      metodo_pagamento: metodo,
+      costo_servizio: costoServizio,
+      dati_servizio: datiServizio,
+      valore_voucher: metodo === 'voucher' ? valoreVoucher : '',
+      differenza_pagamento: metodo === 'voucher' ? differenza : 0,
+      metodo_pagamento_differenza: metodo === 'voucher' && differenza > 0 ? metodoDiff : '',
+      giornate_da: card.querySelector('[data-field=giornate_da]').value,
+      giornate_a: card.querySelector('[data-field=giornate_a]').value
+    });
+  });
+  return out;
+}
+
+function validaPrenotazioni() {
+  const cards = document.querySelectorAll('.prenotazione-card');
+  for (const card of cards) {
+    const meta = JSON.parse(card.getAttribute('data-meta').replace(/&quot;/g, '"'));
+    const titolo = meta.titolo || 'Servizio';
+    const prenotato = card.querySelector('[data-field=prenotato]').checked;
+    const metodo = card.querySelector('[data-field=metodo_pagamento]').value;
+    if (prenotato && !metodo) return `${titolo}: seleziona il metodo di pagamento`;
+    const srvKey = meta.servizio_key || (meta.tipo === 'tratta' ? (mezzoToServizioKey(meta.mezzo) || 'spostamento') : null);
+    const richiedeCosto = !!srvKey || !!card.querySelector('[data-field=costo_servizio]');
+    if (richiedeCosto && prenotato) {
+      const c = readCostoServizioCard(card);
+      if (!c || parseCostoNum(c) <= 0) {
+        return `${titolo}: indica il costo del servizio (richiesto se segnato come prenotato)`;
+      }
+    }
+    if (prenotato && metodo === 'voucher') {
+      const v = card.querySelector('[data-field=valore_voucher]')?.value?.trim();
+      if (!v) return `${titolo}: inserisci il valore del voucher`;
+      const diff = calcDifferenzaPagamento(card);
+      if (diff > 0.009) {
+        const md = card.querySelector('[data-field=metodo_pagamento_differenza]')?.value;
+        if (!md) return `${titolo}: indica il metodo di pagamento per la differenza (${formatEuro(diff)} €)`;
+      }
+    }
+  }
+  return null;
+}
+
+function sommaCostiServiziTappa(tappa) {
+  if (!tappa?.servizi) return 0;
+  return Object.values(tappa.servizi).reduce((acc, srv) => {
+    return acc + parseCostoNum(srv?.costo);
+  }, 0);
+}
+
+/** Una riga Data Table per ogni tappa runtime (nuove, modificate, esistenti) */
+function buildRigheDbDaTrasferta(trasferta, prenotazioni) {
+  const orig = sessionTrasferta._righe_db || [];
+  const byId = {};
+  orig.forEach(r => { if (r.id != null) byId[String(r.id)] = r; });
+  const ana = trasferta.anagrafica || {};
+  const dataCreazione = orig[0]?.data_creazione || sessionTrasferta.meta?.data_creazione || '';
+
+  return (trasferta.itinerario || []).map(tappa => {
+    const base = tappa._db_id ? (byId[String(tappa._db_id)] || {}) : {};
+    const n = tappa.tappa;
+    const row = {
+      trasferta_id: sessionTrasfertaId,
+      data_creazione: base.data_creazione || dataCreazione,
+      nome_persona: ana.nome_cognome || base.nome_persona || '',
+      tappa_numero: String(n),
+      citta: tappa.citta || '',
+      data_arrivo: tappa.data_arrivo || '',
+      data_partenza: tappa.data_partenza || '',
+      cliente_tappa: tappa.cliente_attivita || '',
+      tipo_attivita: tappa.tipo_attivita || '',
+      pernottamento: tappa.pernottamento ? 'Sì' : 'No',
+      mezzo_raggiungimento: (tappa.mezzo_per_raggiungere || []).join(', '),
+      note_tappa: tappa.note || '',
+      stato_prenotazioni: statoPrenotazioniPerTappa(n, prenotazioni),
+      servizi_json: serviziJsonPerTappa(tappa)
+    };
+    const idDb = base.id != null ? base.id : tappa._db_id;
+    if (idDb != null && idDb !== '') row.id = idDb;
+    else row._nuova_riga = true;
+    Object.entries(CAMPI_COSTO_SERVIZIO).forEach(([campo, key]) => {
+      const c = tappa.servizi?.[key]?.costo;
+      row[campo] = c != null && String(c).trim() !== '' ? String(c).trim() : (base[campo] ?? '');
+    });
+    const tot = sommaCostiServiziTappa(tappa);
+    row.costo_tappa_totale = tot > 0 ? String(tot) : (base.costo_tappa_totale ?? '0');
+    return row;
+  });
+}
+
+function applicaPrenotazioniATrasferta(trasferta, prenotazioni) {
+  const t = clonaTrasfertaPerInvioFrom(trasferta);
+  t.itinerario.forEach(tappa => {
+    if (!tappa.servizi) tappa.servizi = {};
+    serviziKeysPerTappa(tappa).forEach(key => {
+      if (!tappa.servizi[key]) {
+        tappa.servizi[key] = datiServizioPerTappa(tappa, key);
+      }
+    });
+  });
+  prenotazioni.forEach(p => {
+    const key = p.servizio_key || (p.tipo === 'tratta' ? mezzoToServizioKey(p.mezzo) : null);
+    if (!key) return;
+    const tappa = t.itinerario.find(x => x.tappa === p.tappa);
+    if (!tappa) return;
+    if (!tappa.servizi) tappa.servizi = {};
+    const dati = { ...(p.dati_servizio || {}) };
+    if (p.mezzo && !dati.mezzo_viaggio) dati.mezzo_viaggio = p.mezzo;
+    if (p.costo_servizio) dati.costo = p.costo_servizio;
+    if (p.prenotato && (!dati.stato || dati.stato === 'da_prenotare')) dati.stato = 'prenotato';
+    if (!p.prenotato && !dati.stato) dati.stato = 'da_prenotare';
+    dati.prenotazione_operatrice = {
+      prenotato: !!p.prenotato,
+      metodo_pagamento: p.metodo_pagamento || '',
+      costo_servizio: p.costo_servizio || '',
+      valore_voucher: p.valore_voucher || '',
+      differenza_pagamento: p.differenza_pagamento || 0,
+      metodo_pagamento_differenza: p.metodo_pagamento_differenza || '',
+      giornate_da: p.giornate_da || '',
+      giornate_a: p.giornate_a || ''
+    };
+    tappa.servizi[key] = { ...(tappa.servizi[key] || {}), ...dati };
+  });
+  return t;
+}
+
+/** Formato canonico = stesso schema del form trasferte_rivelli (anagrafica + itinerario[].servizi) */
+function trasfertaCanonicaPerInvio(trasferta, prenotazioni) {
+  const merged = applicaPrenotazioniATrasferta(trasferta, prenotazioni);
+  const { _righe_db, _tappe_eliminate, meta, ...clean } = merged;
+  if (clean.itinerario) {
+    clean.itinerario = clean.itinerario.map(t => {
+      const { _db_id, ...rest } = t;
+      return rest;
+    });
+  }
+  return clean;
+}
+
+function clonaTrasfertaPerInvioFrom(src) {
+  const t = JSON.parse(JSON.stringify(src));
+  if (!t.itinerario) return t;
+  t.itinerario = t.itinerario.map(tappa => {
+    const d = ordinaCoppiaDate(tappa.data_arrivo, tappa.data_partenza);
+    return { ...tappa, data_arrivo: d.da, data_partenza: d.a };
+  });
+  const date = t.itinerario.flatMap(x => [x.data_arrivo, x.data_partenza].filter(Boolean)).sort();
+  if (t.anagrafica && date.length) {
+    const span = ordinaCoppiaDate(date[0], date[date.length - 1]);
+    t.anagrafica.data_inizio = span.da;
+    t.anagrafica.data_fine_prevista = span.a;
+  }
+  return t;
+}
+
+function buildPayloadBase() {
+  const prenotazioni = raccogliPrenotazioniRuntime().map(p => {
+    const g = ordinaCoppiaDate(p.giornate_da, p.giornate_a);
+    return { ...p, giornate_da: g.da, giornate_a: g.a };
+  });
+  const itinerario = leggiItinerarioDaDom();
+  const baseTrasferta = { ...sessionTrasferta, itinerario };
+  const merged = applicaPrenotazioniATrasferta(baseTrasferta, prenotazioni);
+  const righe_db = buildRigheDbDaTrasferta(merged, prenotazioni);
+  const trasferta = trasfertaCanonicaPerInvio(merged, prenotazioni);
+  return {
+    trasferta_id: sessionTrasfertaId,
+    trasferta,
+    trasferta_originale: trasferta,
+    righe_db,
+    prenotazioni
+  };
+}
+
+function buildPayloadInvio() {
+  return {
+    ...buildPayloadBase(),
+    meta: {
+      aggiornato_il: new Date().toISOString(),
+      origine: 'Studio Rivelli — Form Prenotazioni',
+      azione: 'invio_email'
+    }
+  };
+}
+
+function buildPayloadSalvataggio() {
+  const base = buildPayloadBase();
+  return {
+    ...base,
+    meta: {
+      aggiornato_il: new Date().toISOString(),
+      origine: 'Studio Rivelli — Form Prenotazioni',
+      azione: 'salvataggio_progresso',
+      ids_da_eliminare: (sessionTrasferta._tappe_eliminate || []).slice(),
+      righe_nuove: (base.righe_db || []).filter(r => r._nuova_riga).length
+    }
+  };
+}
+
+async function salvaProgresso() {
+  if (!sessionTrasferta || !sessionTrasfertaId) {
+    showToast('Carica prima una trasferta', 'warn');
+    return;
+  }
+  if (WEBHOOK_SALVATAGGIO.startsWith('INSERISCI')) {
+    showToast('Configura WEBHOOK_SALVATAGGIO nello script', 'warn');
+    console.log('Payload salvataggio (anteprima):', buildPayloadSalvataggio());
+    return;
+  }
+
+  const btn = document.getElementById('btn-salva');
+  btn.disabled = true;
+  try {
+    showToast('Salvataggio in corso…');
+    const payload = buildPayloadSalvataggio();
+    const resp = await fetch(WEBHOOK_SALVATAGGIO, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '');
+      throw new Error(errText || 'HTTP ' + resp.status);
+    }
+    const avevaNuove = (payload.meta?.righe_nuove || 0) > 0;
+    sessionTrasferta._tappe_eliminate = [];
+    if (avevaNuove) {
+      showToast('Salvato — ricarico per registrare le nuove tappe…', 'success', 2800);
+      await caricaTrasfertaSilente(sessionTrasfertaId);
+      showToast('Progresso salvato (nuove tappe con id DB)', 'success', 3500);
+    } else {
+      sessionTrasferta._righe_db = payload.righe_db;
+      sessionTrasferta.itinerario = payload.trasferta.itinerario;
+      showToast('Progresso salvato — puoi continuare o inviare più tardi', 'success', 3500);
+    }
+  } catch (e) {
+    showToast('Salvataggio fallito: ' + (e.message || e), 'error');
+    console.error('salvaProgresso:', e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ========== Fase invio (placeholder webhook) ==========
+async function inviaPrenotazioni() {
+  if (!sessionTrasferta || !sessionTrasfertaId) {
+    showToast('Carica prima una trasferta', 'warn');
+    return;
+  }
+  const errPren = validaPrenotazioni();
+  if (errPren) {
+    showToast('⚠️ ' + errPren, 'warn');
+    return;
+  }
+  if (WEBHOOK_INVIO_PRENOTAZIONI.startsWith('INSERISCI')) {
+    showToast('Configura WEBHOOK_INVIO_PRENOTAZIONI nello script', 'warn');
+    console.log('Payload invio (anteprima):', buildPayloadInvio());
+    apriModaleDopoInvio();
+    return;
+  }
+
+  const btn = document.getElementById('btn-invia');
+  btn.disabled = true;
+  try {
+    showToast('Invio in corso…');
+    const resp = await fetch(WEBHOOK_INVIO_PRENOTAZIONI, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildPayloadInvio())
+    });
+    if (resp.ok) {
+      showToast('Prenotazioni inviate con successo', 'success', 3000);
+      apriModaleDopoInvio();
+    } else {
+      showToast('Errore server: ' + resp.status, 'error');
+    }
+  } catch (e) {
+    showToast('Invio fallito: ' + (e.message || e), 'error');
+    console.error('inviaPrenotazioni:', e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ========== Popup elimina record (dopo invio riuscito) ==========
+function apriModaleDopoInvio() {
+  if (!sessionTrasfertaId) return;
+  document.getElementById('modal-id-testo').textContent = sessionTrasfertaId;
+  document.getElementById('modal-elimina').classList.add('show');
+}
+
+function chiudiModaleDopoInvio(vaiNuovaRicerca) {
+  document.getElementById('modal-elimina').classList.remove('show');
+  if (vaiNuovaRicerca !== false) nuovaRicerca();
+}
+
+async function confermaElimina() {
+  if (!sessionTrasfertaId) return;
+  if (WEBHOOK_CANCELLA_TRASFERTA.startsWith('INSERISCI')) {
+    showToast('Configura WEBHOOK_CANCELLA_TRASFERTA nello script', 'warn');
+    chiudiModaleDopoInvio();
+    return;
+  }
+
+  const btn = document.getElementById('btn-conferma-elimina');
+  btn.disabled = true;
+  try {
+    const resp = await fetch(WEBHOOK_CANCELLA_TRASFERTA, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trasferta_id: sessionTrasfertaId })
+    });
+    if (resp.ok) {
+      showToast('Record eliminato', 'success');
+      chiudiModaleDopoInvio();
+    } else {
+      showToast('Eliminazione fallita: ' + resp.status, 'error');
+    }
+  } catch (e) {
+    showToast('Errore: ' + (e.message || e), 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function showToast(msg, type, ms) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (type ? ' ' + type : '');
+  t.classList.add('show');
+  clearTimeout(t._hide);
+  t._hide = setTimeout(() => t.classList.remove('show'), ms || 3200);
+}
+
+document.getElementById('input-trasferta-id').addEventListener('keydown', e => {
+  if (e.key === 'Enter') caricaTrasferta();
+});
+
+// ========== Nuova Trasferta ==========
+const NT_WEBHOOK = 'https://studiorivelli.app.n8n.cloud/webhook/informazioni-trasferte';
+let ntUid = 0;
+
+const NT_MEZZI = ['🚆 Treno','✈️ Aereo','🚗 Auto propria','🚘 Noleggio','🏢 Auto az.','🚌 Bus','🏍️ Moto'];
+const NT_STATO_PREN = [
+  { val: '', text: '— seleziona —' },
+  { val: 'da_prenotare', text: 'Da prenotare' },
+  { val: 'prenotato', text: 'Prenotato ✓' }
+];
+const NT_STATO_BIGT = [...NT_STATO_PREN, { val: 'acquistato', text: 'Acquistato ✓' }];
+const NT_STATO_AUTO = [
+  { val: '', text: '— seleziona —' },
+  { val: 'da_richiedere', text: 'Da richiedere' },
+  { val: 'confermato', text: 'Confermato ✓' }
+];
+const NT_CAMPO_COSTO = { id: 'costo', label: 'Costo', type: 'text', placeholder: 'es. 120,00 €' };
+const NT_SERVIZI = [
+  { key: 'hotel', icon: '🏨', name: 'Hotel', fields: [
+    { id: 'nome', label: 'Nome struttura', type: 'text', placeholder: 'es. Hotel Cortina' },
+    { id: 'notti', label: 'N° notti', type: 'number', placeholder: '1' },
+    { id: 'stato', label: 'Stato', type: 'select', options: NT_STATO_PREN }
+  ]},
+  { key: 'aereo', icon: '✈️', name: 'Aereo', fields: [
+    { id: 'tratta', label: 'Tratta', type: 'text', placeholder: 'es. FCO → LIN' },
+    { id: 'stato', label: 'Stato', type: 'select', options: NT_STATO_BIGT }
+  ]},
+  { key: 'treno', icon: '🚆', name: 'Treno', fields: [
+    { id: 'tratta', label: 'Tratta', type: 'text', placeholder: 'es. Roma → Bologna' },
+    { id: 'stato', label: 'Stato', type: 'select', options: NT_STATO_BIGT }
+  ]},
+  { key: 'noleggio', icon: '🚗', name: 'Noleggio', fields: [
+    { id: 'ritiro', label: 'Ritiro', type: 'text', placeholder: 'Luogo ritiro' },
+    { id: 'restituzione', label: 'Restituzione', type: 'text', placeholder: 'Luogo restituzione' },
+    { id: 'stato', label: 'Stato', type: 'select', options: NT_STATO_PREN }
+  ]},
+  { key: 'parcheggio', icon: '🅿️', name: 'Parcheggio', fields: [
+    { id: 'luogo', label: 'Luogo', type: 'text', placeholder: 'es. Aeroporto' },
+    { id: 'stato', label: 'Stato', type: 'select', options: NT_STATO_PREN }
+  ]},
+  { key: 'auto_az', icon: '🏢', name: 'Auto Az.', fields: [
+    { id: 'tratto', label: 'Tratto', type: 'text', placeholder: 'es. Roma → Cortina' },
+    { id: 'stato', label: 'Stato', type: 'select', options: NT_STATO_AUTO }
+  ]}
+];
+
+function ntRenderField(uid, srvKey, f) {
+  if (f.type === 'select') {
+    return `<div class="nt-f"><label>${f.label}</label>
+      <select id="nt-${uid}-${srvKey}-${f.id}" onclick="event.stopPropagation()">
+        ${f.options.map(o => `<option value="${o.val}">${o.text}</option>`).join('')}
+      </select></div>`;
+  }
+  return `<div class="nt-f"><label>${f.label}</label>
+    <input type="${f.type}" id="nt-${uid}-${srvKey}-${f.id}"
+      placeholder="${f.placeholder || ''}" onclick="event.stopPropagation()"></div>`;
+}
+
+function ntServiziHtml(uid) {
+  return NT_SERVIZI.map(s => `
+    <div class="nt-srv-card" id="nt-srv-${uid}-${s.key}" onclick="ntToggleSrv(${uid},'${s.key}',event)">
+      <div class="nt-srv-top">
+        <span class="nt-srv-icon">${s.icon}</span>
+        <span class="nt-srv-name">${s.name}</span>
+        <div class="nt-srv-check">✓</div>
+      </div>
+      <div class="nt-srv-fields">
+        ${[...s.fields, NT_CAMPO_COSTO].map(f => ntRenderField(uid, s.key, f)).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function ntToggleSrv(uid, key, e) {
+  e.stopPropagation();
+  document.getElementById(`nt-srv-${uid}-${key}`)?.classList.toggle('active');
+}
+
+function ntAddTappa() {
+  const uid = ++ntUid;
+  const container = document.getElementById('nt-tappe-container');
+  const isFirst = container.querySelectorAll('.nt-tappa-card').length === 0;
+  if (!isFirst) {
+    const inter = document.createElement('div');
+    inter.className = 'nt-intertappa';
+    inter.id = `nt-inter-${uid}`;
+    inter.innerHTML = `
+      <div>
+        <label>Come arrivi a questa tappa</label>
+        <div class="mezzo-hint">Seleziona uno o più mezzi</div>
+      </div>
+      <div class="chips-group" id="nt-chips-${uid}">
+        ${NT_MEZZI.map(m => `<span class="chip-mezzo" onclick="this.classList.toggle('selected')">${m}</span>`).join('')}
+      </div>`;
+    container.appendChild(inter);
+  }
+  const card = document.createElement('div');
+  card.className = 'nt-tappa-card';
+  card.id = `nt-tappa-${uid}`;
+  card.innerHTML = `
+    <div class="nt-tappa-header">
+      <div class="nt-tappa-num">
+        <div class="nt-tappa-badge"></div>
+        <span class="nt-tappa-label"></span>
+        <span class="nt-tappa-preview" id="nt-prev-${uid}"></span>
+      </div>
+      <button class="nt-btn-icon danger" onclick="ntRemoveTappa(${uid})">✕</button>
+    </div>
+    <div class="nt-tappa-body">
+      <div class="field-row">
+        <div class="field">
+          <label>Città / Destinazione <span class="req">*</span></label>
+          <input type="text" id="nt-${uid}-citta" placeholder="es. Bologna"
+            oninput="document.getElementById('nt-prev-${uid}').textContent=this.value?'— '+this.value:''">
+        </div>
+        <div class="field">
+          <label>Data arrivo <span class="req">*</span></label>
+          <input type="date" id="nt-${uid}-arrivo">
+        </div>
+        <div class="field">
+          <label>Data partenza da questa città</label>
+          <input type="date" id="nt-${uid}-partenza">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Cliente / Attività <span class="req">*</span></label>
+          <input type="text" id="nt-${uid}-cliente" placeholder="es. Nome cliente">
+        </div>
+        <div class="field" style="max-width:200px">
+          <label>Tipo attività</label>
+          <select id="nt-${uid}-tipo">
+            <option value="">— seleziona —</option>
+            <option value="audit">Audit / Ispezione</option>
+            <option value="sopralluogo">Sopralluogo</option>
+            <option value="formazione">Formazione</option>
+            <option value="riunione">Riunione</option>
+            <option value="consulenza">Consulenza</option>
+            <option value="altro">Altro</option>
+          </select>
+        </div>
+        <div class="field" style="max-width:140px">
+          <label>Pernottamento</label>
+          <select id="nt-${uid}-pernotto">
+            <option value="no">No</option>
+            <option value="si">Sì</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Note tappa</label>
+        <input type="text" id="nt-${uid}-note" placeholder="es. Portare documentazione...">
+      </div>
+      <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--gray-200)">
+        <div style="font-size:12px;font-weight:600;color:var(--blue-mid);text-transform:uppercase;margin-bottom:10px">🛎 Servizi in questa tappa</div>
+        <div class="nt-servizi-grid">${ntServiziHtml(uid)}</div>
+      </div>
+    </div>`;
+  container.appendChild(card);
+  ntRinumera();
+}
+
+function ntRemoveTappa(uid) {
+  if (document.querySelectorAll('.nt-tappa-card').length <= 1) {
+    showToast('Serve almeno una tappa', 'warn'); return;
+  }
+  document.getElementById(`nt-tappa-${uid}`)?.remove();
+  document.getElementById(`nt-inter-${uid}`)?.remove();
+  // assicura che la prima tappa non abbia la barra mezzo
+  const first = document.querySelector('.nt-tappa-card');
+  if (first) document.getElementById(`nt-inter-${first.id.replace('nt-tappa-','')}`)?.remove();
+  ntRinumera();
+}
+
+function ntRinumera() {
+  document.querySelectorAll('.nt-tappa-card').forEach((c, i) => {
+    c.querySelector('.nt-tappa-badge').textContent = i + 1;
+    c.querySelector('.nt-tappa-label').textContent = 'Tappa ' + (i + 1);
+  });
+}
+
+function ntVal(id) {
+  return (document.getElementById(id)?.value || '').trim();
+}
+
+function ntBuildJSON() {
+  const tappe = [];
+  document.querySelectorAll('.nt-tappa-card').forEach((card, i) => {
+    const uid = card.id.replace('nt-tappa-', '');
+    const mezzi = [];
+    document.getElementById(`nt-chips-${uid}`)
+      ?.querySelectorAll('.chip-mezzo.selected')
+      .forEach(c => mezzi.push(c.textContent.replace(/^\S+\s/, '').trim()));
+    const servizi = {};
+    NT_SERVIZI.forEach(s => {
+      if (document.getElementById(`nt-srv-${uid}-${s.key}`)?.classList.contains('active')) {
+        servizi[s.key] = {};
+        [...s.fields, NT_CAMPO_COSTO].forEach(f => {
+          const el = document.getElementById(`nt-${uid}-${s.key}-${f.id}`);
+          if (el) servizi[s.key][f.id] = el.value;
+        });
+      }
+    });
+    tappe.push({
+      tappa: i + 1,
+      citta: ntVal(`nt-${uid}-citta`),
+      data_arrivo: ntVal(`nt-${uid}-arrivo`),
+      data_partenza: ntVal(`nt-${uid}-partenza`),
+      cliente_attivita: ntVal(`nt-${uid}-cliente`),
+      tipo_attivita: ntVal(`nt-${uid}-tipo`),
+      pernottamento: ntVal(`nt-${uid}-pernotto`) === 'si',
+      mezzo_per_raggiungere: mezzi.length ? mezzi : null,
+      servizi: Object.keys(servizi).length ? servizi : null,
+      note: ntVal(`nt-${uid}-note`)
+    });
+  });
+  return {
+    anagrafica: {
+      nome_cognome: ntVal('nt-nome'),
+      data_inizio: ntVal('nt-data-inizio'),
+      data_fine_prevista: ntVal('nt-data-fine')
+    },
+    itinerario: tappe,
+    note_generali: ntVal('nt-note-generali'),
+    meta: { generato_il: new Date().toISOString(), origine: 'Studio Rivelli — Form Trasferte' }
+  };
+}
+
+function ntValida() {
+  if (!ntVal('nt-nome')) return 'Inserisci nome e cognome';
+  if (!ntVal('nt-data-inizio')) return 'Inserisci data inizio trasferta';
+  if (!ntVal('nt-data-fine')) return 'Inserisci data fine trasferta';
+  const cards = document.querySelectorAll('.nt-tappa-card');
+  if (!cards.length) return 'Aggiungi almeno una tappa';
+  for (let i = 0; i < cards.length; i++) {
+    const uid = cards[i].id.replace('nt-tappa-', '');
+    if (!ntVal(`nt-${uid}-citta`)) return `Tappa ${i+1}: inserisci la città`;
+    if (!ntVal(`nt-${uid}-arrivo`)) return `Tappa ${i+1}: inserisci data arrivo`;
+    if (!ntVal(`nt-${uid}-cliente`)) return `Tappa ${i+1}: inserisci cliente/attività`;
+  }
+  return null;
+}
+
+async function ntInviaDati() {
+  const err = ntValida();
+  if (err) { showToast('⚠️ ' + err, 'warn'); return; }
+  const btn = document.getElementById('nt-btn-invia');
+  btn.disabled = true;
+  try {
+    showToast('Invio in corso…');
+    const resp = await fetch(NT_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ntBuildJSON())
+    });
+    if (resp.ok) {
+      showToast('✅ Trasferta inviata con successo!', 'success', 4500);
+      ntReset();
+      ntTogglePanel();
+    } else {
+      showToast('Errore server: ' + resp.status, 'error');
+    }
+  } catch (e) {
+    showToast('Invio fallito: ' + (e.message || e), 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function ntReset() {
+  ntUid = 0;
+  document.getElementById('nt-nome').value = '';
+  document.getElementById('nt-data-inizio').value = '';
+  document.getElementById('nt-data-fine').value = '';
+  document.getElementById('nt-note-generali').value = '';
+  document.getElementById('nt-tappe-container').innerHTML = '';
+  ntAddTappa();
+}
+
+function ntTogglePanel() {
+  const panel = document.getElementById('nt-panel');
+  const btn = document.getElementById('btn-nuova-trasferta');
+  const isNowHidden = panel.classList.toggle('hidden');
+  btn.textContent = isNowHidden ? '＋ Nuova trasferta' : '✕ Chiudi';
+  if (!isNowHidden && !document.querySelector('.nt-tappa-card')) ntAddTappa();
+}
+</script>
+</body>
+</html>

@@ -47,6 +47,36 @@
     }
   }
 
+  const VALID_ROLES = ['Dipendente', 'Amministrazione', 'HSE', 'Formazione', 'Admin'];
+
+  /** Card hub con role esplicito; null = tutti i dipendenti autenticati */
+  const HUB_APP_ROLES = {
+    timesheet: null,
+    macchina: null,
+    modulo: null,
+    amm: ['Amministrazione', 'Admin'],
+    trasferte: ['Amministrazione', 'Admin']
+  };
+
+  function getRole() {
+    const u = getUser();
+    const role = String(u?.role || 'Dipendente').trim();
+    return VALID_ROLES.includes(role) ? role : 'Dipendente';
+  }
+
+  function canAccessHubApp(appId) {
+    if (!hasN8nToken()) return false;
+    const role = getRole();
+    if (role === 'Admin') return true;
+    const allowed = HUB_APP_ROLES[appId];
+    if (!allowed) return true;
+    return allowed.includes(role);
+  }
+
+  function isNotEnabledError(ex) {
+    return !!(ex && (ex.code === 'NOT_ENABLED' || ex.authCode === 'not_enabled'));
+  }
+
   /** JWT **/
   function hasN8nToken() {
     const t = getToken();
@@ -212,9 +242,36 @@
     const expiresAt = authObj.expiresAt || data.expiresAt;
     const expiresInSec = authObj.expiresInSec ?? data.expiresInSec;
     const user = authObj.user || data.user;
+    const authCode = authObj.code || data.code;
+    const authOk = authObj.ok !== false && data.ok !== false;
+
+    if (authCode === 'not_enabled' || (!authOk && authCode === 'not_enabled')) {
+      const err = new Error(
+        authObj.message || data.message || 'Verifica che il tuo account sia abilitato all\'accesso'
+      );
+      err.code = 'NOT_ENABLED';
+      err.authCode = 'not_enabled';
+      throw err;
+    }
 
     if (!resp.ok) {
+      if (authCode === 'not_enabled') {
+        const err = new Error(
+          authObj.message || data.message || 'Verifica che il tuo account sia abilitato all\'accesso'
+        );
+        err.code = 'NOT_ENABLED';
+        err.authCode = 'not_enabled';
+        throw err;
+      }
       throw new Error(authObj.message || data.message || data.body?.message || 'Accesso API non autorizzato (' + resp.status + ')');
+    }
+    if (!authOk && !token) {
+      const err = new Error(
+        authObj.message || data.message || 'Verifica che il tuo account sia abilitato all\'accesso'
+      );
+      err.code = 'NOT_ENABLED';
+      err.authCode = authCode || 'not_enabled';
+      throw err;
     }
     if (!token) {
       throw new Error('n8n ha risposto senza token.');
@@ -307,8 +364,14 @@
 
   function redirectToLogin(reason) {
     const base = global.location.pathname.replace(/[^/]+$/, '');
-    const q = reason === 'api' ? '?err=api' : '';
+    let q = '';
+    if (reason === 'api') q = '?err=api';
+    else if (reason === 'not_enabled') q = '?err=not_enabled';
     global.location.replace(base + 'index.html' + q);
+  }
+
+  function redirectNotEnabled() {
+    redirectToLogin('not_enabled');
   }
 
   /** macchina.html **/
@@ -354,14 +417,20 @@
     fetch,
     getToken,
     getUser,
+    getRole,
+    canAccessHubApp,
     hasN8nToken,
     isMsalLoggedIn,
     isAuthenticated,
+    isNotEnabledError,
     ensureN8nSession,
     requireAuth,
     requireAuthAsync,
     clearSession,
     getRedirectUri,
-    redirectToLogin
+    redirectToLogin,
+    redirectNotEnabled,
+    HUB_APP_ROLES,
+    VALID_ROLES
   };
 })(window);

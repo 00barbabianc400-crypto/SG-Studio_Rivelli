@@ -3134,6 +3134,10 @@ function showToast(msg, type, ms) {
       showToast(`✓ Dati caricati (${DIPENDENTI.length} dip., ${CLIENTI.length} clienti)`);
     }
   } catch (err) {
+    if (SRAuth.isNotEnabledError(err)) {
+      SRAuth.redirectNotEnabled();
+      return;
+    }
     const sel = document.getElementById('inp-dipendente');
     sel.innerHTML = '<option value="">Errore caricamento</option>';
     showToast('⚠ Impossibile caricare i dati: ' + (err.message || err));

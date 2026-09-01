@@ -1414,6 +1414,10 @@ window.addEventListener('resize', () => {
     await initOperatorePrenota();
     await caricaPrenotazioni();
   } catch (ex) {
+    if (SRAuth.isNotEnabledError(ex)) {
+      SRAuth.redirectNotEnabled();
+      return;
+    }
     console.error('Macchina auth/load:', ex);
     hideAppLoader();
     showToast(ex.message || 'Caricamento fallito', 'error');
