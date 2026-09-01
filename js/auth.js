@@ -55,7 +55,8 @@
     macchina: null,
     modulo: null,
     amm: ['Amministrazione', 'Admin'],
-    trasferte: ['Amministrazione', 'Admin']
+    trasferte: ['Amministrazione', 'Admin'],
+    utenti: ['Admin']
   };
 
   function getRole() {
@@ -195,33 +196,24 @@
     }
   }
 
-  async function exchangeAzureToken(accessToken, tenantId) {
-    const resp = await global.fetch(C.WEBHOOK_AUTH, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        accessToken: String(accessToken || ''),
-        tenantId: String(tenantId || C.AZURE_TENANT_ID || '')
-      })
-    });
+  function throwNotEnabled(message, authCode) {
+    const err = new Error(message || 'Verifica che il tuo account sia abilitato all\'accesso');
+    err.code = 'NOT_ENABLED';
+    err.authCode = authCode || 'not_enabled';
+    throw err;
+  }
 
-    const raw = await resp.text();
+  function parseAuthResponse(raw, resp) {
     let data = {};
     try { data = raw ? JSON.parse(raw) : {}; } catch { data = {}; }
 
-    /*
-     * Formati supportati:
-     *  A) { token, user, pushSubscription: {...} }  ← preferito (Code Auth Merge Push)
-     *  B) [ { token, user }, { endpoint, active, ... } ]
-     *  C) { token, user } solo (niente push → campanella rossa)
-     */
     const rows = Array.isArray(data)
       ? data
       : (Array.isArray(data.body) ? data.body : null);
 
     const authObj = rows
-      ? (rows.find(r => r && r.token) || rows[0] || {})
-      : (data.body && typeof data.body === 'object' && data.body.token ? data.body : data);
+      ? (rows.find(r => r && r.token) || rows.find(r => r && r.code) || rows[0] || {})
+      : (data.body && typeof data.body === 'object' && (data.body.token || data.body.code) ? data.body : data);
 
     let pushRow =
       authObj.pushSubscription ||
@@ -239,54 +231,76 @@
     }
 
     const token = authObj.token || data.token;
-    const expiresAt = authObj.expiresAt || data.expiresAt;
-    const expiresInSec = authObj.expiresInSec ?? data.expiresInSec;
-    const user = authObj.user || data.user;
     const authCode = authObj.code || data.code;
     const authOk = authObj.ok !== false && data.ok !== false;
+    const status = resp ? resp.status : 0;
 
-    if (authCode === 'not_enabled' || (!authOk && authCode === 'not_enabled')) {
-      const err = new Error(
-        authObj.message || data.message || 'Verifica che il tuo account sia abilitato all\'accesso'
+    const looksNotEnabled =
+      authCode === 'not_enabled' ||
+      (status === 403 && !token) ||
+      (authOk === false && !token) ||
+      (/\bnot_enabled\b/i.test(raw) && !token);
+
+    if (looksNotEnabled) {
+      throwNotEnabled(
+        authObj.message || data.message || 'Verifica che il tuo account sia abilitato all\'accesso',
+        authCode || 'not_enabled'
       );
-      err.code = 'NOT_ENABLED';
-      err.authCode = 'not_enabled';
-      throw err;
     }
 
-    if (!resp.ok) {
-      if (authCode === 'not_enabled') {
-        const err = new Error(
-          authObj.message || data.message || 'Verifica che il tuo account sia abilitato all\'accesso'
-        );
-        err.code = 'NOT_ENABLED';
-        err.authCode = 'not_enabled';
-        throw err;
-      }
-      throw new Error(authObj.message || data.message || data.body?.message || 'Accesso API non autorizzato (' + resp.status + ')');
-    }
-    if (!authOk && !token) {
-      const err = new Error(
-        authObj.message || data.message || 'Verifica che il tuo account sia abilitato all\'accesso'
+    if (resp && !resp.ok) {
+      throw new Error(
+        authObj.message || data.message || data.body?.message || 'Accesso API non autorizzato (' + status + ')'
       );
-      err.code = 'NOT_ENABLED';
-      err.authCode = authCode || 'not_enabled';
-      throw err;
     }
     if (!token) {
       throw new Error('n8n ha risposto senza token.');
     }
 
-    saveN8nSession({ token, expiresAt, expiresInSec, user });
+    return {
+      token,
+      expiresAt: authObj.expiresAt || data.expiresAt,
+      expiresInSec: authObj.expiresInSec ?? data.expiresInSec,
+      user: authObj.user || data.user,
+      push: pushRow || null
+    };
+  }
+
+  async function exchangeAzureToken(accessToken, tenantId) {
+    const resp = await global.fetch(C.WEBHOOK_AUTH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        accessToken: String(accessToken || ''),
+        tenantId: String(tenantId || C.AZURE_TENANT_ID || '')
+      })
+    });
+
+    const raw = await resp.text();
+    const parsed = parseAuthResponse(raw, resp);
+
+    saveN8nSession(parsed);
     if (global.SRPush && typeof global.SRPush.applyFromAuth === 'function') {
-      global.SRPush.applyFromAuth(pushRow || null);
+      global.SRPush.applyFromAuth(parsed.push || null);
     } else {
       console.warn('[auth] SRPush non pronto: stato campanella non aggiornato');
     }
-    return { token, expiresAt, expiresInSec, user, push: pushRow || null };
+    return parsed;
   }
 
-  /** Macchina */
+  /** Hub: firma JWT subito dopo MSAL (role + push) */
+  async function establishHubSession(options) {
+    const force = !!(options && options.force);
+    if (!force && hasN8nToken()) return true;
+    return ensureN8nSession({ force: true });
+  }
+
+  async function rejectNotEnabledAtHub() {
+    clearSession();
+    redirectToLogin('not_enabled');
+  }
+
+  /** Macchina / sottopagine */
   async function ensureN8nSession(options) {
     const force = !!(options && options.force);
     if (!force && hasN8nToken()) return true;
@@ -423,6 +437,8 @@
     isMsalLoggedIn,
     isAuthenticated,
     isNotEnabledError,
+    establishHubSession,
+    rejectNotEnabledAtHub,
     ensureN8nSession,
     requireAuth,
     requireAuthAsync,

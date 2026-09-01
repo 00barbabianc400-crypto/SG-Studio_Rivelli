@@ -87,6 +87,18 @@ body {
 }
 .btn-hub-back:hover { background: var(--blue-lt); }
 
+#prepare-screen {
+  min-height: 100vh; min-height: 100dvh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 32px 24px; background: var(--bg);
+}
+.prepare-spinner {
+  width: 36px; height: 36px; margin: 0 auto 18px;
+  border: 3px solid var(--border); border-top-color: var(--blue);
+  border-radius: 50%; animation: hub-spin .75s linear infinite;
+}
+@keyframes hub-spin { to { transform: rotate(360deg); } }
+
 #hub-screen { min-height: 100vh; padding: 0 0 40px; }
 .hub-top {
   background: linear-gradient(135deg, #0a1628, #1a3a6b 60%, #1e4fa3);
@@ -166,6 +178,15 @@ body {
   </div>
 </div>
 
+<div id="prepare-screen" class="hidden">
+  <div class="gate-card">
+    <img class="gate-logo" src="assets/logo.jpg" alt="Studio Rivelli Consulting">
+    <div class="prepare-spinner" role="status" aria-label="Caricamento"></div>
+    <h2 class="gate-title">Preparando la tua esperienza sull'hub SR</h2>
+    <p class="gate-sub">Verifica account e permessi…</p>
+  </div>
+</div>
+
 <div id="deny-screen" class="hidden">
   <div class="gate-card">
     <svg class="deny-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -174,7 +195,7 @@ body {
     </svg>
     <h2 class="gate-title">Qualcosa è andato storto</h2>
     <p class="gate-sub">Verifica che il tuo account sia abilitato all'accesso</p>
-    <button type="button" class="btn-hub-back" id="btn-back-hub">Ritorna all'hub</button>
+    <button type="button" class="btn-hub-back" id="btn-back-login">Torna al login</button>
   </div>
 </div>
 
@@ -228,7 +249,14 @@ body {
         </div>
         <div class="hub-card-title">Gestione trasferte</div>
         <p class="hub-card-desc">Itinerari, tappe, servizi e prenotazioni delle trasferte.</p>
-        <span class="hub-card-loading hidden" id="trasferte-loading">Connessione API…</span>
+      </a>
+      <a class="hub-card" href="gestione-utenti.html" id="link-utenti" data-hub-app="utenti">
+        <div class="hub-card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M14 19c0-2 2.5-3.5 5-3.5"/></svg>
+        </div>
+        <div class="hub-card-title">Gestione utenti</div>
+        <p class="hub-card-desc">Abilitazione account, ruoli e accesso all'hub.</p>
+        <span class="hub-badge">Admin</span>
       </a>
     </div>
   </main>
@@ -239,10 +267,27 @@ body {
 <script src="js/auth.js"></script>
 <script src="js/push.js"></script>
 <script>
+const NOT_ENABLED_MSG = 'Il tuo account Microsoft non risulta abilitato. Contatta l\'amministratore.';
+
+function hideAllScreens() {
+  ['gate-screen', 'prepare-screen', 'deny-screen', 'hub-screen'].forEach(id => {
+    document.getElementById(id).classList.add('hidden');
+  });
+}
+
+function resetHubCards() {
+  document.querySelectorAll('.hub-card-loading').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.hub-card').forEach(card => {
+    card.style.pointerEvents = '';
+    card.classList.remove('disabled');
+  });
+  document.getElementById('hub-error').textContent = '';
+}
+
 function showHub() {
-  document.getElementById('gate-screen').classList.add('hidden');
-  document.getElementById('deny-screen').classList.add('hidden');
+  hideAllScreens();
   document.getElementById('hub-screen').classList.remove('hidden');
+  resetHubCards();
   const u = SRAuth.getUser();
   const el = document.getElementById('hub-user');
   if (u && (u.name || u.email)) {
@@ -254,16 +299,22 @@ function showHub() {
   applyHubRoles();
 }
 
-function showGate() {
+function showGate(message) {
+  hideAllScreens();
   document.getElementById('gate-screen').classList.remove('hidden');
-  document.getElementById('deny-screen').classList.add('hidden');
-  document.getElementById('hub-screen').classList.add('hidden');
+  document.getElementById('gate-error').textContent = message || '';
+  resetHubCards();
+}
+
+function showPrepare() {
+  hideAllScreens();
+  document.getElementById('prepare-screen').classList.remove('hidden');
 }
 
 function showDeny() {
-  document.getElementById('gate-screen').classList.add('hidden');
-  document.getElementById('hub-screen').classList.add('hidden');
+  hideAllScreens();
   document.getElementById('deny-screen').classList.remove('hidden');
+  resetHubCards();
 }
 
 function applyHubRoles() {
@@ -274,40 +325,39 @@ function applyHubRoles() {
   });
 }
 
-function handleHubNavError(ex, link, loading) {
-  if (SRAuth.isNotEnabledError(ex)) {
-    showDeny();
-    return;
+async function enterHubAfterMsal() {
+  showPrepare();
+  try {
+    const needPushRefresh = SRPush.isMobilePushTarget()
+      && sessionStorage.getItem('sr_push_server') == null
+      && localStorage.getItem('sr_push_server') == null;
+    await SRAuth.establishHubSession(needPushRefresh ? { force: true } : undefined);
+    if (!SRAuth.hasN8nToken()) throw new Error('Token non salvato in sessione');
+    SRPush.syncIfEnabled();
+    showHub();
+  } catch (ex) {
+    if (SRAuth.isNotEnabledError(ex)) {
+      SRAuth.clearSession();
+      showGate(NOT_ENABLED_MSG);
+      return;
+    }
+    console.error('establishHubSession:', ex);
+    showGate(ex.message || 'Impossibile collegarsi alle API. Verifica il workflow in n8n');
   }
-  console.error('ensureN8nSession:', ex);
-  document.getElementById('hub-error').textContent = ex.message || 'Errore connessione API n8n';
-  if (link) link.style.pointerEvents = '';
-  if (loading) loading.classList.add('hidden');
 }
 
-async function hubNavigate(link, loading, targetUrl, options) {
-  const err = document.getElementById('hub-error');
-  err.textContent = '';
-  link.style.pointerEvents = 'none';
-  loading.classList.remove('hidden');
-  try {
-    const app = link.dataset.hubApp;
-    if (app && SRAuth.hasN8nToken() && !SRAuth.canAccessHubApp(app)) {
-      throw new Error('Non hai i permessi per questa applicazione');
-    }
-    await SRAuth.ensureN8nSession(options);
-    if (!SRAuth.hasN8nToken()) {
-      throw new Error('Token non salvato in sessione');
-    }
-    applyHubRoles();
-    if (app && !SRAuth.canAccessHubApp(app)) {
-      throw new Error('Non hai i permessi per questa applicazione');
-    }
-    SRPush.syncIfEnabled();
-    location.assign(targetUrl);
-  } catch (ex) {
-    handleHubNavError(ex, link, loading);
+function hubNavigate(link, targetUrl) {
+  const app = link.dataset.hubApp;
+  if (!SRAuth.hasN8nToken()) {
+    enterHubAfterMsal();
+    return;
   }
+  if (app && !SRAuth.canAccessHubApp(app)) {
+    document.getElementById('hub-error').textContent = 'Non hai i permessi per questa applicazione';
+    return;
+  }
+  SRPush.syncIfEnabled();
+  location.assign(targetUrl);
 }
 
 function setLoading(on) {
@@ -319,17 +369,28 @@ function setLoading(on) {
   setLoading(true);
   try {
     const state = await SRAuth.init();
-    if (state.loggedIn) showHub();
-    else showGate();
     if (location.search.includes('err=not_enabled')) {
-      showDeny();
-    } else if (location.search.includes('err=api')) {
-      document.getElementById('gate-error').textContent =
-        'Impossibile collegarsi alle API. Verifica il workflow in n8n';
+      history.replaceState(null, '', location.pathname);
+      SRAuth.clearSession();
+      showGate(NOT_ENABLED_MSG);
+      return;
     }
+    if (location.search.includes('err=api')) {
+      history.replaceState(null, '', location.pathname);
+      showGate('Impossibile collegarsi alle API. Verifica il workflow in n8n');
+      return;
+    }
+    if (!state.loggedIn) {
+      showGate();
+      return;
+    }
+    if (SRAuth.hasN8nToken()) {
+      showHub();
+      return;
+    }
+    await enterHubAfterMsal();
   } catch (ex) {
-    showGate();
-    document.getElementById('gate-error').textContent = ex.message || 'Errore inizializzazione';
+    showGate(ex.message || 'Errore inizializzazione');
   } finally {
     setLoading(false);
     document.getElementById('btn-ms-login').disabled = false;
@@ -343,7 +404,7 @@ document.getElementById('btn-ms-login').addEventListener('click', async () => {
   btn.disabled = true;
   try {
     await SRAuth.loginWithMicrosoft(false);
-    if (await SRAuth.isMsalLoggedIn()) showHub();
+    if (await SRAuth.isMsalLoggedIn()) await enterHubAfterMsal();
   } catch (ex) {
     err.textContent = ex.message || 'Accesso annullato o non autorizzato';
   } finally {
@@ -353,42 +414,39 @@ document.getElementById('btn-ms-login').addEventListener('click', async () => {
 
 document.getElementById('btn-logout').addEventListener('click', () => SRAuth.logout());
 
-document.getElementById('btn-back-hub').addEventListener('click', async () => {
+document.getElementById('btn-back-login').addEventListener('click', () => {
   history.replaceState(null, '', location.pathname);
-  if (await SRAuth.isMsalLoggedIn()) showHub();
-  else showGate();
+  SRAuth.clearSession();
+  showGate(NOT_ENABLED_MSG);
 });
 
-document.getElementById('link-timesheet').addEventListener('click', async e => {
+document.getElementById('link-timesheet').addEventListener('click', e => {
   e.preventDefault();
-  const needPushRefresh = SRPush.isMobilePushTarget()
-    && sessionStorage.getItem('sr_push_server') == null
-    && localStorage.getItem('sr_push_server') == null;
-  await hubNavigate(
-    e.currentTarget,
-    document.getElementById('timesheet-loading'),
-    'timesheet_rivelli.html',
-    needPushRefresh ? { force: true } : undefined
-  );
+  hubNavigate(e.currentTarget, 'timesheet_rivelli.html');
 });
-
-document.getElementById('link-macchina').addEventListener('click', async e => {
+document.getElementById('link-macchina').addEventListener('click', e => {
   e.preventDefault();
-  await hubNavigate(e.currentTarget, document.getElementById('macchina-loading'), 'macchina.html');
+  hubNavigate(e.currentTarget, 'macchina.html');
 });
-
-document.getElementById('link-amm').addEventListener('click', async e => {
+document.getElementById('link-modulo').addEventListener('click', e => {
   e.preventDefault();
-  await hubNavigate(e.currentTarget, document.getElementById('amm-loading'), 'gestione-amministrativa.html');
+  hubNavigate(e.currentTarget, 'modulo-macchina.html');
 });
-
-document.getElementById('link-trasferte').addEventListener('click', async e => {
+document.getElementById('link-amm').addEventListener('click', e => {
   e.preventDefault();
-  await hubNavigate(e.currentTarget, document.getElementById('trasferte-loading'), 'gestione_trasferte.html');
+  hubNavigate(e.currentTarget, 'gestione-amministrativa.html');
+});
+document.getElementById('link-trasferte').addEventListener('click', e => {
+  e.preventDefault();
+  hubNavigate(e.currentTarget, 'gestione_trasferte.html');
+});
+document.getElementById('link-utenti').addEventListener('click', e => {
+  e.preventDefault();
+  hubNavigate(e.currentTarget, 'gestione-utenti.html');
 });
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=24').then(reg => reg.update()).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=25').then(reg => reg.update()).catch(() => {});
 }
 </script>
 </body>
