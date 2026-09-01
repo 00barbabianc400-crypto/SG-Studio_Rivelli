@@ -34,6 +34,12 @@
     padding: 28px 40px 24px; display: flex; align-items: center; gap: 18px;
     box-shadow: 0 4px 24px rgba(10,22,40,0.25);
   }
+  .header-hub {
+    color: var(--gray-400); text-decoration: none; font-size: 13px; font-weight: 500;
+    padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,.2);
+    flex-shrink: 0;
+  }
+  .header-hub:hover { color: #fff; background: rgba(255,255,255,.08); }
   .header-logo {
     width: 46px; height: 46px; background: var(--blue-bright); border-radius: 10px;
     display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;
@@ -341,6 +347,7 @@
 <body>
 
 <div class="header">
+  <a class="header-hub" href="index.html">← Hub</a>
   <div class="header-logo">📋</div>
   <div class="header-text">
     <h1>Gestione Prenotazioni</h1>
@@ -461,12 +468,31 @@
   </div>
 </div>
 
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
 <script>
-// ========== Webhook (placeholder dove indicato) ==========
-const WEBHOOK_RECUPERO = 'https://studiorivelli.app.n8n.cloud/webhook/recupero-dati';
-const WEBHOOK_SALVATAGGIO = 'https://studiorivelli.app.n8n.cloud/webhook/salvataggio-dati';
-const WEBHOOK_INVIO_PRENOTAZIONI = 'https://studiorivelli.app.n8n.cloud/webhook/invio-dati';
-const WEBHOOK_CANCELLA_TRASFERTA = 'https://studiorivelli.app.n8n.cloud/webhook/cancellazione-dati';
+// ========== Webhook da SR_CONFIG ==========
+const WEBHOOK_RECUPERO = SR_CONFIG.WEBHOOK_TR_RECUPERO;
+const WEBHOOK_SALVATAGGIO = SR_CONFIG.WEBHOOK_TR_SALVATAGGIO;
+const WEBHOOK_INVIO_PRENOTAZIONI = SR_CONFIG.WEBHOOK_TR_INVIO;
+const WEBHOOK_CANCELLA_TRASFERTA = SR_CONFIG.WEBHOOK_TR_CANCELLA;
+const NT_WEBHOOK = SR_CONFIG.WEBHOOK_TR_NUOVA;
+
+async function apiPost(url, body) {
+  const resp = await SRAuth.fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!resp.ok) {
+    const errText = await resp.text().catch(() => '');
+    throw new Error(errText || 'HTTP ' + resp.status);
+  }
+  const ct = resp.headers.get('content-type') || '';
+  if (ct.includes('application/json')) return resp.json();
+  const text = await resp.text();
+  try { return JSON.parse(text); } catch { return text; }
+}
 
 const SERVIZI_META = {
   hotel: { icon: '🏨', nome: 'Hotel' },
@@ -1556,16 +1582,7 @@ function renderTrasferta(trasferta, trasfertaId) {
 
 // ========== Fase 1: GET trasferta ==========
 async function fetchTrasfertaById(id) {
-  const resp = await fetch(WEBHOOK_RECUPERO, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ trasferta_id: id })
-  });
-  if (!resp.ok) {
-    const errText = await resp.text().catch(() => '');
-    throw new Error(errText || 'HTTP ' + resp.status);
-  }
-  const raw = await resp.json();
+  const raw = await apiPost(WEBHOOK_RECUPERO, { trasferta_id: id });
   const trasferta = estraiPayloadRisposta(raw);
   if (!trasferta || !Array.isArray(trasferta.itinerario)) {
     const vuoto = Array.isArray(raw) && raw.length === 0;
@@ -1851,26 +1868,13 @@ async function salvaProgresso() {
     showToast('Carica prima una trasferta', 'warn');
     return;
   }
-  if (WEBHOOK_SALVATAGGIO.startsWith('INSERISCI')) {
-    showToast('Configura WEBHOOK_SALVATAGGIO nello script', 'warn');
-    console.log('Payload salvataggio (anteprima):', buildPayloadSalvataggio());
-    return;
-  }
 
   const btn = document.getElementById('btn-salva');
   btn.disabled = true;
   try {
     showToast('Salvataggio in corso…');
     const payload = buildPayloadSalvataggio();
-    const resp = await fetch(WEBHOOK_SALVATAGGIO, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!resp.ok) {
-      const errText = await resp.text().catch(() => '');
-      throw new Error(errText || 'HTTP ' + resp.status);
-    }
+    await apiPost(WEBHOOK_SALVATAGGIO, payload);
     const avevaNuove = (payload.meta?.righe_nuove || 0) > 0;
     sessionTrasferta._tappe_eliminate = [];
     if (avevaNuove) {
@@ -1901,28 +1905,14 @@ async function inviaPrenotazioni() {
     showToast('⚠️ ' + errPren, 'warn');
     return;
   }
-  if (WEBHOOK_INVIO_PRENOTAZIONI.startsWith('INSERISCI')) {
-    showToast('Configura WEBHOOK_INVIO_PRENOTAZIONI nello script', 'warn');
-    console.log('Payload invio (anteprima):', buildPayloadInvio());
-    apriModaleDopoInvio();
-    return;
-  }
 
   const btn = document.getElementById('btn-invia');
   btn.disabled = true;
   try {
     showToast('Invio in corso…');
-    const resp = await fetch(WEBHOOK_INVIO_PRENOTAZIONI, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(buildPayloadInvio())
-    });
-    if (resp.ok) {
-      showToast('Prenotazioni inviate con successo', 'success', 3000);
-      apriModaleDopoInvio();
-    } else {
-      showToast('Errore server: ' + resp.status, 'error');
-    }
+    await apiPost(WEBHOOK_INVIO_PRENOTAZIONI, buildPayloadInvio());
+    showToast('Prenotazioni inviate con successo', 'success', 3000);
+    apriModaleDopoInvio();
   } catch (e) {
     showToast('Invio fallito: ' + (e.message || e), 'error');
     console.error('inviaPrenotazioni:', e);
@@ -1945,26 +1935,13 @@ function chiudiModaleDopoInvio(vaiNuovaRicerca) {
 
 async function confermaElimina() {
   if (!sessionTrasfertaId) return;
-  if (WEBHOOK_CANCELLA_TRASFERTA.startsWith('INSERISCI')) {
-    showToast('Configura WEBHOOK_CANCELLA_TRASFERTA nello script', 'warn');
-    chiudiModaleDopoInvio();
-    return;
-  }
 
   const btn = document.getElementById('btn-conferma-elimina');
   btn.disabled = true;
   try {
-    const resp = await fetch(WEBHOOK_CANCELLA_TRASFERTA, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ trasferta_id: sessionTrasfertaId })
-    });
-    if (resp.ok) {
-      showToast('Record eliminato', 'success');
-      chiudiModaleDopoInvio();
-    } else {
-      showToast('Eliminazione fallita: ' + resp.status, 'error');
-    }
+    await apiPost(WEBHOOK_CANCELLA_TRASFERTA, { trasferta_id: sessionTrasfertaId });
+    showToast('Record eliminato', 'success');
+    chiudiModaleDopoInvio();
   } catch (e) {
     showToast('Errore: ' + (e.message || e), 'error');
   } finally {
@@ -1986,7 +1963,6 @@ document.getElementById('input-trasferta-id').addEventListener('keydown', e => {
 });
 
 // ========== Nuova Trasferta ==========
-const NT_WEBHOOK = 'https://studiorivelli.app.n8n.cloud/webhook/informazioni-trasferte';
 let ntUid = 0;
 
 const NT_MEZZI = ['🚆 Treno','✈️ Aereo','🚗 Auto propria','🚘 Noleggio','🏢 Auto az.','🚌 Bus','🏍️ Moto'];
@@ -2234,18 +2210,10 @@ async function ntInviaDati() {
   btn.disabled = true;
   try {
     showToast('Invio in corso…');
-    const resp = await fetch(NT_WEBHOOK, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(ntBuildJSON())
-    });
-    if (resp.ok) {
-      showToast('✅ Trasferta inviata con successo!', 'success', 4500);
-      ntReset();
-      ntTogglePanel();
-    } else {
-      showToast('Errore server: ' + resp.status, 'error');
-    }
+    await apiPost(NT_WEBHOOK, ntBuildJSON());
+    showToast('✅ Trasferta inviata con successo!', 'success', 4500);
+    ntReset();
+    ntTogglePanel();
   } catch (e) {
     showToast('Invio fallito: ' + (e.message || e), 'error');
   } finally {
@@ -2270,6 +2238,19 @@ function ntTogglePanel() {
   btn.textContent = isNowHidden ? '＋ Nuova trasferta' : '✕ Chiudi';
   if (!isNowHidden && !document.querySelector('.nt-tappa-card')) ntAddTappa();
 }
+
+(async function boot() {
+  try {
+    if (!SRAuth.hasN8nToken()) await SRAuth.ensureN8nSession();
+    if (!SRAuth.canAccessHubApp('trasferte')) {
+      location.replace('index.html');
+      return;
+    }
+  } catch (ex) {
+    if (SRAuth.isNotEnabledError(ex)) SRAuth.redirectNotEnabled();
+    else SRAuth.redirectToLogin('api');
+  }
+})();
 </script>
 </body>
 </html>

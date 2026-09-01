@@ -30,18 +30,46 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .topbar-title { font-size: 15px; font-weight: 700; flex: 1; }
 .topbar-title span { font-weight: 500; color: var(--muted); }
 
-.shell { max-width: min(720px, calc(100vw - 32px)); margin: 0 auto; padding: 24px 16px 48px; }
+.shell { max-width: min(1200px, calc(100vw - 32px)); margin: 0 auto; padding: 24px 16px 48px; }
 .page-sub { font-size: 14px; color: var(--muted); margin-bottom: 18px; line-height: 1.45; }
+
+.toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; margin-bottom: 16px;
+}
+.toolbar-meta { font-size: 13px; color: var(--muted); }
 
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  box-shadow: var(--shadow-sm); margin-bottom: 16px; overflow: hidden;
+  box-shadow: var(--shadow-sm); overflow: hidden;
 }
 .card-head {
   padding: 14px 18px; border-bottom: 1px solid var(--border); background: #fafafa;
   font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em;
 }
-.card-body { padding: 18px; }
+.card-body { padding: 0; }
+
+.users-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.users-table th {
+  text-align: left; padding: 12px 16px; font-size: 11px; font-weight: 600;
+  color: var(--muted); text-transform: uppercase; letter-spacing: .04em;
+  border-bottom: 1px solid var(--border); background: #fafafa;
+}
+.users-table td {
+  padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: middle;
+}
+.users-table tr:last-child td { border-bottom: none; }
+.users-table tr:hover td { background: var(--hover); }
+.users-table .col-email { word-break: break-all; color: var(--muted); }
+.users-table .col-actions { width: 1%; white-space: nowrap; text-align: right; }
+.users-table .col-actions .soft-btn { margin-left: 6px; }
+@media (max-width: 720px) {
+  .users-table thead { display: none; }
+  .users-table tr { display: block; border-bottom: 1px solid var(--border); padding: 12px 16px; }
+  .users-table td { display: block; padding: 4px 0; border: none; }
+  .users-table .col-actions { text-align: left; margin-top: 8px; }
+  .users-table .col-actions .soft-btn { margin: 0 6px 0 0; }
+}
 
 .field { margin-bottom: 12px; }
 .field label {
@@ -75,20 +103,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .status-line.is-error { color: var(--danger); }
 .status-line.is-ok { color: var(--green); }
 
-.user-list { display: flex; flex-direction: column; gap: 10px; }
-.user-row {
-  border: 1px solid var(--border); border-radius: var(--radius-sm);
-  padding: 12px 14px; display: grid; grid-template-columns: 1fr auto; gap: 10px 12px; align-items: start;
-}
-.user-main { min-width: 0; }
-.user-name { font-size: 15px; font-weight: 700; color: var(--text); }
-.user-email { font-size: 13px; color: var(--muted); margin-top: 2px; word-break: break-all; }
 .role-pill {
-  display: inline-block; margin-top: 8px; font-size: 11px; font-weight: 600;
+  display: inline-block; font-size: 11px; font-weight: 600;
   padding: 3px 9px; border-radius: 99px; background: var(--accent-soft); color: var(--accent);
 }
-.user-actions { display: flex; flex-direction: column; gap: 6px; }
-.user-actions .soft-btn { width: 100%; min-width: 88px; }
 
 .empty-msg { text-align: center; padding: 28px 12px; color: var(--muted); font-size: 14px; }
 
@@ -101,6 +119,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   width: min(420px, 100%); background: var(--surface); border-radius: var(--radius);
   border: 1px solid var(--border); box-shadow: var(--shadow-sm); padding: 20px;
 }
+.modal .field { margin-bottom: 12px; }
 .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
 
 .toast {
@@ -124,40 +143,55 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   <p class="page-sub">Abilita account Microsoft, assegna un ruolo singolo e revoca l'accesso all'hub SR.</p>
   <p class="status-line" id="status-line"></p>
 
-  <section class="card">
-    <div class="card-head">Nuovo utente</div>
-    <div class="card-body">
-      <form id="form-insert">
-        <div class="field-row">
-          <div class="field">
-            <label for="ins-email">Email *</label>
-            <input type="email" id="ins-email" required placeholder="nome@studiorivelli.it" autocomplete="off">
-          </div>
-          <div class="field">
-            <label for="ins-dip">Nome dipendente *</label>
-            <input type="text" id="ins-dip" required placeholder="MARIO ROSSI" autocomplete="off">
-          </div>
-        </div>
-        <div class="field">
-          <label for="ins-role">Ruolo</label>
-          <select id="ins-role"></select>
-        </div>
-        <div class="actions">
-          <button type="submit" class="soft-btn primary" id="btn-insert">Aggiungi utente</button>
-        </div>
-      </form>
-    </div>
-  </section>
+  <div class="toolbar">
+    <span class="toolbar-meta"><span id="user-count">0</span> utenti abilitati</span>
+    <button type="button" class="soft-btn primary" id="btn-open-insert">Aggiungi utente</button>
+  </div>
 
   <section class="card">
-    <div class="card-head">Utenti abilitati (<span id="user-count">0</span>)</div>
+    <div class="card-head">Utenti abilitati</div>
     <div class="card-body">
-      <div class="user-list" id="user-list">
-        <div class="empty-msg">Caricamento…</div>
+      <div id="user-list-wrap">
+        <table class="users-table hidden" id="users-table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Email</th>
+              <th>Ruolo</th>
+              <th>Azioni</th>
+            </tr>
+          </thead>
+          <tbody id="user-list"></tbody>
+        </table>
+        <div class="empty-msg" id="user-empty">Caricamento…</div>
       </div>
     </div>
   </section>
 </main>
+
+<div class="modal-backdrop" id="insert-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-labelledby="insert-title">
+    <h3 id="insert-title">Nuovo utente</h3>
+    <form id="form-insert">
+      <div class="field">
+        <label for="ins-email">Email *</label>
+        <input type="email" id="ins-email" required placeholder="nome@studiorivelli.it" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="ins-dip">Nome dipendente *</label>
+        <input type="text" id="ins-dip" required placeholder="MARIO ROSSI" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="ins-role">Ruolo</label>
+        <select id="ins-role"></select>
+      </div>
+      <div class="actions">
+        <button type="button" class="soft-btn" id="btn-insert-cancel">Annulla</button>
+        <button type="submit" class="soft-btn primary" id="btn-insert">Aggiungi</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <div class="modal-backdrop" id="edit-backdrop" aria-hidden="true">
   <div class="modal" role="dialog" aria-labelledby="edit-title">
@@ -190,7 +224,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 <script src="js/auth.js"></script>
 <script>
 const WEBHOOK = SR_CONFIG.WEBHOOK_GESTIONE_UTENTI;
-const ROLES = SRAuth.VALID_ROLES || ['Dipendente', 'Amministrazione', 'HSE', 'Formazione', 'Admin'];
+const ROLES = SRAuth.VALID_ROLES || ['Dipendente', 'Amministrazione', 'HSE', 'Formazione', 'Sorveglianza Sanitaria', 'Admin'];
 let users = [];
 
 function esc(s) {
@@ -274,32 +308,48 @@ async function loadUsers() {
 }
 
 function renderList() {
-  const list = document.getElementById('user-list');
+  const tbody = document.getElementById('user-list');
+  const table = document.getElementById('users-table');
+  const empty = document.getElementById('user-empty');
   document.getElementById('user-count').textContent = String(users.length);
   if (!users.length) {
-    list.innerHTML = '<div class="empty-msg">Nessun utente in tabella Dipendenti.</div>';
+    table.classList.add('hidden');
+    empty.classList.remove('hidden');
+    empty.textContent = 'Nessun utente in tabella Dipendenti.';
+    tbody.innerHTML = '';
     return;
   }
-  list.innerHTML = users.map(u => `
-    <article class="user-row" data-id="${esc(u.id)}">
-      <div class="user-main">
-        <div class="user-name">${esc(u.dipendente || '—')}</div>
-        <div class="user-email">${esc(u.email)}</div>
-        <span class="role-pill">${esc(u.role)}</span>
-      </div>
-      <div class="user-actions">
+  empty.classList.add('hidden');
+  table.classList.remove('hidden');
+  tbody.innerHTML = users.map(u => `
+    <tr data-id="${esc(u.id)}">
+      <td>${esc(u.dipendente || '—')}</td>
+      <td class="col-email">${esc(u.email)}</td>
+      <td><span class="role-pill">${esc(u.role)}</span></td>
+      <td class="col-actions">
         <button type="button" class="soft-btn btn-edit" data-id="${esc(u.id)}">Modifica</button>
         <button type="button" class="soft-btn danger btn-del" data-id="${esc(u.id)}">Elimina</button>
-      </div>
-    </article>
+      </td>
+    </tr>
   `).join('');
 
-  list.querySelectorAll('.btn-edit').forEach(btn => {
+  tbody.querySelectorAll('.btn-edit').forEach(btn => {
     btn.addEventListener('click', () => openEdit(btn.dataset.id));
   });
-  list.querySelectorAll('.btn-del').forEach(btn => {
+  tbody.querySelectorAll('.btn-del').forEach(btn => {
     btn.addEventListener('click', () => deleteUser(btn.dataset.id));
   });
+}
+
+function openInsert() {
+  document.getElementById('ins-email').value = '';
+  document.getElementById('ins-dip').value = '';
+  document.getElementById('ins-role').value = 'Dipendente';
+  document.getElementById('insert-backdrop').classList.add('open');
+}
+
+function closeInsert() {
+  document.getElementById('insert-backdrop').classList.remove('open');
 }
 
 function openEdit(id) {
@@ -340,9 +390,7 @@ document.getElementById('form-insert').addEventListener('submit', async e => {
       dipendente: document.getElementById('ins-dip').value.trim(),
       role: document.getElementById('ins-role').value
     });
-    document.getElementById('ins-email').value = '';
-    document.getElementById('ins-dip').value = '';
-    document.getElementById('ins-role').value = 'Dipendente';
+    closeInsert();
     toast('Utente aggiunto');
     await loadUsers();
   } catch (ex) {
@@ -350,6 +398,12 @@ document.getElementById('form-insert').addEventListener('submit', async e => {
   } finally {
     btn.disabled = false;
   }
+});
+
+document.getElementById('btn-open-insert').addEventListener('click', openInsert);
+document.getElementById('btn-insert-cancel').addEventListener('click', closeInsert);
+document.getElementById('insert-backdrop').addEventListener('click', e => {
+  if (e.target.id === 'insert-backdrop') closeInsert();
 });
 
 document.getElementById('form-edit').addEventListener('submit', async e => {
@@ -391,8 +445,9 @@ fillRoleSelect(document.getElementById('edit-role'));
     if (SRAuth.isNotEnabledError(ex)) SRAuth.redirectNotEnabled();
     else {
       setStatus(ex.message || 'Errore caricamento', 'error');
-      document.getElementById('user-list').innerHTML =
-        '<div class="empty-msg">Impossibile caricare gli utenti.</div>';
+      document.getElementById('users-table').classList.add('hidden');
+      document.getElementById('user-empty').classList.remove('hidden');
+      document.getElementById('user-empty').textContent = 'Impossibile caricare gli utenti.';
     }
   }
 })();

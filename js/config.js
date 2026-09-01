@@ -19,6 +19,16 @@ window.SR_CONFIG = {
   WEBHOOK_GESTIONE_AMMINISTRATIVA: 'https://studiorivelli.app.n8n.cloud/webhook/gestione-amministrativa-auth',
   WEBHOOK_GESTIONE_UTENTI: 'https://studiorivelli.app.n8n.cloud/webhook/gestione-utenti',
 
+  WEBHOOK_TR_RECUPERO: 'https://studiorivelli.app.n8n.cloud/webhook/recupero-dati',
+  WEBHOOK_TR_SALVATAGGIO: 'https://studiorivelli.app.n8n.cloud/webhook/salvataggio-dati',
+  WEBHOOK_TR_INVIO: 'https://studiorivelli.app.n8n.cloud/webhook/invio-dati',
+  WEBHOOK_TR_CANCELLA: 'https://studiorivelli.app.n8n.cloud/webhook/cancellazione-dati',
+  WEBHOOK_TR_NUOVA: 'https://studiorivelli.app.n8n.cloud/webhook/informazioni-trasferte',
+
+  WEBHOOK_ST_CREATE: 'https://studiorivelli.app.n8n.cloud/webhook/caricamento-infortuni',
+  WEBHOOK_ST_GET: 'https://studiorivelli.app.n8n.cloud/webhook/get-infortuni',
+  WEBHOOK_ST_UPDATE: 'https://studiorivelli.app.n8n.cloud/webhook/update-delete-infortuni',
+
   AZURE_CLIENT_ID: 'f16e7f48-7775-4461-b27d-53e95aa61b82',
   AZURE_TENANT_ID: '6598f73a-3511-440a-bb95-3482c4fc5676',
   AZURE_SCOPES: ['User.Read'],

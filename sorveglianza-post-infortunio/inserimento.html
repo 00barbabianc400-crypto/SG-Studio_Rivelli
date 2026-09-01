@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1e4fa3">
+<title>Nuovo infortunio — Steritalia</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-mark">🩺</div>
+    <div>
+      <div class="topbar-title">Nuovo infortunio</div>
+      <div class="topbar-sub">Registrazione giorno zero</div>
+    </div>
+  </div>
+  <nav class="topbar-nav">
+    <a class="topbar-link" href="../index.html">Hub SR</a>
+    <a class="topbar-link" href="index.html">Home</a>
+    <a class="topbar-link" href="dashboard.html">Dashboard</a>
+  </nav>
+</header>
+
+<main class="shell">
+  <div class="page-head">
+    <h1 class="page-title">Inserimento operatore</h1>
+    <p class="page-sub">Compila i dati iniziali. Le date dei milestone successivi verranno calcolate automaticamente dalla data infortunio.</p>
+  </div>
+
+  <div id="demo-banner" class="demo-banner hidden"></div>
+
+  <form class="card card-pad" id="form-infortunio">
+    <div class="form-grid">
+      <div class="form-field">
+        <label class="form-label" for="infortunato">Infortunato</label>
+        <input class="form-input" id="infortunato" name="infortunato" required placeholder="Nome e cognome" autocomplete="name">
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" for="centrale">Centrale</label>
+        <div class="combo-wrap">
+          <input class="form-input" id="centrale" name="centrale" required placeholder="Digita per filtrare…" autocomplete="off">
+          <div class="combo-dropdown" id="centrale-dd"></div>
+        </div>
+        <span class="form-hint">Inizia a scrivere: il filtro mostra solo le centrali corrispondenti.</span>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" for="data_infortunio">Data infortunio (giorno 0)</label>
+        <input class="form-input" id="data_infortunio" name="data_infortunio" type="date" required>
+        <span class="form-hint">Precompilata con la data odierna all'apertura.</span>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" for="hiv_autorizzato">Autorizzazione esame HIV</label>
+        <select class="form-select" id="hiv_autorizzato" name="hiv_autorizzato">
+          <option value="">Non specificato</option>
+          <option value="si">Sì — autorizzato</option>
+          <option value="no">No — non autorizzato</option>
+        </select>
+      </div>
+
+      <div class="form-field full">
+        <label class="form-label" for="note">Note</label>
+        <textarea class="form-textarea" id="note" name="note" placeholder="Eventuali annotazioni per la collega di medicina…"></textarea>
+      </div>
+    </div>
+
+    <div class="btn-row btn-row--center">
+      <a class="btn btn-ghost" href="dashboard.html">Annulla</a>
+      <button class="btn btn-primary" type="submit" id="btn-submit">Registra infortunio</button>
+    </div>
+  </form>
+</main>
+
+<script src="../js/config.js"></script>
+<script src="../js/auth.js"></script>
+<script src="js/config.js"></script>
+<script src="js/centrali.js"></script>
+<script src="js/scadenze.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth-boot.js"></script>
+<script>
+STAuthBoot.then(function () {
+(function () {
+  const centraleInput = document.getElementById('centrale');
+  const centraleDd = document.getElementById('centrale-dd');
+  let centraleValid = '';
+
+  document.getElementById('data_infortunio').value = STScadenze.todayISO();
+
+  if (STApi.isDemo()) {
+    const banner = document.getElementById('demo-banner');
+    banner.classList.remove('hidden');
+    banner.textContent = 'Modalità demo attiva: i dati vengono salvati in localStorage finché non configuri WEBHOOK_BASE in js/config.js.';
+  }
+
+  STCombobox.mount(centraleInput, centraleDd, {
+    items: ST_CENTRALI,
+    onSelect: (value) => {
+      centraleValid = ST_CENTRALI.includes(value) ? value : '';
+    }
+  });
+
+  document.getElementById('form-infortunio').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-submit');
+    const centrale = centraleInput.value.trim();
+
+    if (!ST_CENTRALI.includes(centrale)) {
+      STUi.showToast('Seleziona una centrale valida dal filtro', true);
+      centraleInput.focus();
+      return;
+    }
+
+    const payload = {
+      infortunato: document.getElementById('infortunato').value,
+      centrale,
+      data_infortunio: document.getElementById('data_infortunio').value,
+      hiv_autorizzato: document.getElementById('hiv_autorizzato').value,
+      note: document.getElementById('note').value
+    };
+
+    btn.disabled = true;
+    STUi.setLoader(true, 'Registrazione in corso…');
+    try {
+      await STApi.createInfortunio(payload);
+      STUi.showToast('Infortunio registrato');
+      setTimeout(() => { location.href = 'dashboard.html'; }, 500);
+    } catch (err) {
+      STUi.showToast(err.message || 'Errore durante la registrazione', true);
+      btn.disabled = false;
+    } finally {
+      STUi.setLoader(false);
+    }
+  });
+})();
+});
+</script>
+</body>
+</html>

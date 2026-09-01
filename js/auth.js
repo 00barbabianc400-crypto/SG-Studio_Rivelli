@@ -47,16 +47,17 @@
     }
   }
 
-  const VALID_ROLES = ['Dipendente', 'Amministrazione', 'HSE', 'Formazione', 'Admin'];
+  const VALID_ROLES = ['Dipendente', 'Amministrazione', 'HSE', 'Formazione', 'Sorveglianza Sanitaria', 'Admin'];
 
-  /** Card hub con role esplicito; null = tutti i dipendenti autenticati */
+  /** Card hub: array ruoli ammessi; array vuoto o assente = nessun accesso (salvo Admin) */
   const HUB_APP_ROLES = {
-    timesheet: null,
-    macchina: null,
-    modulo: null,
+    timesheet: ['Dipendente', 'HSE', 'Admin'],
+    macchina: ['Dipendente', 'HSE', 'Formazione', 'Admin'],
+    modulo: ['Dipendente', 'Amministrazione', 'HSE', 'Formazione', 'Sorveglianza Sanitaria', 'Admin'],
     amm: ['Amministrazione', 'Admin'],
-    trasferte: ['Amministrazione', 'Admin'],
-    utenti: ['Admin']
+    trasferte: ['Formazione', 'Admin'],
+    utenti: ['Admin'],
+    steritalia: ['Sorveglianza Sanitaria', 'Admin']
   };
 
   function getRole() {
@@ -70,7 +71,7 @@
     const role = getRole();
     if (role === 'Admin') return true;
     const allowed = HUB_APP_ROLES[appId];
-    if (!allowed) return true;
+    if (!allowed || !allowed.length) return false;
     return allowed.includes(role);
   }
 

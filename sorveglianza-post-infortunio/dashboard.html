@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1e4fa3">
+<title>Dashboard sorveglianza — Steritalia</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-mark">📋</div>
+    <div>
+      <div class="topbar-title">Dashboard sorveglianza</div>
+      <div class="topbar-sub">Monitoraggio milestone e prelievi</div>
+    </div>
+  </div>
+  <nav class="topbar-nav">
+    <a class="topbar-link" href="../index.html">Hub SR</a>
+    <a class="topbar-link" href="index.html">Home</a>
+    <a class="topbar-link" href="inserimento.html">Nuovo</a>
+    <a class="topbar-link is-active" href="dashboard.html">Dashboard</a>
+  </nav>
+</header>
+
+<main class="shell shell-wide">
+  <div class="page-head">
+    <h1 class="page-title">Stato sorveglianza</h1>
+    <p class="page-sub">Il warning si attiva 7 giorni prima dei controlli successivi (45 gg, 3 mesi, 6 mesi). Il tempo zero non genera alert di scadenza.</p>
+  </div>
+
+  <div id="demo-banner" class="demo-banner hidden"></div>
+
+  <div class="kpi-grid" id="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Attivi</div><div class="kpi-val" id="kpi-attivi">0</div></div>
+    <div class="kpi"><div class="kpi-label">In scadenza (7 gg)</div><div class="kpi-val warn" id="kpi-warn">0</div></div>
+    <div class="kpi"><div class="kpi-label">Scaduti</div><div class="kpi-val over" id="kpi-over">0</div></div>
+    <div class="kpi"><div class="kpi-label">Completati</div><div class="kpi-val ok" id="kpi-ok">0</div></div>
+  </div>
+
+  <div class="card card-pad filters">
+    <div class="form-field">
+      <label class="form-label" for="filter-search">Cerca infortunato</label>
+      <input class="form-input" id="filter-search" placeholder="Nome…">
+    </div>
+    <div class="form-field">
+      <label class="form-label" for="filter-centrale">Centrale</label>
+      <div class="combo-wrap">
+        <input class="form-input" id="filter-centrale" placeholder="Filtra centrale…" autocomplete="off">
+        <div class="combo-dropdown" id="filter-centrale-dd"></div>
+      </div>
+    </div>
+    <div class="form-field">
+      <label class="form-label" for="filter-stato">Stato</label>
+      <select class="form-select" id="filter-stato">
+        <option value="">Tutti</option>
+        <option value="in_scadenza">In scadenza</option>
+        <option value="scaduto">Scaduto</option>
+        <option value="attivo">Attivo</option>
+        <option value="completato">Completato</option>
+        <option value="annullato">Annullato</option>
+      </select>
+    </div>
+    <button class="btn btn-ghost" type="button" id="btn-reset-filters">Reset</button>
+  </div>
+
+  <div class="records" id="records"></div>
+  <div class="empty-state hidden" id="empty-state">Nessun infortunio trovato con i filtri correnti.</div>
+</main>
+
+<div class="modal-backdrop" id="edit-modal">
+  <div class="modal modal--edit" role="dialog" aria-labelledby="edit-title">
+    <div class="modal-head">
+      <h2 id="edit-title">Registra prelievi</h2>
+      <p id="edit-sub"></p>
+    </div>
+    <form id="edit-form" class="modal-form">
+      <div class="modal-body modal-body--scroll">
+        <div class="edit-milestones" id="edit-milestones"></div>
+        <div class="form-field" style="margin-top:14px">
+          <label class="form-label" for="edit-note">Note</label>
+          <textarea class="form-textarea" id="edit-note" rows="3"></textarea>
+        </div>
+      </div>
+      <div class="modal-foot modal-foot--split">
+        <button type="button" class="btn btn-danger" id="btn-edit-delete">Elimina infortunio</button>
+        <div class="modal-foot-actions">
+          <button type="button" class="btn btn-ghost" id="btn-edit-cancel">Annulla</button>
+          <button type="submit" class="btn btn-primary" id="btn-edit-save">Salva modifiche</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/auth.js"></script>
+<script src="js/config.js"></script>
+<script src="js/centrali.js"></script>
+<script src="js/scadenze.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth-boot.js"></script>
+<script>
+STAuthBoot.then(function () {
+(function () {
+  let records = [];
+  let editingUid = null;
+
+  const recordsEl = document.getElementById('records');
+  const emptyEl = document.getElementById('empty-state');
+  const modal = document.getElementById('edit-modal');
+
+  STCombobox.mount(
+    document.getElementById('filter-centrale'),
+    document.getElementById('filter-centrale-dd'),
+    { items: ST_CENTRALI, onSelect: render }
+  );
+
+  ['filter-search', 'filter-centrale', 'filter-stato'].forEach((id) => {
+    document.getElementById(id).addEventListener('input', render);
+    document.getElementById(id).addEventListener('change', render);
+  });
+
+  document.getElementById('btn-reset-filters').addEventListener('click', () => {
+    document.getElementById('filter-search').value = '';
+    document.getElementById('filter-centrale').value = '';
+    document.getElementById('filter-stato').value = '';
+    render();
+  });
+
+  document.getElementById('btn-edit-cancel').addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+  function collectPatch(rec) {
+    const patch = { note: document.getElementById('edit-note').value };
+    rec.milestones.forEach((m) => {
+      const input = document.getElementById('edit-' + m.effettivaKey);
+      if (input) patch[m.effettivaKey] = input.value || '';
+    });
+    return patch;
+  }
+
+  function upsertLocalRecord(enriched) {
+    const idx = records.findIndex((r) => r.record_uid === enriched.record_uid);
+    if (idx >= 0) records[idx] = enriched;
+    else records.unshift(enriched);
+    render();
+  }
+
+  function removeLocalRecord(recordUid) {
+    records = records.filter((r) => r.record_uid !== recordUid);
+    render();
+  }
+
+  document.getElementById('edit-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!editingUid) return;
+    const idx = records.findIndex((r) => r.record_uid === editingUid);
+    if (idx < 0) return;
+    const rec = records[idx];
+    const patch = collectPatch(rec);
+    const snapshot = rec;
+
+    const btn = document.getElementById('btn-edit-save');
+    btn.disabled = true;
+    document.getElementById('btn-edit-delete').disabled = true;
+
+    // Proiezione locale immediata (senza GET)
+    records[idx] = STApi.applyPatch(rec, patch);
+    render();
+
+    try {
+      const updated = await STApi.updateInfortunio(editingUid, patch, snapshot);
+      records[idx] = updated;
+      render();
+      STUi.showToast('Modifiche salvate');
+      closeModal();
+    } catch (err) {
+      records[idx] = snapshot;
+      render();
+      STUi.showToast(err.message || 'Errore salvataggio', true);
+    } finally {
+      btn.disabled = false;
+      document.getElementById('btn-edit-delete').disabled = false;
+    }
+  });
+
+  document.getElementById('btn-edit-delete').addEventListener('click', async () => {
+    if (!editingUid) return;
+    const rec = records.find((r) => r.record_uid === editingUid);
+    if (!rec) return;
+
+    const label = rec.infortunato + ' · ' + rec.centrale;
+    if (!confirm('Eliminare definitivamente l\'infortunio di ' + label + '?')) return;
+
+    const btnDel = document.getElementById('btn-edit-delete');
+    const btnSave = document.getElementById('btn-edit-save');
+    btnDel.disabled = true;
+    btnSave.disabled = true;
+    STUi.setLoader(true, 'Eliminazione…');
+
+    const uid = editingUid;
+    const snapshot = records.slice();
+
+    try {
+      await STApi.deleteInfortunio(uid);
+      removeLocalRecord(uid);
+      STUi.showToast('Infortunio eliminato');
+      closeModal();
+    } catch (err) {
+      records = snapshot;
+      render();
+      STUi.showToast(err.message || 'Errore eliminazione', true);
+    } finally {
+      btnDel.disabled = false;
+      btnSave.disabled = false;
+      STUi.setLoader(false);
+    }
+  });
+
+  function closeModal() {
+    modal.classList.remove('open');
+    editingUid = null;
+  }
+
+  function openModal(uid) {
+    const rec = records.find((r) => r.record_uid === uid);
+    if (!rec) return;
+    editingUid = uid;
+    document.getElementById('edit-title').textContent = rec.infortunato;
+    document.getElementById('edit-sub').textContent = rec.centrale + ' · Infortunio ' + STScadenze.formatIT(rec.data_infortunio);
+    document.getElementById('edit-note').value = rec.note || '';
+
+    const wrap = document.getElementById('edit-milestones');
+    wrap.innerHTML = rec.milestones.map((m) => `
+      <div class="edit-ms-row">
+        <div class="edit-ms-label">${m.label} ${STUi.statusBadge(m.status)}</div>
+        <div class="form-field">
+          <label class="form-label">Prevista</label>
+          <input class="form-input" value="${STScadenze.formatIT(m.prevista)}" disabled>
+        </div>
+        <div class="form-field">
+          <label class="form-label" for="edit-${m.effettivaKey}">Data effettiva esame</label>
+          <input class="form-input" type="date" id="edit-${m.effettivaKey}" value="${m.effettiva || ''}">
+        </div>
+      </div>
+    `).join('');
+
+    modal.classList.add('open');
+  }
+
+  function getFiltered() {
+    const q = document.getElementById('filter-search').value.trim().toLowerCase();
+    const centrale = document.getElementById('filter-centrale').value.trim().toLowerCase();
+    const stato = document.getElementById('filter-stato').value;
+
+    return records.filter((r) => {
+      if (q && !r.infortunato.toLowerCase().includes(q)) return false;
+      if (centrale && !r.centrale.toLowerCase().includes(centrale)) return false;
+      if (stato && r.stato_calcolato !== stato) return false;
+      return true;
+    });
+  }
+
+  function renderKpi() {
+    const attivi = records.filter((r) => r.stato_calcolato === 'attivo').length;
+    const warn = records.filter((r) => r.stato_calcolato === 'in_scadenza').length;
+    const over = records.filter((r) => r.stato_calcolato === 'scaduto').length;
+    const ok = records.filter((r) => r.stato_calcolato === 'completato').length;
+    document.getElementById('kpi-attivi').textContent = attivi;
+    document.getElementById('kpi-warn').textContent = warn;
+    document.getElementById('kpi-over').textContent = over;
+    document.getElementById('kpi-ok').textContent = ok;
+  }
+
+  function renderMilestoneCell(m) {
+    const cls = m.status === 'in_scadenza' ? ' is-warn'
+      : m.status === 'scaduto' ? ' is-over'
+      : m.status === 'completato' ? ' is-ok' : '';
+    return `
+      <div class="ms-cell${cls}">
+        <div class="ms-cell-head">
+          <div class="ms-cell-label">${m.label}</div>
+          ${STUi.statusBadge(m.status)}
+        </div>
+        <div class="ms-cell-dates">
+          <div>Prev. <strong>${STScadenze.formatIT(m.prevista)}</strong></div>
+          <div>Eff. <strong>${m.effettiva ? STScadenze.formatIT(m.effettiva) : '—'}</strong></div>
+        </div>
+      </div>
+    `;
+  }
+
+  function render() {
+    const list = getFiltered();
+    renderKpi();
+    recordsEl.innerHTML = '';
+    emptyEl.classList.toggle('hidden', list.length > 0);
+
+    list.forEach((rec) => {
+      const wrapCls = rec.stato_calcolato === 'in_scadenza' ? ' is-warn'
+        : rec.stato_calcolato === 'scaduto' ? ' is-over' : '';
+
+      const nextMs = rec.milestones.find((m) => m.id === rec.prossima_fase);
+      const nextLabel = nextMs ? nextMs.label : '—';
+
+      const el = document.createElement('article');
+      el.className = 'expander' + wrapCls;
+      el.innerHTML = `
+        <button class="expander-head" type="button" aria-expanded="false">
+          <div class="chip-top">
+            <span class="expander-chevron">▶</span>
+            <span class="chip-badge">${STUi.globalBadge(rec.stato_calcolato)}</span>
+          </div>
+          <div class="chip-name">${escapeHtml(rec.infortunato)}</div>
+          <div class="chip-meta">${escapeHtml(rec.centrale)}</div>
+          <div class="chip-date">Infortunio ${STScadenze.formatIT(rec.data_infortunio)}</div>
+          <div class="chip-next">Prossima: <strong>${escapeHtml(nextLabel)}</strong><br>${STScadenze.formatIT(rec.prossima_scadenza)}</div>
+          ${STUi.milestoneStrip(rec.milestones)}
+        </button>
+        <div class="expander-body">
+          <div class="ms-list">${rec.milestones.map(renderMilestoneCell).join('')}</div>
+          <div class="expander-foot">
+            <button class="btn btn-ghost btn-edit" type="button" data-uid="${rec.record_uid}">Modifica prelievi</button>
+          </div>
+        </div>
+      `;
+
+      const head = el.querySelector('.expander-head');
+      head.addEventListener('click', () => {
+        const wasOpen = el.classList.contains('open');
+        document.querySelectorAll('.expander.open').forEach((node) => {
+          node.classList.remove('open');
+          node.querySelector('.expander-head')?.setAttribute('aria-expanded', 'false');
+        });
+        if (!wasOpen) {
+          el.classList.add('open');
+          head.setAttribute('aria-expanded', 'true');
+        }
+      });
+
+      el.querySelector('.btn-edit').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openModal(rec.record_uid);
+      });
+
+      recordsEl.appendChild(el);
+    });
+  }
+
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  async function loadRecords(showInitialLoader) {
+    if (showInitialLoader) STUi.setLoader(true, 'Sincronizzazione dati con n8n…');
+    try {
+      records = await STApi.getInfortuni();
+      render();
+    } catch (err) {
+      STUi.showToast(err.message || 'Impossibile caricare i dati', true);
+      records = [];
+      render();
+    } finally {
+      if (showInitialLoader) STUi.setLoader(false);
+    }
+  }
+
+  if (STApi.isDemo()) {
+    const banner = document.getElementById('demo-banner');
+    banner.classList.remove('hidden');
+    banner.textContent = 'Modalità demo: dati in localStorage. Configura WEBHOOK_BASE in js/config.js per collegare i webhook n8n.';
+  }
+
+  loadRecords(true);
+})();
+});
+</script>
+</body>
+</html>

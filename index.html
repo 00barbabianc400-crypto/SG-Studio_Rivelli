@@ -250,6 +250,13 @@ body {
         <div class="hub-card-title">Gestione trasferte</div>
         <p class="hub-card-desc">Itinerari, tappe, servizi e prenotazioni delle trasferte.</p>
       </a>
+      <a class="hub-card" href="sorveglianza-post-infortunio/index.html" id="link-steritalia" data-hub-app="steritalia">
+        <div class="hub-card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 4v4M12 16v4M4 12h4M16 12h4"/><circle cx="12" cy="12" r="5"/><path d="M9 12h6"/></svg>
+        </div>
+        <div class="hub-card-title">Sorveglianza Steritalia</div>
+        <p class="hub-card-desc">Post-infortunio: registrazione operatori, milestone prelievi e scadenze.</p>
+      </a>
       <a class="hub-card" href="gestione-utenti.html" id="link-utenti" data-hub-app="utenti">
         <div class="hub-card-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M14 19c0-2 2.5-3.5 5-3.5"/></svg>
@@ -440,13 +447,17 @@ document.getElementById('link-trasferte').addEventListener('click', e => {
   e.preventDefault();
   hubNavigate(e.currentTarget, 'gestione_trasferte.html');
 });
+document.getElementById('link-steritalia').addEventListener('click', e => {
+  e.preventDefault();
+  hubNavigate(e.currentTarget, 'sorveglianza-post-infortunio/index.html');
+});
 document.getElementById('link-utenti').addEventListener('click', e => {
   e.preventDefault();
   hubNavigate(e.currentTarget, 'gestione-utenti.html');
 });
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=26').then(reg => reg.update()).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=29').then(reg => reg.update()).catch(() => {});
 }
 </script>
 </body>
