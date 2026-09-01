@@ -3,53 +3,381 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#1e4fa3">
+<meta name="theme-color" content="#2563eb">
 <title>Gestione utenti — Studio Rivelli</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --navy: #0a1628; --blue: #1e4fa3; --surface: #fff; --bg: #f7f9fc;
-  --border: #e2e7f4; --text: #1e3050; --text-2: #4a6180; --r3: 12px;
+  --bg: #f3f4f6; --surface: #fff; --hover: #f3f4f6; --border: #eceef2;
+  --text: #111827; --muted: #6b7280; --accent: #2563eb; --accent-soft: #eff6ff;
+  --danger: #dc2626; --danger-soft: #fef2f2; --green: #166534; --green-soft: #ecfdf5;
+  --shadow-sm: 0 2px 8px rgba(17,24,39,.06); --radius: 16px; --radius-sm: 12px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-.top {
-  background: linear-gradient(135deg, #0a1628, #1e4fa3);
-  color: #fff; padding: 16px 20px;
-  display: flex; align-items: center; gap: 12px;
+.hidden { display: none !important; }
+
+.topbar {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 0 20px; height: 60px; display: flex; align-items: center; gap: 12px;
+  position: sticky; top: 0; z-index: 50; box-shadow: var(--shadow-sm);
 }
-.top a { color: #fff; text-decoration: none; font-size: 13px; opacity: .85; }
-.top h1 { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; flex: 1; }
-.wrap { max-width: 560px; margin: 0 auto; padding: 24px 20px; }
+.topbar-home {
+  color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 500;
+  padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+}
+.topbar-home:hover { background: var(--hover); color: var(--text); }
+.topbar-title { font-size: 15px; font-weight: 700; flex: 1; }
+.topbar-title span { font-weight: 500; color: var(--muted); }
+
+.shell { max-width: min(720px, calc(100vw - 32px)); margin: 0 auto; padding: 24px 16px 48px; }
+.page-sub { font-size: 14px; color: var(--muted); margin-bottom: 18px; line-height: 1.45; }
+
 .card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r3); padding: 24px; line-height: 1.5;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow-sm); margin-bottom: 16px; overflow: hidden;
 }
-.card h2 { font-family: 'Syne', sans-serif; font-size: 16px; margin-bottom: 10px; color: var(--navy); }
-.card p { font-size: 14px; color: var(--text-2); margin-bottom: 10px; }
-.badge {
-  display: inline-block; font-size: 11px; font-weight: 600; padding: 4px 10px;
-  border-radius: 99px; background: #fef3c7; color: #92400e; margin-bottom: 14px;
+.card-head {
+  padding: 14px 18px; border-bottom: 1px solid var(--border); background: #fafafa;
+  font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em;
 }
+.card-body { padding: 18px; }
+
+.field { margin-bottom: 12px; }
+.field label {
+  display: block; font-size: 11px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px;
+}
+.field input, .field select {
+  width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 12px; font: inherit; font-size: 14px; background: var(--surface);
+}
+.field input:focus, .field select:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+}
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 560px) { .field-row { grid-template-columns: 1fr; } }
+
+.soft-btn {
+  height: 40px; padding: 0 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+.soft-btn:hover { background: var(--hover); }
+.soft-btn.primary { background: var(--accent); color: #fff; border-color: transparent; }
+.soft-btn.primary:hover { background: #1d4ed8; }
+.soft-btn.danger { color: var(--danger); border-color: #fecaca; background: var(--danger-soft); }
+.soft-btn:disabled { opacity: .55; cursor: not-allowed; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-top: 4px; }
+
+.status-line { font-size: 13px; color: var(--muted); min-height: 1.2em; margin-bottom: 12px; }
+.status-line.is-error { color: var(--danger); }
+.status-line.is-ok { color: var(--green); }
+
+.user-list { display: flex; flex-direction: column; gap: 10px; }
+.user-row {
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 12px 14px; display: grid; grid-template-columns: 1fr auto; gap: 10px 12px; align-items: start;
+}
+.user-main { min-width: 0; }
+.user-name { font-size: 15px; font-weight: 700; color: var(--text); }
+.user-email { font-size: 13px; color: var(--muted); margin-top: 2px; word-break: break-all; }
+.role-pill {
+  display: inline-block; margin-top: 8px; font-size: 11px; font-weight: 600;
+  padding: 3px 9px; border-radius: 99px; background: var(--accent-soft); color: var(--accent);
+}
+.user-actions { display: flex; flex-direction: column; gap: 6px; }
+.user-actions .soft-btn { width: 100%; min-width: 88px; }
+
+.empty-msg { text-align: center; padding: 28px 12px; color: var(--muted); font-size: 14px; }
+
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(17,24,39,.35);
+  display: none; align-items: center; justify-content: center; padding: 20px; z-index: 100;
+}
+.modal-backdrop.open { display: flex; }
+.modal {
+  width: min(420px, 100%); background: var(--surface); border-radius: var(--radius);
+  border: 1px solid var(--border); box-shadow: var(--shadow-sm); padding: 20px;
+}
+.modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
+
+.toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: #111827; color: #fff; font-size: 13px; font-weight: 500;
+  padding: 10px 16px; border-radius: var(--radius-sm); z-index: 200;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.toast.show { opacity: 1; }
+.toast.error { background: var(--danger); }
 </style>
 </head>
 <body>
-<header class="top">
-  <a href="index.html">← Hub</a>
-  <h1>Gestione utenti</h1>
+
+<header class="topbar">
+  <a class="topbar-home" href="index.html">← Hub</a>
+  <div class="topbar-title">Gestione utenti <span>· Admin</span></div>
 </header>
-<main class="wrap">
-  <div class="card">
-    <span class="badge">Solo Admin</span>
-    <h2>Utenti e ruoli</h2>
-    <p>Area riservata alla gestione della tabella <strong>Dipendenti</strong> (email, nome, role).</p>
-    <p>Modulo in arrivo: da qui potrai abilitare account, assegnare ruoli (<em>Dipendente</em>, <em>Amministrazione</em>, <em>HSE</em>, <em>Formazione</em>, <em>Admin</em>) e revocare l'accesso all'hub.</p>
-    <p>Per ora aggiorna i record direttamente nella Data Table n8n.</p>
-  </div>
+
+<main class="shell">
+  <p class="page-sub">Abilita account Microsoft, assegna un ruolo singolo e revoca l'accesso all'hub SR.</p>
+  <p class="status-line" id="status-line"></p>
+
+  <section class="card">
+    <div class="card-head">Nuovo utente</div>
+    <div class="card-body">
+      <form id="form-insert">
+        <div class="field-row">
+          <div class="field">
+            <label for="ins-email">Email *</label>
+            <input type="email" id="ins-email" required placeholder="nome@studiorivelli.it" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="ins-dip">Nome dipendente *</label>
+            <input type="text" id="ins-dip" required placeholder="MARIO ROSSI" autocomplete="off">
+          </div>
+        </div>
+        <div class="field">
+          <label for="ins-role">Ruolo</label>
+          <select id="ins-role"></select>
+        </div>
+        <div class="actions">
+          <button type="submit" class="soft-btn primary" id="btn-insert">Aggiungi utente</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">Utenti abilitati (<span id="user-count">0</span>)</div>
+    <div class="card-body">
+      <div class="user-list" id="user-list">
+        <div class="empty-msg">Caricamento…</div>
+      </div>
+    </div>
+  </section>
 </main>
+
+<div class="modal-backdrop" id="edit-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-labelledby="edit-title">
+    <h3 id="edit-title">Modifica utente</h3>
+    <form id="form-edit">
+      <input type="hidden" id="edit-id">
+      <div class="field">
+        <label for="edit-email">Email</label>
+        <input type="email" id="edit-email" required>
+      </div>
+      <div class="field">
+        <label for="edit-dip">Nome dipendente</label>
+        <input type="text" id="edit-dip" required>
+      </div>
+      <div class="field">
+        <label for="edit-role">Ruolo</label>
+        <select id="edit-role"></select>
+      </div>
+      <div class="actions">
+        <button type="button" class="soft-btn" id="btn-edit-cancel">Annulla</button>
+        <button type="submit" class="soft-btn primary">Salva</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script>
+const WEBHOOK = SR_CONFIG.WEBHOOK_GESTIONE_UTENTI;
+const ROLES = SRAuth.VALID_ROLES || ['Dipendente', 'Amministrazione', 'HSE', 'Formazione', 'Admin'];
+let users = [];
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function setStatus(msg, kind) {
+  const el = document.getElementById('status-line');
+  el.textContent = msg || '';
+  el.className = 'status-line' + (kind === 'error' ? ' is-error' : kind === 'ok' ? ' is-ok' : '');
+}
+
+function toast(msg, isError) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (isError ? ' error' : '');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+function fillRoleSelect(sel) {
+  sel.innerHTML = ROLES.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
+}
+
+function normUser(row) {
+  if (!row || typeof row !== 'object') return null;
+  const id = row.id;
+  if (id == null) return null;
+  return {
+    id,
+    email: String(row.email || '').trim().toLowerCase(),
+    dipendente: String(row.dipendente || row.Dipendenti || '').trim(),
+    role: String(row.role || row.Role || 'Dipendente').trim()
+  };
+}
+
+function parseListResponse(data) {
+  if (Array.isArray(data)) return data.map(normUser).filter(Boolean);
+  if (data && Array.isArray(data.users)) return data.users.map(normUser).filter(Boolean);
+  if (data && data.user) {
+    const u = normUser(data.user);
+    return u ? [u] : [];
+  }
+  if (data && data.ok === false) throw new Error(data.message || 'Operazione rifiutata');
+  return [];
+}
+
+async function apiCall(body) {
+  const resp = await SRAuth.fetch(WEBHOOK, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const raw = await resp.text();
+  let data = {};
+  try { data = raw ? JSON.parse(raw) : {}; } catch { data = {}; }
+  if (!resp.ok || data.ok === false) {
+    throw new Error(data.message || ('HTTP ' + resp.status));
+  }
+  return data;
+}
+
+async function loadUsers() {
+  setStatus('Caricamento utenti…');
+  const resp = await SRAuth.fetch(WEBHOOK, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'get' })
+  });
+  const raw = await resp.text();
+  let data = [];
+  try { data = raw ? JSON.parse(raw) : []; } catch { data = []; }
+  if (!resp.ok) {
+    const errObj = Array.isArray(data) ? {} : data;
+    throw new Error(errObj.message || ('HTTP ' + resp.status));
+  }
+  users = parseListResponse(data);
+  renderList();
+  setStatus(users.length + ' utent' + (users.length === 1 ? 'e' : 'i') + ' abilitat' + (users.length === 1 ? 'o' : 'i'), 'ok');
+}
+
+function renderList() {
+  const list = document.getElementById('user-list');
+  document.getElementById('user-count').textContent = String(users.length);
+  if (!users.length) {
+    list.innerHTML = '<div class="empty-msg">Nessun utente in tabella Dipendenti.</div>';
+    return;
+  }
+  list.innerHTML = users.map(u => `
+    <article class="user-row" data-id="${esc(u.id)}">
+      <div class="user-main">
+        <div class="user-name">${esc(u.dipendente || '—')}</div>
+        <div class="user-email">${esc(u.email)}</div>
+        <span class="role-pill">${esc(u.role)}</span>
+      </div>
+      <div class="user-actions">
+        <button type="button" class="soft-btn btn-edit" data-id="${esc(u.id)}">Modifica</button>
+        <button type="button" class="soft-btn danger btn-del" data-id="${esc(u.id)}">Elimina</button>
+      </div>
+    </article>
+  `).join('');
+
+  list.querySelectorAll('.btn-edit').forEach(btn => {
+    btn.addEventListener('click', () => openEdit(btn.dataset.id));
+  });
+  list.querySelectorAll('.btn-del').forEach(btn => {
+    btn.addEventListener('click', () => deleteUser(btn.dataset.id));
+  });
+}
+
+function openEdit(id) {
+  const u = users.find(x => String(x.id) === String(id));
+  if (!u) return;
+  document.getElementById('edit-id').value = u.id;
+  document.getElementById('edit-email').value = u.email;
+  document.getElementById('edit-dip').value = u.dipendente;
+  document.getElementById('edit-role').value = u.role;
+  document.getElementById('edit-backdrop').classList.add('open');
+}
+
+function closeEdit() {
+  document.getElementById('edit-backdrop').classList.remove('open');
+}
+
+async function deleteUser(id) {
+  const u = users.find(x => String(x.id) === String(id));
+  if (!u) return;
+  if (!confirm('Eliminare ' + u.email + '?\nL\'utente non potrà più accedere all\'hub.')) return;
+  try {
+    await apiCall({ action: 'delete', id: u.id });
+    toast('Utente eliminato');
+    await loadUsers();
+  } catch (ex) {
+    toast(ex.message || 'Eliminazione fallita', true);
+  }
+}
+
+document.getElementById('form-insert').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('btn-insert');
+  btn.disabled = true;
+  try {
+    await apiCall({
+      action: 'insert',
+      email: document.getElementById('ins-email').value.trim(),
+      dipendente: document.getElementById('ins-dip').value.trim(),
+      role: document.getElementById('ins-role').value
+    });
+    document.getElementById('ins-email').value = '';
+    document.getElementById('ins-dip').value = '';
+    document.getElementById('ins-role').value = 'Dipendente';
+    toast('Utente aggiunto');
+    await loadUsers();
+  } catch (ex) {
+    toast(ex.message || 'Inserimento fallito', true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('form-edit').addEventListener('submit', async e => {
+  e.preventDefault();
+  try {
+    await apiCall({
+      action: 'update',
+      id: document.getElementById('edit-id').value,
+      email: document.getElementById('edit-email').value.trim(),
+      dipendente: document.getElementById('edit-dip').value.trim(),
+      role: document.getElementById('edit-role').value
+    });
+    closeEdit();
+    toast('Utente aggiornato');
+    await loadUsers();
+  } catch (ex) {
+    toast(ex.message || 'Salvataggio fallito', true);
+  }
+});
+
+document.getElementById('btn-edit-cancel').addEventListener('click', closeEdit);
+document.getElementById('edit-backdrop').addEventListener('click', e => {
+  if (e.target.id === 'edit-backdrop') closeEdit();
+});
+
+fillRoleSelect(document.getElementById('ins-role'));
+fillRoleSelect(document.getElementById('edit-role'));
+
 (async function boot() {
   try {
     if (!SRAuth.hasN8nToken()) await SRAuth.ensureN8nSession();
@@ -58,9 +386,14 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
       location.replace('index.html');
       return;
     }
+    await loadUsers();
   } catch (ex) {
     if (SRAuth.isNotEnabledError(ex)) SRAuth.redirectNotEnabled();
-    else location.replace('index.html?err=api');
+    else {
+      setStatus(ex.message || 'Errore caricamento', 'error');
+      document.getElementById('user-list').innerHTML =
+        '<div class="empty-msg">Impossibile caricare gli utenti.</div>';
+    }
   }
 })();
 </script>
