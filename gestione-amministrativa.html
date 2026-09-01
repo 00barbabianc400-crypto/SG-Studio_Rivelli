@@ -201,11 +201,37 @@ body {
 .oc-bar {
   position: absolute; height: var(--oc-bar-h); border: none; cursor: pointer;
   font-size: 11px; font-weight: 600; color: #fff; font-family: inherit;
-  display: flex; align-items: center; padding: 0 8px; overflow: hidden;
-  white-space: nowrap; text-overflow: ellipsis; pointer-events: auto;
+  display: flex; align-items: center; padding: 0 6px 0 7px; overflow: hidden;
+  pointer-events: auto;
   box-shadow: 0 2px 5px rgba(17, 24, 39, .16); transition: transform .12s, box-shadow .12s;
 }
+.oc-bar-inner {
+  display: flex; align-items: center; gap: 5px; min-width: 0; width: 100%;
+}
+.oc-bar-ico {
+  width: 14px; height: 14px; flex-shrink: 0;
+  stroke: #fff; fill: none; stroke-width: 1.75;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.oc-bar-label {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .oc-bar:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(17, 24, 39, .2); z-index: 2; }
+
+.cal-legend {
+  display: flex; flex-wrap: wrap; gap: 12px 20px; margin-bottom: 14px;
+  padding: 10px 14px; background: var(--hover); border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.legend-item {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--muted); font-weight: 500;
+}
+.legend-item svg {
+  width: 16px; height: 16px; flex-shrink: 0;
+  stroke: var(--accent); fill: none; stroke-width: 1.75;
+  stroke-linecap: round; stroke-linejoin: round;
+}
 .oc-bar.round-l { border-radius: 6px 0 0 6px; }
 .oc-bar.round-r { border-radius: 0 6px 6px 0; }
 .oc-bar.round-l.round-r { border-radius: 6px; }
@@ -286,7 +312,7 @@ body {
 <main class="shell">
   <div class="page-head">
     <h1 class="page-title">Gestione amministrativa</h1>
-    <p class="page-sub">Incrocio prenotazioni auto e tappe trasferte · filtra per persona e restringi per date</p>
+    <p class="page-sub">Prenotazioni auto e trasferte sul calendario · filtra per persona e restringi per date</p>
   </div>
 
   <section class="card" aria-label="Filtri">
@@ -332,6 +358,16 @@ body {
       <span class="card-title">Calendario annuale</span>
     </div>
     <div class="card-body">
+      <div class="cal-legend" aria-label="Legenda calendario">
+        <span class="legend-item">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16l1.5-6h11L19 16"/><path d="M4 16h16v2a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H10a2 2 0 0 1-4 0H5a1 1 0 0 1-1-1v-2z"/><path d="M7.5 10l1-3h7l1 3"/></svg>
+          Prenotazione auto
+        </span>
+        <span class="legend-item">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8.2 16.2c3.5-2.5 4.1-7.5 7.8-10.2"/></svg>
+          Trasferta / tappa
+        </span>
+      </div>
       <div class="year-nav">
         <h2 id="year-label">—</h2>
         <div class="year-nav-btns">
@@ -377,11 +413,16 @@ const MESI_SHORT = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott',
 const WD = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
 const OP_PALETTE = ['#2563eb','#0d9488','#7c3aed','#b45309','#db2777','#0891b2','#059669','#6366f1','#ea580c'];
 
+const ICON_CAR = '<svg class="oc-bar-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16l1.5-6h11L19 16"/><path d="M4 16h16v2a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H10a2 2 0 0 1-4 0H5a1 1 0 0 1-1-1v-2z"/><path d="M7.5 10l1-3h7l1 3"/></svg>';
+const ICON_ROUTE = '<svg class="oc-bar-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8.2 16.2c3.5-2.5 4.1-7.5 7.8-10.2"/></svg>';
+
 let rawPrenotazioni = [];
 let rawTappe = [];
-let filtered = [];
+let filteredMacchina = [];
+let filteredTappe = [];
+let calendarEvents = [];
 let viewYear = new Date().getFullYear();
-let openMonth = null; /* 0-11 or null */
+let openMonth = null;
 let operatorNames = [];
 
 function esc(s) {
@@ -510,9 +551,50 @@ function toISO(y, m, d) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
-function colorOperatore(name) {
-  const i = Math.max(0, operatorNames.indexOf(name));
-  return OP_PALETTE[i % OP_PALETTE.length];
+function colorPerson(name) {
+  let i = operatorNames.findIndex(o => namesMatch(o, name));
+  if (i < 0) i = operatorNames.findIndex(o => normName(o) === normName(name));
+  return OP_PALETTE[(i >= 0 ? i : 0) % OP_PALETTE.length];
+}
+
+function passaFiltroDate(da, a, f) {
+  if (f.dal && f.al) return rangesOverlap(da, a, f.dal, f.al);
+  if (f.dal) return !!(a && a >= f.dal);
+  if (f.al) return !!(da && da <= f.al);
+  return true;
+}
+
+function toCalEventMacchina(p) {
+  return {
+    kind: 'macchina',
+    uid: 'm-' + p.id,
+    id: p.id,
+    data_da: p.data_da,
+    data_a: p.data_a,
+    person: p.operatore,
+    label: cognomeOperatore(p.operatore),
+    raw: p
+  };
+}
+
+function toCalEventTappa(t) {
+  return {
+    kind: 'tappa',
+    uid: 't-' + t.id,
+    id: t.id,
+    data_da: t.data_arrivo,
+    data_a: t.data_partenza,
+    person: t.nome_persona,
+    label: cognomeOperatore(t.nome_persona),
+    raw: t
+  };
+}
+
+function rebuildCalendarEvents() {
+  calendarEvents = [
+    ...filteredMacchina.map(toCalEventMacchina),
+    ...filteredTappe.map(toCalEventTappa)
+  ];
 }
 
 function cognomeOperatore(name) {
@@ -542,26 +624,25 @@ function leggiFiltri() {
   };
 }
 
-/** Nome restringe; date, se presenti, restringono ulteriormente (AND). */
+/** Nome restringe; date restringono ulteriormente (AND). */
 function applyFilters() {
   const f = leggiFiltri();
-  filtered = rawPrenotazioni.filter(p => {
+  filteredMacchina = rawPrenotazioni.filter(p => {
     if (f.operatore && !namesMatch(p.operatore, f.operatore)) return false;
-    if (f.dal && f.al) {
-      if (!rangesOverlap(p.data_da, p.data_a, f.dal, f.al)) return false;
-    } else if (f.dal) {
-      if (!p.data_a || p.data_a < f.dal) return false;
-    } else if (f.al) {
-      if (!p.data_da || p.data_da > f.al) return false;
-    }
-    return true;
+    return passaFiltroDate(p.data_da, p.data_a, f);
   });
-  const n = filtered.length;
+  filteredTappe = rawTappe.filter(t => {
+    if (f.operatore && !namesMatch(t.nome_persona, f.operatore)) return false;
+    return passaFiltroDate(t.data_arrivo, t.data_partenza, f);
+  });
+  rebuildCalendarEvents();
+  const nm = filteredMacchina.length;
+  const nt = filteredTappe.length;
   const bits = [];
   if (f.operatore) bits.push(f.operatore);
   if (f.dal || f.al) bits.push((f.dal || '…') + ' → ' + (f.al || '…'));
   setStatus(
-    n + ' prenotazion' + (n === 1 ? 'e' : 'i')
+    nm + ' auto · ' + nt + ' trasfert' + (nt === 1 ? 'a' : 'e')
     + (bits.length ? ' · ' + bits.join(' · ') : '')
   );
   renderYearGrid();
@@ -572,6 +653,12 @@ function popolaOperatoriDaRecord() {
   const set = new Map();
   rawPrenotazioni.forEach(p => {
     const name = String(p.operatore || '').trim();
+    if (!name) return;
+    const key = normName(name);
+    if (!set.has(key)) set.set(key, name);
+  });
+  rawTappe.forEach(t => {
+    const name = String(t.nome_persona || '').trim();
     if (!name) return;
     const key = normName(name);
     if (!set.has(key)) set.set(key, name);
@@ -590,7 +677,7 @@ function popolaOperatoriDaRecord() {
 function countInMonth(year, month) {
   const start = toISO(year, month, 1);
   const end = toISO(year, month, new Date(year, month + 1, 0).getDate());
-  return filtered.filter(p => rangesOverlap(p.data_da, p.data_a, start, end)).length;
+  return calendarEvents.filter(ev => rangesOverlap(ev.data_da, ev.data_a, start, end)).length;
 }
 
 function renderYearGrid() {
@@ -634,10 +721,10 @@ function buildMonthWeeks(year, month) {
   return weeks;
 }
 
-function barSegmentInWeek(p, weekDays) {
+function barSegmentInWeek(ev, weekDays) {
   let colStart = -1, colEnd = -1;
   weekDays.forEach((iso, idx) => {
-    if (!iso || iso < p.data_da || iso > p.data_a) return;
+    if (!iso || iso < ev.data_da || iso > ev.data_a) return;
     if (colStart < 0) colStart = idx;
     colEnd = idx;
   });
@@ -645,8 +732,8 @@ function barSegmentInWeek(p, weekDays) {
   return {
     colStart,
     colEnd,
-    roundL: weekDays[colStart] === p.data_da,
-    roundR: weekDays[colEnd] === p.data_a
+    roundL: weekDays[colStart] === ev.data_da,
+    roundR: weekDays[colEnd] === ev.data_a
   };
 }
 
@@ -654,11 +741,12 @@ function segmentsOverlap(a, b) {
   return a.colStart <= b.colEnd && b.colStart <= a.colEnd;
 }
 
-function assignBarLanes(bookings, weekDays) {
-  const items = bookings
-    .map(p => ({ p, seg: barSegmentInWeek(p, weekDays) }))
+function assignBarLanes(events, weekDays) {
+  const items = events
+    .map(ev => ({ ev, seg: barSegmentInWeek(ev, weekDays) }))
     .filter(x => x.seg)
-    .sort((a, b) => (a.p.data_da || '').localeCompare(b.p.data_da || '') || Number(a.p.id) - Number(b.p.id));
+    .sort((a, b) => (a.ev.data_da || '').localeCompare(b.ev.data_da || '')
+      || String(a.ev.uid).localeCompare(String(b.ev.uid)));
   const laneEnds = [];
   items.forEach(item => {
     let lane = 0;
@@ -678,7 +766,7 @@ function renderMonthCalendar(month) {
   const daysInMonth = new Date(viewYear, month + 1, 0).getDate();
   const monthStart = toISO(viewYear, month, 1);
   const monthEnd = toISO(viewYear, month, daysInMonth);
-  const inMonth = filtered.filter(p => rangesOverlap(p.data_da, p.data_a, monthStart, monthEnd));
+  const inMonth = calendarEvents.filter(ev => rangesOverlap(ev.data_da, ev.data_a, monthStart, monthEnd));
   const weeks = buildMonthWeeks(viewYear, month);
   const todayIso = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
   const barH = 22;
@@ -690,8 +778,8 @@ function renderMonthCalendar(month) {
     const valid = weekDays.filter(Boolean);
     const wStart = valid[0] || monthStart;
     const wEnd = valid[valid.length - 1] || monthEnd;
-    const weekBookings = inMonth.filter(p => rangesOverlap(p.data_da, p.data_a, wStart, wEnd));
-    const barItems = assignBarLanes(weekBookings, weekDays);
+    const weekEvents = inMonth.filter(ev => rangesOverlap(ev.data_da, ev.data_a, wStart, wEnd));
+    const barItems = assignBarLanes(weekEvents, weekDays);
     const maxLane = barItems.reduce((m, x) => Math.max(m, x.lane), -1);
     const weekMin = 100 + Math.max(0, maxLane) * (barH + barGap);
 
@@ -708,16 +796,20 @@ function renderMonthCalendar(month) {
     });
 
     let barsHtml = '';
-    barItems.forEach(({ p, seg, lane }) => {
+    barItems.forEach(({ ev, seg, lane }) => {
       const colW = 100 / 7;
       const left = seg.colStart * colW;
       const width = (seg.colEnd - seg.colStart + 1) * colW;
       const top = lane * (barH + barGap);
-      const col = colorOperatore(p.operatore);
+      const col = colorPerson(ev.person);
       const rCls = (seg.roundL ? ' round-l' : '') + (seg.roundR ? ' round-r' : '');
-      barsHtml += `<button type="button" class="oc-bar${rCls}" data-id="${esc(p.id)}"
+      const ico = ev.kind === 'macchina' ? ICON_CAR : ICON_ROUTE;
+      const tip = ev.kind === 'macchina'
+        ? (ev.person + ' · ' + (pickCliente(ev.raw) || '—'))
+        : (ev.person + ' · ' + (ev.raw.citta || '—') + ' · ' + (ev.raw.cliente_tappa || '—'));
+      barsHtml += `<button type="button" class="oc-bar${rCls}" data-kind="${ev.kind}" data-id="${esc(ev.id)}"
         style="left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${top}px;background:${col}"
-        title="${esc(p.operatore)} · ${esc(pickCliente(p))}">${esc(cognomeOperatore(p.operatore))}</button>`;
+        title="${esc(tip)}"><span class="oc-bar-inner">${ico}<span class="oc-bar-label">${esc(ev.label)}</span></span></button>`;
     });
 
     weeksHtml += `<div class="oc-week" style="min-height:${weekMin}px">${daysHtml}<div class="oc-week-bars">${barsHtml}</div></div>`;
@@ -728,7 +820,8 @@ function renderMonthCalendar(month) {
   wrap.querySelectorAll('.oc-bar').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
-      apriDettaglio(btn.dataset.id);
+      if (btn.dataset.kind === 'tappa') apriDettaglioTappa(btn.dataset.id);
+      else apriDettaglioMacchina(btn.dataset.id);
     });
   });
 }
@@ -742,11 +835,12 @@ function tappePerPrenotazione(p) {
       || (a.data_arrivo || '').localeCompare(b.data_arrivo || ''));
 }
 
-function apriDettaglio(id) {
-  const p = filtered.find(x => String(x.id) === String(id))
+function apriDettaglioMacchina(id) {
+  const p = filteredMacchina.find(x => String(x.id) === String(id))
     || rawPrenotazioni.find(x => String(x.id) === String(id));
   if (!p) return;
-  const col = colorOperatore(p.operatore);
+  document.getElementById('detail-title').textContent = 'Prenotazione auto';
+  const col = colorPerson(p.operatore);
   const tagCls = p.tipo_utilizzo === 'Roma e dintorni' ? 'tag-roma' : 'tag-trasferta';
   const linked = tappePerPrenotazione(p);
   let tappeHtml = '';
@@ -787,16 +881,71 @@ function apriDettaglio(id) {
     </dl>
     ${tappeHtml}`;
   document.getElementById('detail-backdrop').classList.add('open');
-  const filterBtn = document.getElementById('detail-filter-op');
-  if (filterBtn) {
-    filterBtn.addEventListener('click', () => {
-      const name = filterBtn.dataset.op;
-      const match = operatorNames.find(o => namesMatch(o, name)) || name;
-      document.getElementById('f-operatore').value = match;
-      document.getElementById('detail-backdrop').classList.remove('open');
-      applyFilters();
-    });
+  wireDetailFilterOp(p.operatore);
+}
+
+function fmtEuro(val) {
+  if (val == null || val === '') return '—';
+  const n = Number(String(val).replace(',', '.'));
+  if (isNaN(n)) return esc(String(val));
+  return n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+function apriDettaglioTappa(id) {
+  const t = filteredTappe.find(x => String(x.id) === String(id))
+    || rawTappe.find(x => String(x.id) === String(id));
+  if (!t) return;
+  document.getElementById('detail-title').textContent = 'Trasferta / tappa';
+  const col = colorPerson(t.nome_persona);
+  const costi = [
+    ['Hotel', t.costo_hotel],
+    ['Noleggio', t.costo_noleggio],
+    ['Parcheggio', t.costo_parcheggio],
+    ['Treno', t.costo_treno],
+    ['Aereo', t.costo_aereo],
+    ['Auto aziendale', t.costo_auto_az],
+    ['Totale tappa', t.costo_tappa_totale]
+  ].filter(([, v]) => v != null && String(v).trim() !== '');
+  let serviziHtml = '';
+  if (t.servizi_json) {
+    try {
+      const sj = typeof t.servizi_json === 'string' ? JSON.parse(t.servizi_json) : t.servizi_json;
+      if (sj && typeof sj === 'object' && Object.keys(sj).length) {
+        serviziHtml = `<dt>Servizi</dt><dd><pre style="font-size:11px;white-space:pre-wrap;margin:0;background:var(--hover);padding:8px;border-radius:8px;border:1px solid var(--border)">${esc(JSON.stringify(sj, null, 2))}</pre></dd>`;
+      }
+    } catch (_) { /* ignore */ }
   }
+  document.getElementById('detail-body').innerHTML = `
+    <button type="button" class="detail-op" id="detail-filter-op" data-op="${esc(t.nome_persona)}">
+      <span class="detail-op-dot" style="background:${col}"></span>
+      ${esc(t.nome_persona || '—')}
+    </button>
+    <dl>
+      <dt>ID trasferta</dt><dd>${esc(t.trasferta_id || '—')}</dd>
+      <dt>Tappa</dt><dd>${esc(t.tappa_numero || '—')} · ${esc(t.citta || '—')}</dd>
+      <dt>Periodo</dt><dd>${esc(fmtPeriodoIt(t.data_arrivo, t.data_partenza))}</dd>
+      <dt>Cliente</dt><dd>${esc(t.cliente_tappa || '—')}</dd>
+      <dt>Tipo attività</dt><dd>${esc(t.tipo_attivita || '—')}</dd>
+      <dt>Pernottamento</dt><dd>${esc(t.pernottamento || '—')}</dd>
+      <dt>Mezzo</dt><dd>${esc(t.mezzo_raggiungimento || '—')}</dd>
+      <dt>Stato prenotazioni</dt><dd>${esc(t.stato_prenotazioni || '—')}</dd>
+      ${t.note_tappa ? `<dt>Note tappa</dt><dd>${esc(t.note_tappa)}</dd>` : ''}
+      ${costi.map(([lbl, v]) => `<dt>${lbl}</dt><dd>${fmtEuro(v)}</dd>`).join('')}
+      ${serviziHtml}
+    </dl>`;
+  document.getElementById('detail-backdrop').classList.add('open');
+  wireDetailFilterOp(t.nome_persona);
+}
+
+function wireDetailFilterOp(name) {
+  const filterBtn = document.getElementById('detail-filter-op');
+  if (!filterBtn) return;
+  filterBtn.addEventListener('click', () => {
+    const match = operatorNames.find(o => namesMatch(o, name)) || name;
+    document.getElementById('f-operatore').value = match;
+    document.getElementById('detail-backdrop').classList.remove('open');
+    applyFilters();
+  });
 }
 
 async function caricaDati() {
