@@ -22,6 +22,22 @@
 
   const $ = id => document.getElementById(id);
 
+  function hideAppLoader() {
+    const el = $('app-loader');
+    if (!el) return;
+    el.classList.add('is-hidden');
+    el.setAttribute('aria-busy', 'false');
+  }
+
+  function showAppLoader(text) {
+    const el = $('app-loader');
+    if (!el) return;
+    const t = el.querySelector('.app-loader-text');
+    if (t && text) t.textContent = text;
+    el.classList.remove('is-hidden');
+    el.setAttribute('aria-busy', 'true');
+  }
+
   function toast(msg, type) {
     const el = $('toast');
     el.textContent = msg;
@@ -301,8 +317,13 @@
 
   async function uploadPhotos() {
     const urls = [];
-    for (let i = 0; i < photos.length; i++) {
-      toast('Upload foto ' + (i + 1) + '/' + photos.length + '…');
+    const total = photos.length;
+    for (let i = 0; i < total; i++) {
+      showAppLoader(
+        total === 1
+          ? 'Caricamento foto su Drive…'
+          : 'Caricamento foto ' + (i + 1) + ' di ' + total + ' su Drive…'
+      );
       const data = await postJson({
         action: 'uploadPhoto',
         photo: photos[i].dataUrl,
@@ -387,17 +408,25 @@
     try {
       let urls = [];
       if (photos.length) {
+        showAppLoader(
+          photos.length === 1
+            ? 'Caricamento foto su Drive…'
+            : 'Caricamento foto 1 di ' + photos.length + ' su Drive…'
+        );
         urls = await uploadPhotos();
       }
-      toast('Salvataggio modulo…');
+      showAppLoader('Salvataggio modulo…');
       await postJson(collectPayload(urls));
+      hideAppLoader();
       $('form-wrap').classList.add('hidden');
       $('success-wrap').classList.remove('hidden');
       toast('Modulo inviato', 'ok');
     } catch (ex) {
       console.error(ex);
+      hideAppLoader();
       toast(ex.message || 'Invio fallito', 'err');
     } finally {
+      hideAppLoader();
       btn.disabled = false;
     }
   });

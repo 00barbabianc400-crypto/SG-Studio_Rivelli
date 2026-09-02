@@ -284,17 +284,26 @@ body {
 .sc-box { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); }
 .sc-list { display: flex; flex-direction: column; gap: 8px; }
 .sc-item {
-  display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px;
+  display: flex; gap: 12px; align-items: center; padding: 10px 12px;
   background: var(--hover); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  width: 100%; text-align: left; font-family: inherit; cursor: pointer; color: inherit;
 }
-.sc-thumb {
-  width: 56px; height: 56px; border-radius: 8px; object-fit: cover;
-  background: var(--accent-soft); flex-shrink: 0; cursor: pointer; border: 0; padding: 0;
+.sc-item:hover { border-color: var(--accent); }
+.sc-ico-wrap {
+  width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+  background: var(--accent-soft); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
 }
-.sc-thumb-btn { border: 0; padding: 0; background: transparent; cursor: pointer; line-height: 0; }
-.sc-meta { font-size: 13px; color: var(--text); }
-.sc-meta small { display: block; margin-top: 4px; color: var(--faint); font-size: 12px; }
-.sc-viewer-frame { width: 100%; height: min(62vh, 480px); border: 0; border-radius: 10px; background: #111; }
+.sc-ico { width: 20px; height: 20px; }
+.sc-ico-sm { width: 18px; height: 18px; }
+.sc-pencil { margin-left: auto; color: var(--muted); display: flex; }
+.sc-meta { font-size: 14px; font-weight: 600; color: var(--text); flex: 1; }
+.sc-view-img { width: 100%; max-height: min(52vh, 420px); object-fit: contain; border-radius: 10px; background: #f3f4f6; display: block; }
+.sc-view-dl { margin-top: 12px; }
+.sc-view-dl dt { font-size: 10px; font-weight: 600; text-transform: uppercase; color: var(--faint); margin-top: 10px; }
+.sc-view-dl dd { margin: 4px 0 0; font-size: 14px; color: var(--text); }
+.btn-icon { width: 42px; height: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.btn-chiudi { background: #fde8e8; border: 1px solid #f5c2c2; color: #b42318; }
 .modal-sc { width: min(520px, calc(100vw - 32px)) !important; }
 .svc-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .svc-card {
@@ -433,12 +442,18 @@ body {
   <div class="modal modal-sc">
     <div class="modal-head"><h2>Scontrino benzina</h2></div>
     <div class="modal-body">
-      <iframe id="sc-view-frame" class="sc-viewer-frame" title="Anteprima scontrino"></iframe>
+      <img id="sc-view-img" class="sc-view-img" alt="Scontrino">
+      <dl class="sc-view-dl">
+        <dt>Luogo</dt>
+        <dd id="sc-view-luogo">—</dd>
+        <dt>Orario</dt>
+        <dd id="sc-view-orario">—</dd>
+      </dl>
     </div>
     <div class="modal-foot">
-      <a class="soft-btn" id="sc-view-download" href="#" download>Scarica</a>
-      <button type="button" class="soft-btn" id="sc-view-pdf">Stampa / PDF</button>
-      <button type="button" class="soft-btn" id="sc-view-chiudi">Chiudi</button>
+      <a class="soft-btn btn-icon" id="sc-view-download" href="#" download title="Scarica" aria-label="Scarica"></a>
+      <button type="button" class="soft-btn btn-icon" id="sc-view-print" title="Stampa" aria-label="Stampa"></button>
+      <button type="button" class="soft-btn btn-chiudi" id="sc-view-chiudi">Chiudi</button>
     </div>
   </div>
 </div>
@@ -914,15 +929,11 @@ function apriDettaglioMacchina(id) {
   if (scontrini.length) {
     scontriniHtml = `<div class="sc-box"><div class="tappe-title">Scontrini benzina · ${scontrini.length}</div>
       <div class="sc-list">${scontrini.map((sc, i) => `
-        <article class="sc-item">
-          <button type="button" class="sc-thumb-btn" data-sc-idx="${i}" title="Apri scontrino">
-            <img class="sc-thumb" src="${esc(SRScontrini.viewUrl(sc))}" alt="Scontrino">
-          </button>
-          <div class="sc-meta">
-            <div>${esc(sc.indirizzo || 'Indirizzo non indicato')}</div>
-            <small>${esc(sc.created_at ? new Date(sc.created_at).toLocaleString('it-IT') : '')}</small>
-          </div>
-        </article>`).join('')}
+        <button type="button" class="sc-item" data-sc-idx="${i}" title="Apri scontrino">
+          <span class="sc-ico-wrap">${SRScontrini.ICO_RECEIPT}</span>
+          <span class="sc-meta">Scontrino ${i + 1}</span>
+          <span class="sc-pencil">${SRScontrini.ICO_PENCIL}</span>
+        </button>`).join('')}
       </div></div>`;
   }
   document.getElementById('detail-body').innerHTML = `
@@ -1126,17 +1137,27 @@ function wireDetailFilterOp(name) {
 
 function apriScontrinoViewerAmm(sc) {
   if (!sc) return;
-  document.getElementById('sc-view-frame').src = SRScontrini.previewUrl(sc);
+  const img = document.getElementById('sc-view-img');
+  img.onerror = () => { img.style.display = 'none'; };
+  img.style.display = '';
+  img.src = SRScontrini.thumbnailUrl(sc);
+  document.getElementById('sc-view-luogo').textContent = sc.indirizzo || '—';
+  document.getElementById('sc-view-orario').textContent = sc.created_at
+    ? new Date(sc.created_at).toLocaleString('it-IT')
+    : '—';
   const a = document.getElementById('sc-view-download');
+  a.innerHTML = SRScontrini.ICO_DOWNLOAD;
   a.href = SRScontrini.downloadUrl(sc);
   a.setAttribute('download', 'scontrino.png');
-  document.getElementById('sc-view-pdf').onclick = () => {
+  const printBtn = document.getElementById('sc-view-print');
+  printBtn.innerHTML = SRScontrini.ICO_PRINT;
+  printBtn.onclick = () => {
     const w = window.open('', '_blank');
     if (!w) return;
-    const src = SRScontrini.viewUrl(sc);
-    w.document.write('<title>Scontrino</title><p>Usa Stampa → Salva come PDF</p><img src="' + src.replace(/"/g, '') + '" style="max-width:100%">');
+    const src = SRScontrini.thumbnailUrl(sc);
+    w.document.write('<title>Scontrino</title><img src="' + src.replace(/"/g, '') + '" style="max-width:100%">');
     w.document.close();
-    setTimeout(() => w.print(), 600);
+    setTimeout(() => w.print(), 400);
   };
   document.getElementById('scontrino-view-backdrop').classList.add('open');
 }
@@ -1220,12 +1241,12 @@ document.getElementById('detail-backdrop').addEventListener('click', e => {
 });
 document.getElementById('sc-view-chiudi').addEventListener('click', () => {
   document.getElementById('scontrino-view-backdrop').classList.remove('open');
-  document.getElementById('sc-view-frame').src = 'about:blank';
+  document.getElementById('sc-view-img').removeAttribute('src');
 });
 document.getElementById('scontrino-view-backdrop').addEventListener('click', e => {
   if (e.target.id === 'scontrino-view-backdrop') {
     e.currentTarget.classList.remove('open');
-    document.getElementById('sc-view-frame').src = 'about:blank';
+    document.getElementById('sc-view-img').removeAttribute('src');
   }
 });
 </script>

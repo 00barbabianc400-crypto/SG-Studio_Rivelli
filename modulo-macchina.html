@@ -254,6 +254,24 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   .modal-backdrop { padding: 12px; align-items: flex-end; }
   .modal-backdrop.open .modal { max-height: calc(100dvh - 24px); overflow-y: auto; }
 }
+
+.app-loader {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(247, 249, 252, .94);
+  backdrop-filter: blur(6px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  transition: opacity .35s ease, visibility .35s ease;
+}
+.app-loader.is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.app-loader-spinner {
+  width: 46px; height: 46px; border-radius: 50%;
+  border: 3px solid #e2e7f4; border-top-color: var(--blue-lt);
+  animation: app-spin .7s linear infinite;
+}
+.app-loader-text {
+  font-size: 14px; color: var(--text-2); letter-spacing: .01em;
+}
+@keyframes app-spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -411,6 +429,11 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="app-loader is-hidden" id="app-loader" aria-live="polite" aria-busy="false">
+  <div class="app-loader-spinner" role="status" aria-label="Caricamento in corso"></div>
+  <p class="app-loader-text">Caricamento foto su Drive…</p>
+</div>
 
 <div class="modal-backdrop" id="range-backdrop" aria-hidden="true">
   <div class="modal modal-lg" role="dialog" aria-labelledby="range-modal-title">

@@ -77,6 +77,17 @@
     return JSON.stringify(Array.isArray(list) ? list : []);
   }
 
+  function thumbnailUrl(item) {
+    const id = fileIdFrom(item);
+    if (id) return 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(id) + '=w1200';
+    return viewUrl(item);
+  }
+
+  const ICO_RECEIPT = '<svg class="sc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M6 3.5h12v17l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3.5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>';
+  const ICO_PENCIL = '<svg class="sc-ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13 7l4 4"/></svg>';
+  const ICO_DOWNLOAD = '<svg class="sc-ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 4v12"/><path d="M7 12l5 5 5-5"/><path d="M5 20h14"/></svg>';
+  const ICO_PRINT = '<svg class="sc-ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M7 8V4h10v4"/><path d="M7 16H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><path d="M7 12h10v8H7z"/></svg>';
+
   global.SRScontrini = {
     parseScontriniJson,
     appendScontrino,
@@ -85,6 +96,11 @@
     viewUrl,
     previewUrl,
     downloadUrl,
+    thumbnailUrl,
+    ICO_RECEIPT,
+    ICO_PENCIL,
+    ICO_DOWNLOAD,
+    ICO_PRINT,
     uid
   };
 })(typeof window !== 'undefined' ? window : globalThis);

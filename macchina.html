@@ -171,19 +171,31 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .btn-scontrino { font-size: 12px; padding: 7px 12px; }
 .sc-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 .sc-item {
-  display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px;
+  display: flex; gap: 12px; align-items: center; padding: 10px 12px;
   border: 1px solid var(--border); border-radius: var(--r2); background: #fafbfc;
 }
-.sc-thumb {
-  width: 56px; height: 56px; border-radius: 8px; object-fit: cover;
-  background: #e8eef8; flex-shrink: 0; cursor: pointer;
+.sc-item.is-btn { width: 100%; text-align: left; font-family: inherit; cursor: pointer; }
+.sc-item.is-btn:hover { border-color: var(--blue-lt); background: #f0f4ff; }
+.sc-ico-wrap {
+  width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
+  background: #e8f0fe; color: var(--blue); display: flex; align-items: center; justify-content: center;
 }
-.sc-meta { font-size: 13px; color: var(--text); min-width: 0; }
+.sc-ico { width: 22px; height: 22px; }
+.sc-ico-sm { width: 18px; height: 18px; }
+.sc-meta { font-size: 13px; color: var(--text); min-width: 0; flex: 1; }
 .sc-meta small { display: block; margin-top: 4px; color: var(--text-3); font-size: 12px; }
 .sc-geo-status { font-size: 12px; color: var(--text-3); margin: 0 0 10px; }
 .sc-photo-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .sc-preview { max-width: 100%; max-height: 180px; border-radius: 10px; margin-top: 10px; display: block; }
-.sc-viewer-frame { width: 100%; height: min(62vh, 480px); border: 0; border-radius: 10px; background: #111; }
+.sc-view-img { width: 100%; max-height: min(52vh, 420px); object-fit: contain; border-radius: 10px; background: #f3f4f6; display: block; }
+.sc-view-dl { margin-top: 12px; }
+.sc-view-dl dt { font-size: 10px; font-weight: 600; text-transform: uppercase; color: var(--text-3); margin-top: 10px; }
+.sc-view-dl dd { margin: 4px 0 0; font-size: 14px; color: var(--navy); }
+.btn-icon {
+  width: 42px; height: 42px; padding: 0; justify-content: center;
+}
+.btn-chiudi { background: #fde8e8; border: 1px solid #f5c2c2; color: #b42318; }
+.btn-chiudi:hover { background: #fcdada; }
 .modal-sc { width: min(520px, calc(100vw - 32px)); }
 
 /* Calendario occupazione (vista mensile classica) */
@@ -679,7 +691,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
       </div>
     </div>
     <div class="modal-foot">
-      <button type="button" class="btn btn-ghost" id="sc-chiudi">Chiudi</button>
+      <button type="button" class="btn btn-chiudi" id="sc-chiudi">Chiudi</button>
       <button type="button" class="btn btn-primary" id="sc-salva">Salva scontrino</button>
     </div>
   </div>
@@ -687,14 +699,20 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
 <div class="modal-backdrop" id="scontrino-view-backdrop" aria-hidden="true">
   <div class="modal modal-sc" role="dialog">
-    <div class="modal-head"><h2>Scontrino</h2></div>
+    <div class="modal-head"><h2>Scontrino benzina</h2></div>
     <div class="modal-body">
-      <iframe id="sc-view-frame" class="sc-viewer-frame" title="Anteprima scontrino"></iframe>
+      <img id="sc-view-img" class="sc-view-img" alt="Scontrino">
+      <dl class="sc-view-dl">
+        <dt>Luogo</dt>
+        <dd id="sc-view-luogo">—</dd>
+        <dt>Orario</dt>
+        <dd id="sc-view-orario">—</dd>
+      </dl>
     </div>
     <div class="modal-foot">
-      <a class="btn btn-ghost" id="sc-view-download" href="#" download>Scarica</a>
-      <button type="button" class="btn btn-outline" id="sc-view-pdf">Stampa / PDF</button>
-      <button type="button" class="btn btn-secondary" id="sc-view-chiudi">Chiudi</button>
+      <a class="btn btn-ghost btn-icon" id="sc-view-download" href="#" download title="Scarica" aria-label="Scarica"></a>
+      <button type="button" class="btn btn-outline btn-icon" id="sc-view-print" title="Stampa" aria-label="Stampa"></button>
+      <button type="button" class="btn btn-chiudi" id="sc-view-chiudi">Chiudi</button>
     </div>
   </div>
 </div>
@@ -1021,21 +1039,17 @@ function renderScontriniEsistenti(list) {
     wrap.innerHTML = '<p class="mie-empty" style="padding:0 0 12px">Nessuno scontrino ancora. Aggiungine uno sotto.</p>';
     return;
   }
-  wrap.innerHTML = '<div class="sc-list">' + list.map(sc => {
-    const src = SRScontrini.viewUrl(sc);
-    return `<article class="sc-item">
-      <img class="sc-thumb" src="${esc(src)}" alt="Scontrino" data-view-id="${esc(sc.id || sc.foto_id || '')}">
+  wrap.innerHTML = '<div class="sc-list">' + list.map((sc, i) => {
+    return `<button type="button" class="sc-item is-btn" data-view-idx="${i}">
+      <span class="sc-ico-wrap">${SRScontrini.ICO_RECEIPT}</span>
       <div class="sc-meta">
-        <div>${esc(sc.indirizzo || 'Indirizzo non indicato')}</div>
-        <small>${esc(fmtScWhen(sc.created_at))}</small>
+        <div>Scontrino ${i + 1}</div>
+        <small>${esc(sc.indirizzo || 'Indirizzo non indicato')} · ${esc(fmtScWhen(sc.created_at))}</small>
       </div>
-    </article>`;
+    </button>`;
   }).join('') + '</div>';
-  wrap.querySelectorAll('.sc-thumb').forEach(img => {
-    img.addEventListener('click', () => {
-      const sc = list.find(x => String(x.id || x.foto_id) === img.dataset.viewId);
-      if (sc) apriScontrinoViewer(sc);
-    });
+  wrap.querySelectorAll('[data-view-idx]').forEach(btn => {
+    btn.addEventListener('click', () => apriScontrinoViewer(list[Number(btn.dataset.viewIdx)]));
   });
 }
 
@@ -1135,8 +1149,8 @@ async function salvaScontrino() {
   if (!scontrinoPhoto) return showToast('Aggiungi la foto dello scontrino', 'warn');
   const btn = document.getElementById('sc-salva');
   btn.disabled = true;
+  showAppLoader('Caricamento scontrino su Drive…');
   try {
-    showToast('Caricamento foto su Drive…');
     const up = await postGoogleScript({
       action: 'uploadScontrino',
       photo: scontrinoPhoto.dataUrl,
@@ -1153,6 +1167,7 @@ async function salvaScontrino() {
       foto_id: up.fileId,
       mime: up.mime || scontrinoPhoto.mime
     };
+    showAppLoader('Salvataggio in archivio…');
     const resp = await SRAuth.fetch(WEBHOOK_UPDATE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1166,7 +1181,6 @@ async function salvaScontrino() {
     if (!resp.ok || data.action === 'error' || data.ok === false) {
       throw new Error(data.message || ('Salvataggio fallito: ' + resp.status));
     }
-    showToast('Scontrino salvato', 'success');
     await caricaPrenotazioni(true);
     const updated = prenotazioni.find(x => Number(x.id) === Number(scontrinoBookingId));
     renderScontriniEsistenti(SRScontrini.parseScontriniJson(updated && updated.scontrini_json));
@@ -1174,25 +1188,37 @@ async function salvaScontrino() {
     document.getElementById('sc-preview').classList.add('hidden');
     document.getElementById('sc-file-camera').value = '';
     document.getElementById('sc-file-gallery').value = '';
+    hideAppLoader();
+    showToast('Scontrino salvato', 'success');
   } catch (e) {
+    hideAppLoader();
     showToast(e.message || String(e), 'error');
   } finally {
+    hideAppLoader();
     btn.disabled = false;
   }
 }
 
 function apriScontrinoViewer(sc) {
-  document.getElementById('sc-view-frame').src = SRScontrini.previewUrl(sc);
+  const img = document.getElementById('sc-view-img');
+  img.onerror = () => { img.style.display = 'none'; };
+  img.style.display = '';
+  img.src = SRScontrini.thumbnailUrl(sc);
+  document.getElementById('sc-view-luogo').textContent = sc.indirizzo || '—';
+  document.getElementById('sc-view-orario').textContent = fmtScWhen(sc.created_at) || '—';
   const a = document.getElementById('sc-view-download');
+  a.innerHTML = SRScontrini.ICO_DOWNLOAD;
   a.href = SRScontrini.downloadUrl(sc);
   a.setAttribute('download', 'scontrino.png');
-  document.getElementById('sc-view-pdf').onclick = () => {
+  const printBtn = document.getElementById('sc-view-print');
+  printBtn.innerHTML = SRScontrini.ICO_PRINT;
+  printBtn.onclick = () => {
     const w = window.open('', '_blank');
     if (!w) return showToast('Popup bloccato', 'warn');
-    const src = SRScontrini.viewUrl(sc);
-    w.document.write('<title>Scontrino</title><p>Usa Stampa → Salva come PDF</p><img src="' + src.replace(/"/g, '') + '" style="max-width:100%">');
+    const src = SRScontrini.thumbnailUrl(sc);
+    w.document.write('<title>Scontrino</title><img src="' + src.replace(/"/g, '') + '" style="max-width:100%">');
     w.document.close();
-    setTimeout(() => w.print(), 600);
+    setTimeout(() => w.print(), 400);
   };
   document.getElementById('scontrino-view-backdrop').classList.add('open');
 }
@@ -1238,6 +1264,15 @@ function hideAppLoader() {
   if (!el) return;
   el.classList.add('is-hidden');
   el.setAttribute('aria-busy', 'false');
+}
+
+function showAppLoader(text) {
+  const el = document.getElementById('app-loader');
+  if (!el) return;
+  const t = el.querySelector('.app-loader-text');
+  if (t && text) t.textContent = text;
+  el.classList.remove('is-hidden');
+  el.setAttribute('aria-busy', 'true');
 }
 
 function formatRangeLabel(start, end) {
@@ -1759,7 +1794,7 @@ document.getElementById('sc-file-camera').addEventListener('change', e => onScon
 document.getElementById('sc-file-gallery').addEventListener('change', e => onScontrinoFile(e.target.files && e.target.files[0]));
 document.getElementById('sc-view-chiudi').addEventListener('click', () => {
   document.getElementById('scontrino-view-backdrop').classList.remove('open');
-  document.getElementById('sc-view-frame').src = 'about:blank';
+  document.getElementById('sc-view-img').removeAttribute('src');
 });
 
 let resizeTimer;
