@@ -152,7 +152,39 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 }
 .tag-trasferta { background: #e8f0fe; color: #1e4fa3; }
 .tag-roma { background: #fef3e2; color: #b45309; }
+.tag-status-prossimamente { background: #eef2ff; color: #4338ca; }
+.tag-status-in-corso { background: #dcfce7; color: #15803d; }
+.mie-prenotazioni-card { margin-top: 20px; }
+.mie-list { display: flex; flex-direction: column; gap: 10px; }
+.mie-item {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--r2);
+  background: #fafbfc;
+}
+.mie-item-main { flex: 1; min-width: 0; }
+.mie-item-period { font-size: 14px; font-weight: 600; color: var(--navy); line-height: 1.4; }
+.mie-item-meta { margin-top: 6px; font-size: 13px; color: var(--text-2); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mie-item-cliente { margin-top: 6px; font-size: 13px; color: var(--text-3); }
+.mie-item-aside { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
 .empty-msg { padding: 32px; text-align: center; color: var(--text-3); font-size: 14px; }
+.mie-empty { padding: 20px 8px; text-align: center; color: var(--text-3); font-size: 14px; }
+.btn-scontrino { font-size: 12px; padding: 7px 12px; }
+.sc-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.sc-item {
+  display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: var(--r2); background: #fafbfc;
+}
+.sc-thumb {
+  width: 56px; height: 56px; border-radius: 8px; object-fit: cover;
+  background: #e8eef8; flex-shrink: 0; cursor: pointer;
+}
+.sc-meta { font-size: 13px; color: var(--text); min-width: 0; }
+.sc-meta small { display: block; margin-top: 4px; color: var(--text-3); font-size: 12px; }
+.sc-geo-status { font-size: 12px; color: var(--text-3); margin: 0 0 10px; }
+.sc-photo-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.sc-preview { max-width: 100%; max-height: 180px; border-radius: 10px; margin-top: 10px; display: block; }
+.sc-viewer-frame { width: 100%; height: min(62vh, 480px); border: 0; border-radius: 10px; background: #111; }
+.modal-sc { width: min(520px, calc(100vw - 32px)); }
 
 /* Calendario occupazione (vista mensile classica) */
 .cal-nav {
@@ -486,6 +518,16 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
         </div>
       </div>
     </div>
+
+    <div class="card mie-prenotazioni-card">
+      <div class="card-head">
+        <div class="card-icon">🚗</div>
+        <span class="card-title">Le mie prenotazioni</span>
+      </div>
+      <div class="card-body" id="mie-prenotazioni-body">
+        <p class="mie-empty">Caricamento…</p>
+      </div>
+    </div>
   </div>
 
   <!-- MONITORAGGIO -->
@@ -611,11 +653,58 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   </div>
 </div>
 
+<!-- Modal scontrini benzina -->
+<div class="modal-backdrop" id="scontrino-backdrop" aria-hidden="true">
+  <div class="modal modal-sc" role="dialog">
+    <div class="modal-head">
+      <h2>Scontrini benzina</h2>
+      <p id="scontrino-sub">Prenotazione in corso</p>
+    </div>
+    <div class="modal-body">
+      <div id="scontrino-esistenti"></div>
+      <div class="field">
+        <label>Indirizzo benzinaio</label>
+        <input type="text" id="sc-indirizzo" placeholder="In attesa della posizione…">
+      </div>
+      <p class="sc-geo-status" id="sc-geo-status"></p>
+      <div class="field">
+        <label>Foto scontrino</label>
+        <div class="sc-photo-actions">
+          <button type="button" class="btn btn-outline" id="sc-btn-camera">Scatta foto</button>
+          <button type="button" class="btn btn-ghost" id="sc-btn-gallery">Scegli dalla galleria</button>
+        </div>
+        <input type="file" id="sc-file-camera" accept="image/*" capture="environment" class="hidden">
+        <input type="file" id="sc-file-gallery" accept="image/*" class="hidden">
+        <img id="sc-preview" class="sc-preview hidden" alt="Anteprima scontrino">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" id="sc-chiudi">Chiudi</button>
+      <button type="button" class="btn btn-primary" id="sc-salva">Salva scontrino</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="scontrino-view-backdrop" aria-hidden="true">
+  <div class="modal modal-sc" role="dialog">
+    <div class="modal-head"><h2>Scontrino</h2></div>
+    <div class="modal-body">
+      <iframe id="sc-view-frame" class="sc-viewer-frame" title="Anteprima scontrino"></iframe>
+    </div>
+    <div class="modal-foot">
+      <a class="btn btn-ghost" id="sc-view-download" href="#" download>Scarica</a>
+      <button type="button" class="btn btn-outline" id="sc-view-pdf">Stampa / PDF</button>
+      <button type="button" class="btn btn-secondary" id="sc-view-chiudi">Chiudi</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/scontrini.js"></script>
 <script>
 const WEBHOOK_CRUD = SR_CONFIG.WEBHOOK_CRUD;
 const WEBHOOK_RICHIESTA = SR_CONFIG.WEBHOOK_RICHIESTA;
@@ -839,6 +928,275 @@ function isPrenotazioneMia(p) {
   return !!(mine && row && mine === row);
 }
 
+function normName(s) {
+  return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function isMiaPrenotazione(p) {
+  if (isPrenotazioneMia(p)) return true;
+  const opRow = normName(p?.operatore);
+  if (!opRow) return false;
+  if (operatoreMatch && normName(operatoreMatch) === opRow) return true;
+  const u = SRAuth.getUser();
+  const matched = trovaOperatoreInLista(u?.name || u?.dipendente || '');
+  return !!(matched && normName(matched) === opRow);
+}
+
+function todayRomeISO() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
+}
+
+function statoMiaPrenotazione(p) {
+  const today = todayRomeISO();
+  const da = normalizeDateStr(p.data_da);
+  const a = normalizeDateStr(p.data_a) || da;
+  if (!da) return null;
+  if (today > a) return null;
+  if (today < da) return 'prossimamente';
+  return 'in_corso';
+}
+
+function renderMiePrenotazioni() {
+  const el = document.getElementById('mie-prenotazioni-body');
+  if (!el) return;
+
+  const items = prenotazioni
+    .filter(isMiaPrenotazione)
+    .map(p => ({ p, stato: statoMiaPrenotazione(p) }))
+    .filter(x => x.stato)
+    .sort((a, b) => {
+      if (a.stato !== b.stato) return a.stato === 'in_corso' ? -1 : 1;
+      return (a.p.data_da || '').localeCompare(b.p.data_da || '');
+    });
+
+  if (!items.length) {
+    el.innerHTML = '<p class="mie-empty">Nessuna prenotazione in corso o in programma.</p>';
+    return;
+  }
+
+  el.innerHTML = '<div class="mie-list">' + items.map(({ p, stato }) => {
+    const tagCls = p.tipo_utilizzo === 'Roma e dintorni' ? 'tag-roma' : 'tag-trasferta';
+    const statusCls = stato === 'in_corso' ? 'tag-status-in-corso' : 'tag-status-prossimamente';
+    const statusLbl = stato === 'in_corso' ? 'In corso' : 'Prossimamente';
+    const cliente = pickCliente(p);
+    const nSc = SRScontrini.parseScontriniJson(p.scontrini_json).length;
+    const btn = stato === 'in_corso'
+      ? `<button type="button" class="btn btn-outline btn-scontrino" data-scontrino-id="${esc(p.id)}">Aggiungi scontrino benzina${nSc ? ' · ' + nSc : ''}</button>`
+      : '';
+    return `<article class="mie-item">
+      <div class="mie-item-main">
+        <div class="mie-item-period">${fmtPeriodoIt(p.data_da, p.data_a)}</div>
+        <div class="mie-item-meta">
+          <span class="tag ${tagCls}">${esc(p.tipo_utilizzo || '—')}</span>
+        </div>
+        ${cliente ? `<div class="mie-item-cliente">${esc(cliente)}</div>` : ''}
+      </div>
+      <div class="mie-item-aside">
+        <span class="tag ${statusCls}">${statusLbl}</span>
+        ${btn}
+      </div>
+    </article>`;
+  }).join('') + '</div>';
+
+  el.querySelectorAll('[data-scontrino-id]').forEach(btn => {
+    btn.addEventListener('click', () => apriScontrinoModal(btn.dataset.scontrinoId));
+  });
+}
+
+const SC_MAX_BYTES = 10 * 1024 * 1024;
+let scontrinoBookingId = null;
+let scontrinoPhoto = null;
+let scontrinoGeo = { lat: null, lng: null };
+
+function fmtScWhen(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return String(iso);
+  return d.toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function renderScontriniEsistenti(list) {
+  const wrap = document.getElementById('scontrino-esistenti');
+  if (!list.length) {
+    wrap.innerHTML = '<p class="mie-empty" style="padding:0 0 12px">Nessuno scontrino ancora. Aggiungine uno sotto.</p>';
+    return;
+  }
+  wrap.innerHTML = '<div class="sc-list">' + list.map(sc => {
+    const src = SRScontrini.viewUrl(sc);
+    return `<article class="sc-item">
+      <img class="sc-thumb" src="${esc(src)}" alt="Scontrino" data-view-id="${esc(sc.id || sc.foto_id || '')}">
+      <div class="sc-meta">
+        <div>${esc(sc.indirizzo || 'Indirizzo non indicato')}</div>
+        <small>${esc(fmtScWhen(sc.created_at))}</small>
+      </div>
+    </article>`;
+  }).join('') + '</div>';
+  wrap.querySelectorAll('.sc-thumb').forEach(img => {
+    img.addEventListener('click', () => {
+      const sc = list.find(x => String(x.id || x.foto_id) === img.dataset.viewId);
+      if (sc) apriScontrinoViewer(sc);
+    });
+  });
+}
+
+function resetScontrinoForm() {
+  scontrinoPhoto = null;
+  scontrinoGeo = { lat: null, lng: null };
+  document.getElementById('sc-indirizzo').value = '';
+  document.getElementById('sc-preview').classList.add('hidden');
+  document.getElementById('sc-preview').removeAttribute('src');
+  document.getElementById('sc-geo-status').textContent = '';
+  document.getElementById('sc-file-camera').value = '';
+  document.getElementById('sc-file-gallery').value = '';
+}
+
+function apriScontrinoModal(id) {
+  const p = prenotazioni.find(x => String(x.id) === String(id));
+  if (!p || statoMiaPrenotazione(p) !== 'in_corso') {
+    return showToast('Scontrino disponibile solo su prenotazioni in corso', 'warn');
+  }
+  scontrinoBookingId = Number(p.id);
+  resetScontrinoForm();
+  const list = SRScontrini.parseScontriniJson(p.scontrini_json);
+  renderScontriniEsistenti(list);
+  document.getElementById('scontrino-sub').textContent =
+    (p.operatore || '') + ' · ' + fmtPeriodoIt(p.data_da, p.data_a).replace(/<[^>]+>/g, ' ');
+  document.getElementById('scontrino-backdrop').classList.add('open');
+  provaGeolocalizzazione();
+}
+
+function provaGeolocalizzazione() {
+  const status = document.getElementById('sc-geo-status');
+  if (!navigator.geolocation) {
+    status.textContent = 'Geolocalizzazione non disponibile: inserisci l\'indirizzo a mano.';
+    return;
+  }
+  status.textContent = 'Rilevamento posizione…';
+  navigator.geolocation.getCurrentPosition(async pos => {
+    scontrinoGeo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    status.textContent = 'Posizione rilevata. Cerco l\'indirizzo…';
+    try {
+      const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='
+        + encodeURIComponent(scontrinoGeo.lat) + '&lon=' + encodeURIComponent(scontrinoGeo.lng);
+      const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      const data = await resp.json().catch(() => ({}));
+      const addr = data.display_name || '';
+      if (addr && !document.getElementById('sc-indirizzo').value.trim()) {
+        document.getElementById('sc-indirizzo').value = addr;
+      }
+      status.textContent = addr ? 'Indirizzo proposto dalla posizione (modificabile).' : 'Coordinate rilevate: completa l\'indirizzo.';
+    } catch {
+      status.textContent = 'Posizione rilevata, indirizzo non trovato: compilalo a mano.';
+    }
+  }, () => {
+    status.textContent = 'Posizione non concessa: inserisci l\'indirizzo a mano.';
+  }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+}
+
+function onScontrinoFile(file) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) return showToast('Solo immagini', 'warn');
+  if (file.size > SC_MAX_BYTES) return showToast('File oltre 10 MB', 'warn');
+  const reader = new FileReader();
+  reader.onload = () => {
+    scontrinoPhoto = { dataUrl: reader.result, mime: file.type };
+    const img = document.getElementById('sc-preview');
+    img.src = reader.result;
+    img.classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+
+async function postGoogleScript(payload) {
+  const url = (SR_CONFIG && SR_CONFIG.GOOGLE_SCRIPT_URL) || '';
+  if (!url) throw new Error('GOOGLE_SCRIPT_URL non configurato');
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  const text = await resp.text();
+  let data;
+  try { data = JSON.parse(text); } catch {
+    throw new Error('Risposta non valida dallo script Google');
+  }
+  if (!data.ok) throw new Error(data.message || 'Upload Drive fallito');
+  return data;
+}
+
+async function salvaScontrino() {
+  if (!scontrinoBookingId) return;
+  const p = prenotazioni.find(x => Number(x.id) === Number(scontrinoBookingId));
+  if (!p || statoMiaPrenotazione(p) !== 'in_corso') {
+    return showToast('Prenotazione non più in corso', 'warn');
+  }
+  const indirizzo = document.getElementById('sc-indirizzo').value.trim();
+  if (!indirizzo) return showToast('Inserisci l\'indirizzo del benzinaio', 'warn');
+  if (!scontrinoPhoto) return showToast('Aggiungi la foto dello scontrino', 'warn');
+  const btn = document.getElementById('sc-salva');
+  btn.disabled = true;
+  try {
+    showToast('Caricamento foto su Drive…');
+    const up = await postGoogleScript({
+      action: 'uploadScontrino',
+      photo: scontrinoPhoto.dataUrl,
+      email: emailUtenteSessione(),
+      prenotazione_id: String(scontrinoBookingId)
+    });
+    const scontrino = {
+      id: SRScontrini.uid(),
+      created_at: new Date().toISOString(),
+      indirizzo,
+      lat: scontrinoGeo.lat,
+      lng: scontrinoGeo.lng,
+      foto_url: up.url,
+      foto_id: up.fileId,
+      mime: up.mime || scontrinoPhoto.mime
+    };
+    const resp = await SRAuth.fetch(WEBHOOK_UPDATE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'append_scontrino',
+        id: Number(scontrinoBookingId),
+        scontrino
+      })
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.action === 'error' || data.ok === false) {
+      throw new Error(data.message || ('Salvataggio fallito: ' + resp.status));
+    }
+    showToast('Scontrino salvato', 'success');
+    await caricaPrenotazioni(true);
+    const updated = prenotazioni.find(x => Number(x.id) === Number(scontrinoBookingId));
+    renderScontriniEsistenti(SRScontrini.parseScontriniJson(updated && updated.scontrini_json));
+    scontrinoPhoto = null;
+    document.getElementById('sc-preview').classList.add('hidden');
+    document.getElementById('sc-file-camera').value = '';
+    document.getElementById('sc-file-gallery').value = '';
+  } catch (e) {
+    showToast(e.message || String(e), 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function apriScontrinoViewer(sc) {
+  document.getElementById('sc-view-frame').src = SRScontrini.previewUrl(sc);
+  const a = document.getElementById('sc-view-download');
+  a.href = SRScontrini.downloadUrl(sc);
+  a.setAttribute('download', 'scontrino.png');
+  document.getElementById('sc-view-pdf').onclick = () => {
+    const w = window.open('', '_blank');
+    if (!w) return showToast('Popup bloccato', 'warn');
+    const src = SRScontrini.viewUrl(sc);
+    w.document.write('<title>Scontrino</title><p>Usa Stampa → Salva come PDF</p><img src="' + src.replace(/"/g, '') + '" style="max-width:100%">');
+    w.document.close();
+    setTimeout(() => w.print(), 600);
+  };
+  document.getElementById('scontrino-view-backdrop').classList.add('open');
+}
+
 function canEliminarePrenotazione(p) {
   return isMacchinaEditor() || isPrenotazioneMia(p);
 }
@@ -865,6 +1223,7 @@ async function caricaPrenotazioni(force) {
     const data = await apiCrud({ action: 'get' });
     prenotazioni = parseRows(data).filter(r => r.id != null || r.operatore);
     sessionLoaded = true;
+    renderMiePrenotazioni();
     return prenotazioni;
   } catch (e) {
     showToast('Caricamento fallito: ' + (e.message || e), 'error');
@@ -1391,6 +1750,17 @@ document.getElementById('detail-elimina').addEventListener('click', () => {
 
 document.getElementById('edit-cancel').addEventListener('click', () => document.getElementById('edit-backdrop').classList.remove('open'));
 document.getElementById('edit-save').addEventListener('click', salvaEdit);
+
+document.getElementById('sc-chiudi').addEventListener('click', () => document.getElementById('scontrino-backdrop').classList.remove('open'));
+document.getElementById('sc-salva').addEventListener('click', salvaScontrino);
+document.getElementById('sc-btn-camera').addEventListener('click', () => document.getElementById('sc-file-camera').click());
+document.getElementById('sc-btn-gallery').addEventListener('click', () => document.getElementById('sc-file-gallery').click());
+document.getElementById('sc-file-camera').addEventListener('change', e => onScontrinoFile(e.target.files && e.target.files[0]));
+document.getElementById('sc-file-gallery').addEventListener('change', e => onScontrinoFile(e.target.files && e.target.files[0]));
+document.getElementById('sc-view-chiudi').addEventListener('click', () => {
+  document.getElementById('scontrino-view-backdrop').classList.remove('open');
+  document.getElementById('sc-view-frame').src = 'about:blank';
+});
 
 let resizeTimer;
 window.addEventListener('resize', () => {

@@ -281,6 +281,21 @@ body {
 .tappa-row { display: flex; flex-wrap: wrap; gap: 8px 14px; color: var(--muted); }
 .tappa-row b { color: var(--text); font-weight: 600; }
 .tappa-note { margin-top: 6px; font-style: italic; color: var(--faint); }
+.sc-box { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); }
+.sc-list { display: flex; flex-direction: column; gap: 8px; }
+.sc-item {
+  display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px;
+  background: var(--hover); border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.sc-thumb {
+  width: 56px; height: 56px; border-radius: 8px; object-fit: cover;
+  background: var(--accent-soft); flex-shrink: 0; cursor: pointer; border: 0; padding: 0;
+}
+.sc-thumb-btn { border: 0; padding: 0; background: transparent; cursor: pointer; line-height: 0; }
+.sc-meta { font-size: 13px; color: var(--text); }
+.sc-meta small { display: block; margin-top: 4px; color: var(--faint); font-size: 12px; }
+.sc-viewer-frame { width: 100%; height: min(62vh, 480px); border: 0; border-radius: 10px; background: #111; }
+.modal-sc { width: min(520px, calc(100vw - 32px)) !important; }
 .svc-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .svc-card {
   background: var(--hover); border: 1px solid var(--border);
@@ -414,11 +429,26 @@ body {
   </div>
 </div>
 
+<div class="modal-backdrop" id="scontrino-view-backdrop" role="dialog" aria-modal="true">
+  <div class="modal modal-sc">
+    <div class="modal-head"><h2>Scontrino benzina</h2></div>
+    <div class="modal-body">
+      <iframe id="sc-view-frame" class="sc-viewer-frame" title="Anteprima scontrino"></iframe>
+    </div>
+    <div class="modal-foot">
+      <a class="soft-btn" id="sc-view-download" href="#" download>Scarica</a>
+      <button type="button" class="soft-btn" id="sc-view-pdf">Stampa / PDF</button>
+      <button type="button" class="soft-btn" id="sc-view-chiudi">Chiudi</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/scontrini.js"></script>
 <script>
 const WEBHOOK = SR_CONFIG.WEBHOOK_GESTIONE_AMMINISTRATIVA;
 const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
@@ -879,6 +909,22 @@ function apriDettaglioMacchina(id) {
         + '</div>';
     }
   }
+  const scontrini = SRScontrini.parseScontriniJson(p.scontrini_json);
+  let scontriniHtml = '';
+  if (scontrini.length) {
+    scontriniHtml = `<div class="sc-box"><div class="tappe-title">Scontrini benzina · ${scontrini.length}</div>
+      <div class="sc-list">${scontrini.map((sc, i) => `
+        <article class="sc-item">
+          <button type="button" class="sc-thumb-btn" data-sc-idx="${i}" title="Apri scontrino">
+            <img class="sc-thumb" src="${esc(SRScontrini.viewUrl(sc))}" alt="Scontrino">
+          </button>
+          <div class="sc-meta">
+            <div>${esc(sc.indirizzo || 'Indirizzo non indicato')}</div>
+            <small>${esc(sc.created_at ? new Date(sc.created_at).toLocaleString('it-IT') : '')}</small>
+          </div>
+        </article>`).join('')}
+      </div></div>`;
+  }
   document.getElementById('detail-body').innerHTML = `
     <button type="button" class="detail-op" id="detail-filter-op" data-op="${esc(p.operatore)}">
       <span class="detail-op-dot" style="background:${col}"></span>
@@ -892,9 +938,13 @@ function apriDettaglioMacchina(id) {
       <dt>Cliente</dt>
       <dd>${esc(pickCliente(p) || '—')}</dd>
     </dl>
-    ${tappeHtml}`;
+    ${tappeHtml}
+    ${scontriniHtml}`;
   document.getElementById('detail-backdrop').classList.add('open');
   wireDetailFilterOp(p.operatore);
+  document.querySelectorAll('[data-sc-idx]').forEach(btn => {
+    btn.addEventListener('click', () => apriScontrinoViewerAmm(scontrini[Number(btn.dataset.scIdx)]));
+  });
 }
 
 function fmtEuro(val) {
@@ -1074,6 +1124,23 @@ function wireDetailFilterOp(name) {
   });
 }
 
+function apriScontrinoViewerAmm(sc) {
+  if (!sc) return;
+  document.getElementById('sc-view-frame').src = SRScontrini.previewUrl(sc);
+  const a = document.getElementById('sc-view-download');
+  a.href = SRScontrini.downloadUrl(sc);
+  a.setAttribute('download', 'scontrino.png');
+  document.getElementById('sc-view-pdf').onclick = () => {
+    const w = window.open('', '_blank');
+    if (!w) return;
+    const src = SRScontrini.viewUrl(sc);
+    w.document.write('<title>Scontrino</title><p>Usa Stampa → Salva come PDF</p><img src="' + src.replace(/"/g, '') + '" style="max-width:100%">');
+    w.document.close();
+    setTimeout(() => w.print(), 600);
+  };
+  document.getElementById('scontrino-view-backdrop').classList.add('open');
+}
+
 async function caricaDati() {
   setStatus('Caricamento dati…');
   try {
@@ -1150,6 +1217,16 @@ document.getElementById('detail-close').addEventListener('click', () => {
 });
 document.getElementById('detail-backdrop').addEventListener('click', e => {
   if (e.target.id === 'detail-backdrop') e.currentTarget.classList.remove('open');
+});
+document.getElementById('sc-view-chiudi').addEventListener('click', () => {
+  document.getElementById('scontrino-view-backdrop').classList.remove('open');
+  document.getElementById('sc-view-frame').src = 'about:blank';
+});
+document.getElementById('scontrino-view-backdrop').addEventListener('click', e => {
+  if (e.target.id === 'scontrino-view-backdrop') {
+    e.currentTarget.classList.remove('open');
+    document.getElementById('sc-view-frame').src = 'about:blank';
+  }
 });
 </script>
 </body>
