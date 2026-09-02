@@ -421,10 +421,7 @@ function setLoading(on) {
       showGate();
       return;
     }
-    if (SRAuth.hasN8nToken()) {
-      showHub();
-      return;
-    }
+    // Sempre re-login n8n: porta token + tappe trasferte aggiornate
     await enterHubAfterMsal();
   } catch (ex) {
     showGate(ex.message || 'Errore inizializzazione');
@@ -491,7 +488,7 @@ document.getElementById('link-utenti').addEventListener('click', e => {
 });
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=34').then(reg => reg.update()).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=35').then(reg => reg.update()).catch(() => {});
 }
 </script>
 </body>

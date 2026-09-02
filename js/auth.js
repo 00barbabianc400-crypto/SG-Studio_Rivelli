@@ -136,9 +136,11 @@
     if (data.user) {
       sessionStorage.setItem(C.USER_KEY || 'sr_user', JSON.stringify(data.user));
     }
-    if (Array.isArray(data.tappe)) {
-      sessionStorage.setItem(C.TRASFERTE_KEY || 'sr_trasferte_tappe', JSON.stringify(data.tappe));
-    }
+    // Sempre aggiorna (anche []): altrimenti restano tappe stale da login precedenti
+    sessionStorage.setItem(
+      C.TRASFERTE_KEY || 'sr_trasferte_tappe',
+      JSON.stringify(Array.isArray(data.tappe) ? data.tappe : [])
+    );
   }
 
   function getTrasferteTappe() {
