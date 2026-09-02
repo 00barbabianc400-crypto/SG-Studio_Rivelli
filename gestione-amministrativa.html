@@ -253,6 +253,7 @@ body {
   border: 1px solid var(--border); width: min(440px, calc(100vw - 32px));
   max-height: min(88vh, 720px); overflow: auto;
 }
+.modal.modal-wide { width: min(1080px, calc(100vw - 24px)); max-height: min(92vh, 860px); }
 .modal-head { padding: 18px 20px 12px; border-bottom: 1px solid var(--border); }
 .modal-head h2 { font-size: 16px; font-weight: 700; }
 .modal-body { padding: 16px 20px; }
@@ -260,6 +261,59 @@ body {
   padding: 12px 20px 18px; border-top: 1px solid var(--border);
   display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;
 }
+.seg-tabs {
+  display: inline-flex; gap: 4px; padding: 4px; margin: 0 0 14px;
+  background: var(--hover); border: 1px solid var(--border); border-radius: var(--radius-pill);
+}
+.seg-tab {
+  appearance: none; border: none; background: transparent; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 600; color: var(--muted);
+  padding: 8px 14px; border-radius: var(--radius-pill); transition: background .15s, color .15s;
+}
+.seg-tab.is-active { background: #fff; color: var(--accent); box-shadow: var(--shadow-sm); }
+.ns-board {
+  display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px;
+  scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+}
+.ns-col {
+  flex: 0 0 min(280px, 78vw); scroll-snap-align: start;
+  background: var(--hover); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 180px;
+}
+.ns-col-head { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.35; }
+.ns-col-head small { display: block; font-weight: 500; color: var(--muted); margin-top: 2px; font-size: 11px; }
+.ns-cat { margin-top: 2px; }
+.ns-cat-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--faint); margin-bottom: 6px;
+}
+.ns-tipo-title {
+  font-size: 11px; font-weight: 600; color: var(--muted); margin: 8px 0 6px;
+}
+.ns-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 8px 10px; margin-bottom: 6px; text-align: left;
+  background: #fff; border: 1px solid var(--border); border-radius: 10px;
+  font-family: inherit; cursor: pointer; color: inherit;
+}
+.ns-item:hover { border-color: var(--accent); }
+.ns-item .sc-ico-wrap { width: 34px; height: 34px; border-radius: 9px; }
+.ns-item-meta { flex: 1; min-width: 0; font-size: 12px; font-weight: 600; color: var(--text); }
+.ns-item-meta span { display: block; font-weight: 500; color: var(--muted); font-size: 11px; margin-top: 2px; }
+.ns-item-amt { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; }
+.ns-col-foot {
+  margin-top: auto; padding-top: 10px; border-top: 1px dashed var(--border);
+  font-size: 12px; color: var(--muted); display: grid; gap: 4px;
+}
+.ns-col-foot b { color: var(--text); float: right; font-weight: 700; }
+.ns-grand {
+  margin-top: 14px; padding: 12px 14px; border-radius: var(--radius-sm);
+  background: var(--accent-soft); border: 1px solid #dbeafe;
+  display: grid; gap: 6px; font-size: 13px; color: var(--muted);
+}
+.ns-grand b { color: var(--text); float: right; }
+.ns-grand .ns-grand-tot { font-size: 15px; font-weight: 700; color: var(--accent); }
+.ns-empty { font-size: 12px; color: var(--faint); padding: 4px 0; }
 .detail-op {
   display: inline-flex; align-items: center; gap: 8px;
   font-size: 16px; font-weight: 700; margin-bottom: 4px;
@@ -429,7 +483,7 @@ body {
 </main>
 
 <div class="modal-backdrop" id="detail-backdrop" role="dialog" aria-modal="true" aria-labelledby="detail-title">
-  <div class="modal">
+  <div class="modal" id="detail-modal">
     <div class="modal-head"><h2 id="detail-title">Dettaglio prenotazione</h2></div>
     <div class="modal-body detail-card" id="detail-body"></div>
     <div class="modal-foot">
@@ -440,14 +494,16 @@ body {
 
 <div class="modal-backdrop" id="scontrino-view-backdrop" role="dialog" aria-modal="true">
   <div class="modal modal-sc">
-    <div class="modal-head"><h2>Scontrino benzina</h2></div>
+    <div class="modal-head"><h2 id="sc-view-title">Scontrino</h2></div>
     <div class="modal-body">
-      <img id="sc-view-img" class="sc-view-img" alt="Scontrino">
+      <img id="sc-view-img" class="sc-view-img" alt="Giustificativo">
       <dl class="sc-view-dl">
-        <dt>Luogo</dt>
+        <dt id="sc-view-dt1">Luogo</dt>
         <dd id="sc-view-luogo">—</dd>
-        <dt>Orario</dt>
+        <dt id="sc-view-dt2">Orario</dt>
         <dd id="sc-view-orario">—</dd>
+        <dt id="sc-view-dt3" class="hidden">Importo</dt>
+        <dd id="sc-view-importo" class="hidden">—</dd>
       </dl>
     </div>
     <div class="modal-foot">
@@ -464,6 +520,7 @@ body {
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/scontrini.js"></script>
+<script src="js/nota-spese.js"></script>
 <script>
 const WEBHOOK = SR_CONFIG.WEBHOOK_GESTIONE_AMMINISTRATIVA;
 const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
@@ -897,6 +954,7 @@ function apriDettaglioMacchina(id) {
   const p = filteredMacchina.find(x => String(x.id) === String(id))
     || rawPrenotazioni.find(x => String(x.id) === String(id));
   if (!p) return;
+  document.getElementById('detail-modal').classList.remove('modal-wide');
   document.getElementById('detail-title').textContent = 'Prenotazione auto';
   const col = colorPerson(p.operatore);
   const tagCls = p.tipo_utilizzo === 'Roma e dintorni' ? 'tag-roma' : 'tag-trasferta';
@@ -1087,12 +1145,7 @@ function renderServiziHtml(raw) {
   return `<div class="tappe-box"><div class="tappe-title">Servizi</div><div class="svc-list">${cards.join('')}</div></div>`;
 }
 
-function apriDettaglioTappa(id) {
-  const t = filteredTappe.find(x => String(x.id) === String(id))
-    || rawTappe.find(x => String(x.id) === String(id));
-  if (!t) return;
-  document.getElementById('detail-title').textContent = 'Trasferta / tappa';
-  const col = colorPerson(t.nome_persona);
+function renderOrganizzazioneTappa(t) {
   const costi = [
     ['Hotel', t.costo_hotel],
     ['Noleggio', t.costo_noleggio],
@@ -1102,12 +1155,7 @@ function apriDettaglioTappa(id) {
     ['Auto aziendale', t.costo_auto_az],
     ['Totale tappa', t.costo_tappa_totale]
   ].filter(([, v]) => costoHaValore(v));
-  document.getElementById('detail-body').innerHTML = `
-    <button type="button" class="detail-op" id="detail-filter-op" data-op="${esc(t.nome_persona)}">
-      <span class="detail-op-dot" style="background:${col}"></span>
-      ${esc(t.nome_persona || '—')}
-    </button>
-    <dl>
+  return `<dl>
       <dt>ID trasferta</dt><dd>${esc(t.trasferta_id || '—')}</dd>
       <dt>Tappa</dt><dd>${esc(t.tappa_numero || '—')} · ${esc(t.citta || '—')}</dd>
       <dt>Periodo</dt><dd>${esc(fmtPeriodoIt(t.data_arrivo, t.data_partenza))}</dd>
@@ -1120,8 +1168,179 @@ function apriDettaglioTappa(id) {
       ${costi.map(([lbl, v]) => `<dt>${lbl}</dt><dd>${esc(fmtEuro(v))}</dd>`).join('')}
     </dl>
     ${renderServiziHtml(t.servizi_json)}`;
+}
+
+function fmtEuroNota(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return '—';
+  return v.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+function renderNotaItemChip(it, flatIdx) {
+  const cat = SRNotaSpese.labelCategoria(it.categoria);
+  const tipo = String(it.tipo || '') === 'fattura' ? 'Fattura' : 'Scontrino';
+  const pasto = it.pasto ? ' · ' + it.pasto : '';
+  return `<button type="button" class="ns-item" data-ns-idx="${flatIdx}" title="Apri giustificativo">
+    <span class="sc-ico-wrap">${SRScontrini.ICO_RECEIPT}</span>
+    <span class="ns-item-meta">${esc(tipo)}<span>${esc(cat + pasto)}</span></span>
+    <span class="ns-item-amt">${esc(fmtEuroNota(it.importo))}</span>
+  </button>`;
+}
+
+function renderScontriniTrasfertaBoard(tappe) {
+  const flat = [];
+  const cols = tappe.map(t => {
+    const notes = SRNotaSpese.parseNotaSpeseJson(t.nota_spese_json);
+    const byCat = SRNotaSpese.groupByCategoria(notes);
+    const catKeys = Object.keys(byCat).sort((a, b) =>
+      SRNotaSpese.labelCategoria(a).localeCompare(SRNotaSpese.labelCategoria(b), 'it'));
+    let body = '';
+    if (!notes.length) {
+      body = '<p class="ns-empty">Nessun giustificativo</p>';
+    } else {
+      catKeys.forEach(cat => {
+        const items = byCat[cat];
+        const scontrini = items.filter(x => String(x.tipo).toLowerCase() !== 'fattura');
+        const fatture = items.filter(x => String(x.tipo).toLowerCase() === 'fattura');
+        body += `<div class="ns-cat"><div class="ns-cat-title">${esc(SRNotaSpese.labelCategoria(cat))}</div>`;
+        if (scontrini.length) {
+          body += '<div class="ns-tipo-title">Scontrini</div>';
+          scontrini.forEach(it => {
+            const idx = flat.length;
+            flat.push(it);
+            body += renderNotaItemChip(it, idx);
+          });
+        }
+        if (fatture.length) {
+          body += '<div class="ns-tipo-title">Fatture</div>';
+          fatture.forEach(it => {
+            const idx = flat.length;
+            flat.push(it);
+            body += renderNotaItemChip(it, idx);
+          });
+        }
+        body += '</div>';
+      });
+    }
+    const sums = SRNotaSpese.sumImportiByTipo(notes);
+    return `<div class="ns-col">
+      <div class="ns-col-head">Tappa ${esc(t.tappa_numero || '—')} · ${esc(t.citta || '—')}
+        <small>${esc(fmtPeriodoIt(t.data_arrivo, t.data_partenza))}</small>
+      </div>
+      ${body}
+      <div class="ns-col-foot">
+        <div>Σ Scontrini <b>${esc(fmtEuroNota(sums.scontrino))}</b></div>
+        <div>Σ Fatture <b>${esc(fmtEuroNota(sums.fattura))}</b></div>
+        <div>Totale tappa <b>${esc(fmtEuroNota(sums.totale))}</b></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const grand = SRNotaSpese.aggregateTrasferta(tappe);
+  const html = `<div class="ns-board">${cols}</div>
+    <div class="ns-grand">
+      <div>Σ Scontrini trasferta <b>${esc(fmtEuroNota(grand.scontrino))}</b></div>
+      <div>Σ Fatture trasferta <b>${esc(fmtEuroNota(grand.fattura))}</b></div>
+      <div class="ns-grand-tot">Totale speso <b>${esc(fmtEuroNota(grand.totale))}</b></div>
+    </div>`;
+  return { html, flat };
+}
+
+let detailTappaCtx = null;
+
+function apriDettaglioTappa(id) {
+  const t = filteredTappe.find(x => String(x.id) === String(id))
+    || rawTappe.find(x => String(x.id) === String(id));
+  if (!t) return;
+  const siblings = SRNotaSpese.tappeStessaTrasferta(rawTappe, t.trasferta_id);
+  detailTappaCtx = { tappa: t, siblings, tab: 'organizzazione', flatNote: [] };
+  document.getElementById('detail-title').textContent = 'Trasferta / tappa';
+  document.getElementById('detail-modal').classList.remove('modal-wide');
+  renderDettaglioTappaBody();
   document.getElementById('detail-backdrop').classList.add('open');
+}
+
+function renderDettaglioTappaBody() {
+  const ctx = detailTappaCtx;
+  if (!ctx) return;
+  const t = ctx.tappa;
+  const col = colorPerson(t.nome_persona);
+  const tab = ctx.tab || 'organizzazione';
+  const modal = document.getElementById('detail-modal');
+  modal.classList.toggle('modal-wide', tab === 'scontrini');
+
+  const tabs = `<div class="seg-tabs" role="tablist">
+    <button type="button" class="seg-tab${tab === 'organizzazione' ? ' is-active' : ''}" data-tab="organizzazione">Organizzazione trasferta</button>
+    <button type="button" class="seg-tab${tab === 'scontrini' ? ' is-active' : ''}" data-tab="scontrini">Scontrini trasferta</button>
+  </div>`;
+
+  let panel = '';
+  if (tab === 'organizzazione') {
+    panel = renderOrganizzazioneTappa(t);
+    ctx.flatNote = [];
+  } else {
+    const board = renderScontriniTrasfertaBoard(ctx.siblings.length ? ctx.siblings : [t]);
+    panel = board.html;
+    ctx.flatNote = board.flat;
+  }
+
+  document.getElementById('detail-body').innerHTML = `
+    <button type="button" class="detail-op" id="detail-filter-op" data-op="${esc(t.nome_persona)}">
+      <span class="detail-op-dot" style="background:${col}"></span>
+      ${esc(t.nome_persona || '—')}
+    </button>
+    ${tabs}
+    <div id="detail-panel">${panel}</div>`;
+
   wireDetailFilterOp(t.nome_persona);
+  document.querySelectorAll('.seg-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      detailTappaCtx.tab = btn.dataset.tab;
+      renderDettaglioTappaBody();
+    });
+  });
+  document.querySelectorAll('[data-ns-idx]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const it = detailTappaCtx.flatNote[Number(btn.dataset.nsIdx)];
+      apriNotaSpesaViewerAmm(it);
+    });
+  });
+}
+
+function apriNotaSpesaViewerAmm(it) {
+  if (!it) return;
+  const img = document.getElementById('sc-view-img');
+  img.onerror = () => { img.style.display = 'none'; };
+  img.style.display = '';
+  img.src = SRScontrini.thumbnailUrl(it);
+  document.getElementById('sc-view-title').textContent =
+    (String(it.tipo).toLowerCase() === 'fattura' ? 'Fattura' : 'Scontrino') + ' · trasferta';
+  document.getElementById('sc-view-dt1').textContent = 'Categoria';
+  const pasto = it.pasto ? ' · ' + it.pasto : '';
+  document.getElementById('sc-view-luogo').textContent =
+    SRNotaSpese.labelCategoria(it.categoria) + pasto;
+  document.getElementById('sc-view-dt2').textContent = 'Orario';
+  document.getElementById('sc-view-orario').textContent = it.created_at
+    ? new Date(it.created_at).toLocaleString('it-IT')
+    : '—';
+  document.getElementById('sc-view-dt3').classList.remove('hidden');
+  document.getElementById('sc-view-importo').classList.remove('hidden');
+  document.getElementById('sc-view-importo').textContent = fmtEuroNota(it.importo);
+  const a = document.getElementById('sc-view-download');
+  a.innerHTML = SRScontrini.ICO_DOWNLOAD;
+  a.href = SRScontrini.downloadUrl(it);
+  a.setAttribute('download', 'giustificativo.png');
+  const printBtn = document.getElementById('sc-view-print');
+  printBtn.innerHTML = SRScontrini.ICO_PRINT;
+  printBtn.onclick = () => {
+    const w = window.open('', '_blank');
+    if (!w) return;
+    const src = SRScontrini.thumbnailUrl(it);
+    w.document.write('<title>Giustificativo</title><img src="' + src.replace(/"/g, '') + '" style="max-width:100%">');
+    w.document.close();
+    setTimeout(() => w.print(), 400);
+  };
+  document.getElementById('scontrino-view-backdrop').classList.add('open');
 }
 
 function wireDetailFilterOp(name) {
@@ -1141,10 +1360,15 @@ function apriScontrinoViewerAmm(sc) {
   img.onerror = () => { img.style.display = 'none'; };
   img.style.display = '';
   img.src = SRScontrini.thumbnailUrl(sc);
+  document.getElementById('sc-view-title').textContent = 'Scontrino benzina';
+  document.getElementById('sc-view-dt1').textContent = 'Luogo';
   document.getElementById('sc-view-luogo').textContent = sc.indirizzo || '—';
+  document.getElementById('sc-view-dt2').textContent = 'Orario';
   document.getElementById('sc-view-orario').textContent = sc.created_at
     ? new Date(sc.created_at).toLocaleString('it-IT')
     : '—';
+  document.getElementById('sc-view-dt3').classList.add('hidden');
+  document.getElementById('sc-view-importo').classList.add('hidden');
   const a = document.getElementById('sc-view-download');
   a.innerHTML = SRScontrini.ICO_DOWNLOAD;
   a.href = SRScontrini.downloadUrl(sc);
@@ -1161,6 +1385,7 @@ function apriScontrinoViewerAmm(sc) {
   };
   document.getElementById('scontrino-view-backdrop').classList.add('open');
 }
+
 
 async function caricaDati() {
   setStatus('Caricamento dati…');
@@ -1235,9 +1460,13 @@ document.getElementById('month-close').addEventListener('click', () => {
 });
 document.getElementById('detail-close').addEventListener('click', () => {
   document.getElementById('detail-backdrop').classList.remove('open');
+  document.getElementById('detail-modal').classList.remove('modal-wide');
 });
 document.getElementById('detail-backdrop').addEventListener('click', e => {
-  if (e.target.id === 'detail-backdrop') e.currentTarget.classList.remove('open');
+  if (e.target.id === 'detail-backdrop') {
+    e.currentTarget.classList.remove('open');
+    document.getElementById('detail-modal').classList.remove('modal-wide');
+  }
 });
 document.getElementById('sc-view-chiudi').addEventListener('click', () => {
   document.getElementById('scontrino-view-backdrop').classList.remove('open');

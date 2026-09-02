@@ -54,6 +54,7 @@
     timesheet: ['Dipendente', 'HSE', 'Admin'],
     macchina: ['Dipendente', 'HSE', 'Formazione', 'Admin'],
     modulo: ['Dipendente', 'Amministrazione', 'HSE', 'Formazione', 'Sorveglianza Sanitaria', 'Admin'],
+    nota_spese: ['Dipendente', 'Amministrazione', 'HSE', 'Formazione', 'Admin'],
     amm: ['Amministrazione', 'Admin'],
     trasferte: ['Formazione', 'Admin'],
     utenti: ['Admin'],
@@ -95,6 +96,7 @@
     sessionStorage.removeItem(C.TOKEN_KEY || 'sr_jwt');
     sessionStorage.removeItem(C.TOKEN_EXP_KEY || 'sr_jwt_exp');
     sessionStorage.removeItem(C.USER_KEY || 'sr_user');
+    sessionStorage.removeItem(C.TRASFERTE_KEY || 'sr_trasferte_tappe');
     if (global.SRPush && typeof global.SRPush.clearServerState === 'function') {
       global.SRPush.clearServerState();
     }
@@ -134,6 +136,42 @@
     if (data.user) {
       sessionStorage.setItem(C.USER_KEY || 'sr_user', JSON.stringify(data.user));
     }
+    if (Array.isArray(data.tappe)) {
+      sessionStorage.setItem(C.TRASFERTE_KEY || 'sr_trasferte_tappe', JSON.stringify(data.tappe));
+    }
+  }
+
+  function getTrasferteTappe() {
+    try {
+      const raw = sessionStorage.getItem(C.TRASFERTE_KEY || 'sr_trasferte_tappe');
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function setTrasferteTappe(rows) {
+    sessionStorage.setItem(
+      C.TRASFERTE_KEY || 'sr_trasferte_tappe',
+      JSON.stringify(Array.isArray(rows) ? rows : [])
+    );
+  }
+
+  function updateTappaNotaSpese(tappaId, notaSpeseJson, lista) {
+    const rows = getTrasferteTappe();
+    const id = Number(tappaId);
+    const next = rows.map(r => {
+      if (Number(r.id) !== id) return r;
+      return {
+        ...r,
+        nota_spese_json: typeof notaSpeseJson === 'string'
+          ? notaSpeseJson
+          : JSON.stringify(lista || [])
+      };
+    });
+    setTrasferteTappe(next);
+    return next;
   }
 
   async function initMsal() {
@@ -258,12 +296,34 @@
       throw new Error('n8n ha risposto senza token.');
     }
 
+    let tappe = [];
+    const userEmail = String((authObj.user || data.user || {}).email || '').trim().toLowerCase();
+    if (rows && global.SRNotaSpese && typeof global.SRNotaSpese.extractTappeFromAuthRows === 'function') {
+      tappe = global.SRNotaSpese.extractTappeFromAuthRows(rows, userEmail);
+    } else if (rows) {
+      tappe = rows.filter(r =>
+        r && typeof r === 'object'
+        && !r.token
+        && (r.trasferta_id != null || (r.tappa_numero != null && r.citta != null))
+        && !(r.endpoint && (r.p256dh || (r.keys && r.keys.p256dh)))
+        && (!userEmail || !r.email || String(r.email).trim().toLowerCase() === userEmail)
+      );
+    } else if (Array.isArray(authObj.tappe)) {
+      tappe = authObj.tappe;
+    } else if (Array.isArray(data.tappe)) {
+      tappe = data.tappe;
+    }
+    if (userEmail && global.SRNotaSpese && typeof global.SRNotaSpese.extractTappeFromAuthRows === 'function') {
+      tappe = global.SRNotaSpese.extractTappeFromAuthRows(tappe, userEmail);
+    }
+
     return {
       token,
       expiresAt: authObj.expiresAt || data.expiresAt,
       expiresInSec: authObj.expiresInSec ?? data.expiresInSec,
       user: authObj.user || data.user,
-      push: pushRow || null
+      push: pushRow || null,
+      tappe
     };
   }
 
@@ -433,6 +493,9 @@
     getToken,
     getUser,
     getRole,
+    getTrasferteTappe,
+    setTrasferteTappe,
+    updateTappaNotaSpese,
     canAccessHubApp,
     hasN8nToken,
     isMsalLoggedIn,

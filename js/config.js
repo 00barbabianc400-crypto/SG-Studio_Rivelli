@@ -18,12 +18,14 @@ window.SR_CONFIG = {
 
   WEBHOOK_GESTIONE_AMMINISTRATIVA: 'https://studiorivelli.app.n8n.cloud/webhook/gestione-amministrativa-auth',
   WEBHOOK_GESTIONE_UTENTI: 'https://studiorivelli.app.n8n.cloud/webhook/gestione-utenti',
+  WEBHOOK_RECUPERO_DIPENDENTI: 'https://studiorivelli.app.n8n.cloud/webhook/recupero-dipendenti',
 
   WEBHOOK_TR_RECUPERO: 'https://studiorivelli.app.n8n.cloud/webhook/recupero-dati',
   WEBHOOK_TR_SALVATAGGIO: 'https://studiorivelli.app.n8n.cloud/webhook/salvataggio-dati',
   WEBHOOK_TR_INVIO: 'https://studiorivelli.app.n8n.cloud/webhook/invio-dati',
   WEBHOOK_TR_CANCELLA: 'https://studiorivelli.app.n8n.cloud/webhook/cancellazione-dati',
   WEBHOOK_TR_NUOVA: 'https://studiorivelli.app.n8n.cloud/webhook/informazioni-trasferte',
+  WEBHOOK_APPEND_NOTA_SPESA: 'https://studiorivelli.app.n8n.cloud/webhook/append-nota-spesa-auth',
 
   WEBHOOK_ST_CREATE: 'https://studiorivelli.app.n8n.cloud/webhook/caricamento-infortuni',
   WEBHOOK_ST_GET: 'https://studiorivelli.app.n8n.cloud/webhook/get-infortuni',
@@ -36,6 +38,7 @@ window.SR_CONFIG = {
   TOKEN_KEY: 'sr_jwt',
   TOKEN_EXP_KEY: 'sr_jwt_exp',
   USER_KEY: 'sr_user',
+  TRASFERTE_KEY: 'sr_trasferte_tappe',
   RATE_KEY: 'sr_auth_rate',
 
   GOOGLE_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxbiATbcWjYVCKRQsM4mBGCv8r9bvvgaS-9QNaummPYkYz7wwur7-WsKZimPIGSRLRFkg/exec'

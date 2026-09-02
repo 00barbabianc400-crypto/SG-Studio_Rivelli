@@ -154,6 +154,23 @@ body {
 .hub-card-loading { display: block; margin-top: 8px; font-size: 12px; color: var(--blue); font-weight: 600; }
 .hub-error { font-size: 13px; color: var(--danger); margin-bottom: 12px; min-height: 0; }
 .hub-error:not(:empty) { padding: 10px 12px; background: #fef2f2; border-radius: var(--r2); border: 1px solid #fecaca; }
+
+.hub-card.is-nota-spese {
+  position: relative;
+  background: #e8edf5;
+  border-color: #c5d0e3;
+}
+.hub-card.is-nota-spese .hub-card-icon {
+  background: #dbe4f3;
+  color: #1e4fa3;
+}
+.hub-card-alert {
+  position: absolute; top: 12px; right: 14px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #f5c518; color: #5c4800;
+  font-weight: 800; font-size: 16px; line-height: 28px; text-align: center;
+  box-shadow: 0 2px 6px rgba(245, 197, 24, .45);
+}
 </style>
 </head>
 <body>
@@ -235,6 +252,14 @@ body {
         <div class="hub-card-title">Modulo utilizzo 308</div>
         <p class="hub-card-desc">Scheda prelievo/restituzione chiavi, stato carrozzeria e foto danni.</p>
       </a>
+      <a class="hub-card is-nota-spese hidden" href="nota-spese.html" id="link-nota-spese" data-hub-app="nota_spese" style="display:none">
+        <span class="hub-card-alert" aria-hidden="true">!</span>
+        <div class="hub-card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M6 3.5h12v17l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3.5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        </div>
+        <div class="hub-card-title">Gestione trasferte</div>
+        <p class="hub-card-desc">Pannello di gestione nota spese</p>
+      </a>
       <a class="hub-card" href="gestione-amministrativa.html" id="link-amm" data-hub-app="amm">
         <div class="hub-card-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="M8 16v-5M12 16V8M16 16v-3"/></svg>
@@ -271,6 +296,7 @@ body {
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js"></script>
+<script src="js/nota-spese.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/push.js"></script>
 <script>
@@ -328,17 +354,21 @@ function applyHubRoles() {
   if (!SRAuth.hasN8nToken()) return;
   document.querySelectorAll('[data-hub-app]').forEach(card => {
     const app = card.dataset.hubApp;
-    card.style.display = SRAuth.canAccessHubApp(app) ? '' : 'none';
+    let show = SRAuth.canAccessHubApp(app);
+    if (app === 'nota_spese') {
+      const tappe = SRAuth.getTrasferteTappe();
+      show = show && SRNotaSpese.hasTrasfertaInCorso(tappe);
+    }
+    card.style.display = show ? '' : 'none';
+    card.classList.toggle('hidden', !show);
   });
 }
 
 async function enterHubAfterMsal() {
   showPrepare();
   try {
-    const needPushRefresh = SRPush.isMobilePushTarget()
-      && sessionStorage.getItem('sr_push_server') == null
-      && localStorage.getItem('sr_push_server') == null;
-    await SRAuth.establishHubSession(needPushRefresh ? { force: true } : undefined);
+    // Force JWT exchange so login porta anche le tappe trasferte aggiornate
+    await SRAuth.establishHubSession({ force: true });
     if (!SRAuth.hasN8nToken()) throw new Error('Token non salvato in sessione');
     SRPush.syncIfEnabled();
     showHub();
@@ -439,6 +469,10 @@ document.getElementById('link-modulo').addEventListener('click', e => {
   e.preventDefault();
   hubNavigate(e.currentTarget, 'modulo-macchina.html');
 });
+document.getElementById('link-nota-spese').addEventListener('click', e => {
+  e.preventDefault();
+  hubNavigate(e.currentTarget, 'nota-spese.html');
+});
 document.getElementById('link-amm').addEventListener('click', e => {
   e.preventDefault();
   hubNavigate(e.currentTarget, 'gestione-amministrativa.html');
@@ -457,7 +491,7 @@ document.getElementById('link-utenti').addEventListener('click', e => {
 });
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=32').then(reg => reg.update()).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=34').then(reg => reg.update()).catch(() => {});
 }
 </script>
 </body>

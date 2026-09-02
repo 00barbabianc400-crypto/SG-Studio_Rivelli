@@ -374,8 +374,10 @@
           <div style="font-size:12px;font-weight:600;color:var(--blue-mid);text-transform:uppercase;letter-spacing:.2px;margin-bottom:12px">👤 Anagrafica</div>
           <div class="field-row">
             <div class="field">
-              <label>Nome e Cognome <span class="req">*</span></label>
-              <input type="text" id="nt-nome" placeholder="es. Maria Rossi">
+              <label>Dipendente <span class="req">*</span></label>
+              <select id="nt-dipendente" required>
+                <option value="">Caricamento dipendenti…</option>
+              </select>
             </div>
             <div class="field">
               <label>Data inizio <span class="req">*</span></label>
@@ -470,6 +472,7 @@
 
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/dipendenti-list.js"></script>
 <script>
 // ========== Webhook da SR_CONFIG ==========
 const WEBHOOK_RECUPERO = SR_CONFIG.WEBHOOK_TR_RECUPERO;
@@ -855,6 +858,7 @@ function normalizzaDaRigheN8n(righe) {
   return {
     anagrafica: {
       nome_cognome: rows[0].nome_persona || '—',
+      email: String(rows[0].email || '').trim().toLowerCase(),
       data_inizio: span.da,
       data_fine_prevista: span.a
     },
@@ -1729,6 +1733,7 @@ function buildRigheDbDaTrasferta(trasferta, prenotazioni) {
       trasferta_id: sessionTrasfertaId,
       data_creazione: base.data_creazione || dataCreazione,
       nome_persona: ana.nome_cognome || base.nome_persona || '',
+      email: String(ana.email || base.email || '').trim().toLowerCase(),
       tappa_numero: String(n),
       citta: tappa.citta || '',
       data_arrivo: tappa.data_arrivo || '',
@@ -2176,9 +2181,11 @@ function ntBuildJSON() {
       note: ntVal(`nt-${uid}-note`)
     });
   });
+  const dip = SRDipendenti.selectedDipendente(document.getElementById('nt-dipendente'));
   return {
     anagrafica: {
-      nome_cognome: ntVal('nt-nome'),
+      nome_cognome: dip ? dip.nome : '',
+      email: dip ? dip.email : '',
       data_inizio: ntVal('nt-data-inizio'),
       data_fine_prevista: ntVal('nt-data-fine')
     },
@@ -2189,7 +2196,9 @@ function ntBuildJSON() {
 }
 
 function ntValida() {
-  if (!ntVal('nt-nome')) return 'Inserisci nome e cognome';
+  if (!SRDipendenti.selectedDipendente(document.getElementById('nt-dipendente'))) {
+    return 'Seleziona il dipendente';
+  }
   if (!ntVal('nt-data-inizio')) return 'Inserisci data inizio trasferta';
   if (!ntVal('nt-data-fine')) return 'Inserisci data fine trasferta';
   const cards = document.querySelectorAll('.nt-tappa-card');
@@ -2223,7 +2232,8 @@ async function ntInviaDati() {
 
 function ntReset() {
   ntUid = 0;
-  document.getElementById('nt-nome').value = '';
+  const dipSel = document.getElementById('nt-dipendente');
+  if (dipSel) dipSel.value = '';
   document.getElementById('nt-data-inizio').value = '';
   document.getElementById('nt-data-fine').value = '';
   document.getElementById('nt-note-generali').value = '';
@@ -2231,12 +2241,46 @@ function ntReset() {
   ntAddTappa();
 }
 
+async function ntCaricaDipendenti() {
+  const sel = document.getElementById('nt-dipendente');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.disabled = true;
+  sel.innerHTML = '<option value="">Caricamento dipendenti…</option>';
+  try {
+    const url = (SR_CONFIG || {}).WEBHOOK_RECUPERO_DIPENDENTI;
+    if (!url) throw new Error('Webhook recupero-dipendenti non configurato');
+    const data = await apiPost(url, {});
+    const list = SRDipendenti.parseDipendentiList(data);
+    if (!list.length) {
+      sel.innerHTML = '<option value="">Nessun dipendente in elenco</option>';
+      showToast('Nessun dipendente trovato', 'warn');
+      return;
+    }
+    sel.innerHTML = '<option value="">— Seleziona dipendente —</option>' +
+      list.map(d =>
+        '<option value="' + esc(d.email) + '" data-nome="' + esc(d.nome) + '">' +
+        esc(d.nome) + '</option>'
+      ).join('');
+    if (prev && list.some(d => d.email === prev)) sel.value = prev;
+  } catch (e) {
+    console.error(e);
+    sel.innerHTML = '<option value="">Elenco non disponibile</option>';
+    showToast('Impossibile caricare i dipendenti', 'error');
+  } finally {
+    sel.disabled = false;
+  }
+}
+
 function ntTogglePanel() {
   const panel = document.getElementById('nt-panel');
   const btn = document.getElementById('btn-nuova-trasferta');
   const isNowHidden = panel.classList.toggle('hidden');
   btn.textContent = isNowHidden ? '＋ Nuova trasferta' : '✕ Chiudi';
-  if (!isNowHidden && !document.querySelector('.nt-tappa-card')) ntAddTappa();
+  if (!isNowHidden) {
+    if (!document.querySelector('.nt-tappa-card')) ntAddTappa();
+    ntCaricaDipendenti();
+  }
 }
 
 (async function boot() {
@@ -2246,6 +2290,7 @@ function ntTogglePanel() {
       location.replace('index.html');
       return;
     }
+    ntCaricaDipendenti();
   } catch (ex) {
     if (SRAuth.isNotEnabledError(ex)) SRAuth.redirectNotEnabled();
     else SRAuth.redirectToLogin('api');
