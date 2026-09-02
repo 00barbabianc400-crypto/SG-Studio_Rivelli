@@ -1,4 +1,4 @@
-const CACHE = 'sr-pwa-v35';
+const CACHE = 'sr-pwa-v36';
 
 self.addEventListener('install', e => {
   self.skipWaiting();

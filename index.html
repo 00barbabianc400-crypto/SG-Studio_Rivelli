@@ -252,13 +252,13 @@ body {
         <div class="hub-card-title">Modulo utilizzo 308</div>
         <p class="hub-card-desc">Scheda prelievo/restituzione chiavi, stato carrozzeria e foto danni.</p>
       </a>
-      <a class="hub-card is-nota-spese hidden" href="nota-spese.html" id="link-nota-spese" data-hub-app="nota_spese" style="display:none">
+      <a class="hub-card is-nota-spese hidden" href="nota-spese.html" id="link-nota-spese" data-hub-app="nota_spese">
         <span class="hub-card-alert" aria-hidden="true">!</span>
         <div class="hub-card-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M6 3.5h12v17l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3.5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
         </div>
-        <div class="hub-card-title">Gestione trasferte</div>
-        <p class="hub-card-desc">Pannello di gestione nota spese</p>
+        <div class="hub-card-title">Nota spese</div>
+        <p class="hub-card-desc">Giustificativi della trasferta in corso (scontrini / fatture).</p>
       </a>
       <a class="hub-card" href="gestione-amministrativa.html" id="link-amm" data-hub-app="amm">
         <div class="hub-card-icon" aria-hidden="true">
@@ -359,15 +359,32 @@ function applyHubRoles() {
       const tappe = SRAuth.getTrasferteTappe();
       show = show && SRNotaSpese.hasTrasfertaInCorso(tappe);
     }
-    card.style.display = show ? '' : 'none';
     card.classList.toggle('hidden', !show);
+    // block esplicito: evita stile inline display:none residuo + .hidden !important
+    card.style.display = show ? 'block' : 'none';
   });
+}
+
+/** Se non ci sono tappe in cache, un refresh silenzioso (no «Preparando…»). Max 1 volta/sessione. */
+async function refreshTappeQuietlyIfNeeded() {
+  const flag = 'sr_trasferte_boot_ok';
+  try {
+    if (SRAuth.getTrasferteTappe().length) {
+      sessionStorage.setItem(flag, '1');
+      return;
+    }
+    if (sessionStorage.getItem(flag) === '1') return;
+    await SRAuth.ensureN8nSession({ force: true });
+    sessionStorage.setItem(flag, '1');
+    applyHubRoles();
+  } catch (ex) {
+    console.warn('refreshTappeQuietlyIfNeeded:', ex);
+  }
 }
 
 async function enterHubAfterMsal() {
   showPrepare();
   try {
-    // Force JWT exchange so login porta anche le tappe trasferte aggiornate
     await SRAuth.establishHubSession({ force: true });
     if (!SRAuth.hasN8nToken()) throw new Error('Token non salvato in sessione');
     SRPush.syncIfEnabled();
@@ -421,7 +438,11 @@ function setLoading(on) {
       showGate();
       return;
     }
-    // Sempre re-login n8n: porta token + tappe trasferte aggiornate
+    if (SRAuth.hasN8nToken()) {
+      showHub();
+      refreshTappeQuietlyIfNeeded();
+      return;
+    }
     await enterHubAfterMsal();
   } catch (ex) {
     showGate(ex.message || 'Errore inizializzazione');
@@ -488,7 +509,7 @@ document.getElementById('link-utenti').addEventListener('click', e => {
 });
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=35').then(reg => reg.update()).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=36').then(reg => reg.update()).catch(() => {});
 }
 </script>
 </body>
