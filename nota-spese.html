@@ -42,11 +42,26 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .choice-grid { display: grid; gap: 10px; }
 .choice-btn {
   appearance: none; border: 1.5px solid var(--border); background: #fff; border-radius: var(--r2);
-  padding: 14px 16px; font: inherit; font-size: 15px; font-weight: 600; color: var(--text);
-  text-align: left; cursor: pointer; transition: border-color .15s, background .15s;
+  padding: 12px 14px; font: inherit; font-size: 15px; font-weight: 600; color: var(--text);
+  text-align: left; cursor: pointer; transition: border-color .15s, background .15s, color .15s;
+  display: flex; align-items: center; gap: 12px;
 }
 .choice-btn:hover { border-color: var(--blue-lt); background: #f5f8ff; }
 .choice-btn.is-selected { border-color: var(--blue-lt); background: #eff6ff; color: var(--blue); }
+.choice-btn.is-selected .choice-ico { background: #dbeafe; color: var(--blue); }
+.choice-ico {
+  width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+  background: #eff6ff; color: #2563eb;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.choice-ico svg { width: 22px; height: 22px; }
+.list-item .choice-ico svg { width: 18px; height: 18px; }
+.choice-label { flex: 1; min-width: 0; }
+.field-with-ico { display: flex; align-items: flex-start; gap: 12px; }
+.field-with-ico .choice-ico { margin-top: 18px; }
+.field-with-ico .field { flex: 1; margin-bottom: 0; }
+.btn-with-ico { display: inline-flex; align-items: center; gap: 8px; }
+.btn-with-ico svg { width: 18px; height: 18px; flex-shrink: 0; }
 .field { margin-bottom: 14px; }
 .field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; margin-bottom: 6px; }
 .field input[type="number"], .field input[type="text"] {
@@ -240,10 +255,34 @@ function currentSteps() {
   return stepsForCategoria(state.categoria);
 }
 
-function renderChoices(list, selected, onPick) {
+const SVG_ATTR = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+function svgIcon(paths) {
+  return '<svg ' + SVG_ATTR + '>' + paths + '</svg>';
+}
+
+/** Icone stroke ad hoc (no emoji) per scelte wizard */
+const CHOICE_ICONS = {
+  cibi_bevande: svgIcon('<path d="M8 3v8a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V3"/><path d="M10 13v8"/><path d="M16 3v18"/><path d="M16 8h2a2 2 0 0 1 0 4h-2"/>'),
+  parcheggio: svgIcon('<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 7h4.5a3 3 0 0 1 0 6H9z"/><path d="M9 13v4"/>'),
+  benzina: svgIcon('<path d="M5 21V7l2-4h8l2 4v14"/><path d="M5 11h12"/><path d="M17 11l3 2v5a1.5 1.5 0 0 1-3 0"/><path d="M9 15h4"/>'),
+  colazione: svgIcon('<path d="M6 10h10a4 4 0 0 1 0 8H6z"/><path d="M6 10V8a2 2 0 0 1 2-2h4"/><path d="M18 8c1.2.4 2 1.4 2 2.8"/><path d="M8 21h8"/>'),
+  pranzo: svgIcon('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/>'),
+  cena: svgIcon('<path d="M12 4c-3 2.5-5 5.5-5 9a5 5 0 0 0 10 0c0-3.5-2-6.5-5-9z"/><path d="M9 21h6"/><path d="M12 17v4"/>'),
+  scontrino: svgIcon('<path d="M6 3.5h12v17l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3.5z"/><path d="M9 8h6M9 12h6M9 16h4"/>'),
+  fattura: svgIcon('<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M10 12h5M10 16h5M10 8h2"/>'),
+  importo: svgIcon('<circle cx="12" cy="12" r="9"/><path d="M12 6v12"/><path d="M15.5 9.5c-.6-1.2-1.8-2-3.5-2-2 0-3.5 1.2-3.5 2.8S10 13 12 13s3.5 1 3.5 2.7c0 1.6-1.5 2.8-3.5 2.8-1.7 0-2.9-.8-3.5-2"/>'),
+  camera: svgIcon('<path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'),
+  gallery: svgIcon('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M3 16l5-4 4 3 3-2 6 3"/>')
+};
+
+function renderChoices(list, selected) {
   return list.map(item => {
     const sel = selected === item.id ? ' is-selected' : '';
-    return '<button type="button" class="choice-btn' + sel + '" data-id="' + item.id + '">' + item.label + '</button>';
+    const ico = CHOICE_ICONS[item.id] || svgIcon('<circle cx="12" cy="12" r="8"/>');
+    return '<button type="button" class="choice-btn' + sel + '" data-id="' + item.id + '">'
+      + '<span class="choice-ico">' + ico + '</span>'
+      + '<span class="choice-label">' + item.label + '</span>'
+      + '</button>';
   }).join('');
 }
 
@@ -261,7 +300,9 @@ function renderLista() {
     const cat = catMap[it.categoria] || it.categoria;
     const pasto = it.pasto ? ' · ' + it.pasto : '';
     const euro = Number(it.importo).toFixed(2).replace('.', ',');
+    const catIco = CHOICE_ICONS[it.categoria] || CHOICE_ICONS.scontrino;
     return '<button type="button" class="list-item" data-view-idx="' + i + '" title="Apri giustificativo">'
+      + '<span class="choice-ico" style="width:34px;height:34px;border-radius:9px">' + catIco + '</span>'
       + '<span class="list-item-main">' + (it.tipo || '') + ' · ' + cat + pasto + '</span>'
       + '<strong class="list-item-amt">€ ' + euro + '</strong>'
       + '<span class="list-item-info">' + ICO_INFO + '</span>'
@@ -348,9 +389,11 @@ function renderStep() {
       btn.addEventListener('click', () => { state.tipo = btn.dataset.id; renderStep(); });
     });
   } else if (key === 'importo') {
-    body.innerHTML = '<div class="field"><label for="ns-importo">Euro</label>'
+    body.innerHTML = '<div class="field-with-ico">'
+      + '<span class="choice-ico">' + CHOICE_ICONS.importo + '</span>'
+      + '<div class="field"><label for="ns-importo">Euro</label>'
       + '<input type="text" id="ns-importo" inputmode="decimal" placeholder="es. 12,50" value="'
-      + (state.importo || '') + '"></div>';
+      + (state.importo || '') + '"></div></div>';
     const inp = document.getElementById('ns-importo');
     inp.addEventListener('input', () => { state.importo = inp.value; });
     inp.focus();
@@ -359,8 +402,8 @@ function renderStep() {
       ? '<img class="preview" alt="Anteprima" src="' + state.photo.dataUrl + '">'
       : '<p class="empty">Scatta o scegli una foto dello scontrino/fattura.</p>';
     body.innerHTML = '<div class="photo-actions">'
-      + '<button type="button" class="btn btn-ghost" id="btn-cam">Fotocamera</button>'
-      + '<button type="button" class="btn btn-ghost" id="btn-gal">Galleria</button>'
+      + '<button type="button" class="btn btn-ghost btn-with-ico" id="btn-cam">' + CHOICE_ICONS.camera + ' Fotocamera</button>'
+      + '<button type="button" class="btn btn-ghost btn-with-ico" id="btn-gal">' + CHOICE_ICONS.gallery + ' Galleria</button>'
       + '</div>' + prev;
     document.getElementById('btn-cam').onclick = () => document.getElementById('file-camera').click();
     document.getElementById('btn-gal').onclick = () => document.getElementById('file-gallery').click();
