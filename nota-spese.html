@@ -64,9 +64,44 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .preview { max-width: 100%; border-radius: var(--r2); border: 1px solid var(--border); max-height: 220px; object-fit: contain; background: #f3f4f6; }
 .list-item {
   display: flex; justify-content: space-between; gap: 10px; align-items: center;
-  padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+  width: 100%; padding: 10px 4px; border: none; border-bottom: 1px solid var(--border);
+  background: transparent; font: inherit; font-size: 13px; color: inherit;
+  text-align: left; cursor: pointer; border-radius: 6px;
 }
 .list-item:last-child { border-bottom: none; }
+.list-item:hover { background: #f5f8ff; }
+.list-item-main { flex: 1; min-width: 0; }
+.list-item-amt { font-weight: 700; white-space: nowrap; }
+.list-item-info {
+  flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #eff6ff; color: var(--blue); border: 1px solid #dbeafe;
+}
+.list-item-info svg { width: 16px; height: 16px; }
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 3000; background: rgba(10,22,40,.45);
+  display: none; align-items: flex-end; justify-content: center; padding: 16px;
+}
+.modal-backdrop.open { display: flex; }
+.modal-sc {
+  width: min(520px, 100%); background: var(--surface); border-radius: var(--r3);
+  box-shadow: 0 12px 40px rgba(10,22,40,.25); overflow: hidden; max-height: min(90vh, 720px);
+  display: flex; flex-direction: column;
+}
+.modal-head { padding: 16px 18px 8px; }
+.modal-head h2 { font-family: 'Syne', sans-serif; font-size: 17px; color: var(--navy); }
+.modal-body { padding: 8px 18px 16px; overflow: auto; }
+.modal-foot {
+  display: flex; gap: 10px; justify-content: flex-end; align-items: center;
+  padding: 12px 18px 16px; border-top: 1px solid var(--border);
+}
+.sc-view-img { width: 100%; max-height: min(52vh, 420px); object-fit: contain; border-radius: 10px; background: #f3f4f6; display: block; }
+.sc-view-dl { margin-top: 12px; }
+.sc-view-dl dt { font-size: 10px; font-weight: 600; text-transform: uppercase; color: var(--text-3); margin-top: 10px; }
+.sc-view-dl dd { margin: 4px 0 0; font-size: 14px; color: var(--text); }
+.btn-icon { width: 42px; height: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.btn-chiudi { background: #fde8e8; border: 1.5px solid #f5c2c2; color: #b42318; }
+.sc-ico-sm { width: 18px; height: 18px; }
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(80px);
   background: var(--navy); color: #fff; padding: 12px 16px; border-radius: var(--r2);
@@ -132,6 +167,28 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   <p class="app-loader-text">Caricamento su Drive…</p>
 </div>
 
+<div class="modal-backdrop" id="nota-view-backdrop" aria-hidden="true">
+  <div class="modal-sc" role="dialog" aria-modal="true" aria-labelledby="ns-view-title">
+    <div class="modal-head"><h2 id="ns-view-title">Giustificativo</h2></div>
+    <div class="modal-body">
+      <img id="ns-view-img" class="sc-view-img" alt="Giustificativo">
+      <dl class="sc-view-dl">
+        <dt>Categoria</dt>
+        <dd id="ns-view-cat">—</dd>
+        <dt>Importo</dt>
+        <dd id="ns-view-importo">—</dd>
+        <dt>Orario</dt>
+        <dd id="ns-view-orario">—</dd>
+      </dl>
+    </div>
+    <div class="modal-foot">
+      <a class="btn btn-ghost btn-icon" id="ns-view-download" href="#" download title="Scarica" aria-label="Scarica"></a>
+      <button type="button" class="btn btn-ghost btn-icon" id="ns-view-print" title="Stampa" aria-label="Stampa"></button>
+      <button type="button" class="btn btn-chiudi" id="ns-view-chiudi">Chiudi</button>
+    </div>
+  </div>
+</div>
+
 <input type="file" id="file-camera" accept="image/*" capture="environment" class="hidden">
 <input type="file" id="file-gallery" accept="image/*" class="hidden">
 
@@ -190,6 +247,8 @@ function renderChoices(list, selected, onPick) {
   }).join('');
 }
 
+const ICO_INFO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
+
 function renderLista() {
   const box = document.getElementById('lista-esistenti');
   const list = SRNotaSpese.parseNotaSpeseJson(state.tappa && state.tappa.nota_spese_json);
@@ -198,12 +257,60 @@ function renderLista() {
     return;
   }
   const catMap = Object.fromEntries(SRNotaSpese.CATEGORIE.map(c => [c.id, c.label]));
-  box.innerHTML = list.map(it => {
+  box.innerHTML = list.map((it, i) => {
     const cat = catMap[it.categoria] || it.categoria;
     const pasto = it.pasto ? ' · ' + it.pasto : '';
     const euro = Number(it.importo).toFixed(2).replace('.', ',');
-    return '<div class="list-item"><span>' + (it.tipo || '') + ' · ' + cat + pasto + '</span><strong>€ ' + euro + '</strong></div>';
+    return '<button type="button" class="list-item" data-view-idx="' + i + '" title="Apri giustificativo">'
+      + '<span class="list-item-main">' + (it.tipo || '') + ' · ' + cat + pasto + '</span>'
+      + '<strong class="list-item-amt">€ ' + euro + '</strong>'
+      + '<span class="list-item-info">' + ICO_INFO + '</span>'
+      + '</button>';
   }).join('');
+  box.querySelectorAll('[data-view-idx]').forEach(btn => {
+    btn.addEventListener('click', () => apriNotaViewer(list[Number(btn.dataset.viewIdx)]));
+  });
+}
+
+function apriNotaViewer(it) {
+  if (!it) return;
+  const img = document.getElementById('ns-view-img');
+  img.onerror = () => { img.style.display = 'none'; };
+  img.style.display = '';
+  img.src = SRScontrini.thumbnailUrl(it);
+  const tipo = String(it.tipo || '').toLowerCase() === 'fattura' ? 'Fattura' : 'Scontrino';
+  document.getElementById('ns-view-title').textContent = tipo;
+  const pasto = it.pasto ? ' · ' + it.pasto : '';
+  document.getElementById('ns-view-cat').textContent =
+    (SRNotaSpese.labelCategoria(it.categoria) || it.categoria || '—') + pasto;
+  document.getElementById('ns-view-importo').textContent =
+    '€ ' + Number(it.importo).toFixed(2).replace('.', ',');
+  document.getElementById('ns-view-orario').textContent = it.created_at
+    ? new Date(it.created_at).toLocaleString('it-IT')
+    : '—';
+  const a = document.getElementById('ns-view-download');
+  a.innerHTML = SRScontrini.ICO_DOWNLOAD;
+  a.href = SRScontrini.downloadUrl(it);
+  a.setAttribute('download', 'giustificativo.png');
+  const printBtn = document.getElementById('ns-view-print');
+  printBtn.innerHTML = SRScontrini.ICO_PRINT;
+  printBtn.onclick = () => {
+    const w = window.open('', '_blank');
+    if (!w) return;
+    const src = SRScontrini.thumbnailUrl(it);
+    w.document.write('<title>Giustificativo</title><img src="' + src.replace(/"/g, '') + '" style="max-width:100%">');
+    w.document.close();
+    setTimeout(() => w.print(), 400);
+  };
+  const bd = document.getElementById('nota-view-backdrop');
+  bd.classList.add('open');
+  bd.setAttribute('aria-hidden', 'false');
+}
+
+function chiudiNotaViewer() {
+  const bd = document.getElementById('nota-view-backdrop');
+  bd.classList.remove('open');
+  bd.setAttribute('aria-hidden', 'true');
 }
 
 function renderStep() {
@@ -381,6 +488,11 @@ document.getElementById('btn-next').addEventListener('click', () => {
   }
   state.step += 1;
   renderStep();
+});
+
+document.getElementById('ns-view-chiudi').addEventListener('click', chiudiNotaViewer);
+document.getElementById('nota-view-backdrop').addEventListener('click', e => {
+  if (e.target.id === 'nota-view-backdrop') chiudiNotaViewer();
 });
 
 (async function boot() {
