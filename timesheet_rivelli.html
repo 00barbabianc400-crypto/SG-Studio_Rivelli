@@ -1180,7 +1180,7 @@ tr:hover .btn-del { opacity: 1; }
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/push.js"></script>
-<script src="js/obiettivi-cliente.js"></script>
+<script src="js/obiettivi-cliente.js?v=38"></script>
 <script>
 /* ═══════════════════════════════════════════════
    DATI 
@@ -3475,6 +3475,9 @@ function selectObjCliente(nome) {
 }
 
 async function caricaObiettiviDaConfig() {
+  if (typeof SRObiettiviCliente === 'undefined') {
+    throw new Error('Modulo obiettivi non caricato (js/obiettivi-cliente.js)');
+  }
   const resp = await SRAuth.fetch(WEBHOOK_TS_CONFIG, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -3535,6 +3538,10 @@ function closeObjModal() {
 
 async function salvaObiettiviCliente() {
   if (!objDraft || !monitorAbilitato) return;
+  if (typeof SRObiettiviCliente === 'undefined') {
+    showToast('⚠ Modulo obiettivi non caricato (js/obiettivi-cliente.js)', 'error');
+    return;
+  }
   const O = SRObiettiviCliente;
   let normalized;
   try {
@@ -3584,6 +3591,10 @@ document.getElementById('obj-backdrop')?.addEventListener('click', e => {
 document.getElementById('obj-search')?.addEventListener('input', e => renderObjCliList(e.target.value));
 document.getElementById('obj-add')?.addEventListener('click', () => {
   if (!objDraft) return;
+  if (typeof SRObiettiviCliente === 'undefined' || !SRObiettiviCliente.uidObj) {
+    showToast('⚠ Modulo obiettivi non caricato (js/obiettivi-cliente.js). Ricarica o pusha il file.', 'error');
+    return;
+  }
   const first = ATTIVITA[0] || '';
   objDraft.obiettivi.push({
     id: SRObiettiviCliente.uidObj(),
