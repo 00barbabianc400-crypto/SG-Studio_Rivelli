@@ -274,11 +274,16 @@ body {
 .ns-board {
   display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px;
   scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+  justify-content: safe center;
 }
 .ns-col {
-  flex: 0 0 min(280px, 78vw); scroll-snap-align: start;
+  flex: 0 0 min(300px, 78vw); scroll-snap-align: start;
   background: var(--hover); border: 1px solid var(--border); border-radius: var(--radius-sm);
   padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 180px;
+}
+@media (min-width: 900px) {
+  .ns-board { justify-content: center; padding-inline: 8px; }
+  .ns-col { flex: 0 0 min(340px, 38%); max-width: 380px; }
 }
 .ns-col-head { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.35; }
 .ns-col-head small { display: block; font-weight: 500; color: var(--muted); margin-top: 2px; font-size: 11px; }
@@ -1157,6 +1162,7 @@ function renderOrganizzazioneTappa(t) {
   ].filter(([, v]) => costoHaValore(v));
   return `<dl>
       <dt>ID trasferta</dt><dd>${esc(t.trasferta_id || '—')}</dd>
+      <dt>Partecipanti</dt><dd>${esc(String(Number(t.numero_partecipanti) >= 1 ? Math.floor(Number(t.numero_partecipanti)) : '—'))}</dd>
       <dt>Tappa</dt><dd>${esc(t.tappa_numero || '—')} · ${esc(t.citta || '—')}</dd>
       <dt>Periodo</dt><dd>${esc(fmtPeriodoIt(t.data_arrivo, t.data_partenza))}</dd>
       <dt>Cliente</dt><dd>${esc(t.cliente_tappa || '—')}</dd>
@@ -1288,6 +1294,12 @@ function renderDettaglioTappaBody() {
       <span class="detail-op-dot" style="background:${col}"></span>
       ${esc(t.nome_persona || '—')}
     </button>
+    ${(() => {
+      const n = Number(t.numero_partecipanti);
+      if (!Number.isFinite(n) || n < 1) return '';
+      const label = Math.floor(n) === 1 ? '1 partecipante' : (Math.floor(n) + ' partecipanti');
+      return `<p style="margin:6px 0 0;font-size:13px;color:var(--muted)">${esc(label)}</p>`;
+    })()}
     ${tabs}
     <div id="detail-panel">${panel}</div>`;
 

@@ -380,6 +380,10 @@
               </select>
             </div>
             <div class="field">
+              <label>N. partecipanti <span class="req">*</span></label>
+              <input type="number" id="nt-partecipanti" min="1" max="99" step="1" value="1" inputmode="numeric">
+            </div>
+            <div class="field">
               <label>Data inizio <span class="req">*</span></label>
               <input type="date" id="nt-data-inizio">
             </div>
@@ -607,6 +611,12 @@ function esc(s) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function parseNumeroPartecipanti(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.min(99, Math.floor(n));
 }
 
 function formatDateIt(d) {
@@ -859,6 +869,7 @@ function normalizzaDaRigheN8n(righe) {
     anagrafica: {
       nome_cognome: rows[0].nome_persona || '—',
       email: String(rows[0].email || '').trim().toLowerCase(),
+      numero_partecipanti: parseNumeroPartecipanti(rows[0].numero_partecipanti),
       data_inizio: span.da,
       data_fine_prevista: span.a
     },
@@ -1542,13 +1553,31 @@ function renderTrasferta(trasferta, trasfertaId) {
 
   document.getElementById('badge-id').textContent = trasfertaId;
   const ana = trasferta.anagrafica || {};
+  if (ana.numero_partecipanti == null) {
+    ana.numero_partecipanti = parseNumeroPartecipanti(
+      (trasferta._righe_db && trasferta._righe_db[0] && trasferta._righe_db[0].numero_partecipanti)
+    );
+    trasferta.anagrafica = ana;
+  }
   document.getElementById('riepilogo-anagrafica').innerHTML = `
     <div class="riepilogo-item"><div class="lbl">Nome</div><div class="val">${esc(ana.nome_cognome)}</div></div>
+    <div class="riepilogo-item"><div class="lbl">Partecipanti</div><div class="val">
+      <input type="number" id="edit-partecipanti" min="1" max="99" step="1" value="${esc(String(parseNumeroPartecipanti(ana.numero_partecipanti)))}"
+        style="width:72px;padding:6px 8px;border:1.5px solid var(--gray-200);border-radius:8px;font:inherit;font-size:14px;font-weight:600">
+    </div></div>
     <div class="riepilogo-item"><div class="lbl">Inizio</div><div class="val">${formatDateIt(ana.data_inizio)}</div></div>
     <div class="riepilogo-item"><div class="lbl">Fine prevista</div><div class="val">${formatDateIt(ana.data_fine_prevista)}</div></div>
     <div class="riepilogo-item"><div class="lbl">Tappe</div><div class="val">${(trasferta.itinerario || []).length}</div></div>
-    ${renderRiepilogoCosti(trasferta.itinerario)}
-  `;
+  ` + renderRiepilogoCosti(trasferta.itinerario);
+  const editPart = document.getElementById('edit-partecipanti');
+  if (editPart) {
+    editPart.addEventListener('change', () => {
+      const n = parseNumeroPartecipanti(editPart.value);
+      editPart.value = String(n);
+      if (!sessionTrasferta.anagrafica) sessionTrasferta.anagrafica = {};
+      sessionTrasferta.anagrafica.numero_partecipanti = n;
+    });
+  }
 
   const noteEl = document.getElementById('note-generali-ro');
   if (trasferta.note_generali) {
@@ -1734,6 +1763,9 @@ function buildRigheDbDaTrasferta(trasferta, prenotazioni) {
       data_creazione: base.data_creazione || dataCreazione,
       nome_persona: ana.nome_cognome || base.nome_persona || '',
       email: String(ana.email || base.email || '').trim().toLowerCase(),
+      numero_partecipanti: parseNumeroPartecipanti(
+        ana.numero_partecipanti ?? base.numero_partecipanti
+      ),
       tappa_numero: String(n),
       citta: tappa.citta || '',
       data_arrivo: tappa.data_arrivo || '',
@@ -1874,6 +1906,12 @@ async function salvaProgresso() {
     return;
   }
 
+  const editPart = document.getElementById('edit-partecipanti');
+  if (editPart) {
+    if (!sessionTrasferta.anagrafica) sessionTrasferta.anagrafica = {};
+    sessionTrasferta.anagrafica.numero_partecipanti = parseNumeroPartecipanti(editPart.value);
+  }
+
   const btn = document.getElementById('btn-salva');
   btn.disabled = true;
   try {
@@ -1914,6 +1952,11 @@ async function inviaPrenotazioni() {
   const btn = document.getElementById('btn-invia');
   btn.disabled = true;
   try {
+    const editPart = document.getElementById('edit-partecipanti');
+    if (editPart) {
+      if (!sessionTrasferta.anagrafica) sessionTrasferta.anagrafica = {};
+      sessionTrasferta.anagrafica.numero_partecipanti = parseNumeroPartecipanti(editPart.value);
+    }
     showToast('Invio in corso…');
     await apiPost(WEBHOOK_INVIO_PRENOTAZIONI, buildPayloadInvio());
     showToast('Prenotazioni inviate con successo', 'success', 3000);
@@ -2186,6 +2229,7 @@ function ntBuildJSON() {
     anagrafica: {
       nome_cognome: dip ? dip.nome : '',
       email: dip ? dip.email : '',
+      numero_partecipanti: parseNumeroPartecipanti(ntVal('nt-partecipanti')),
       data_inizio: ntVal('nt-data-inizio'),
       data_fine_prevista: ntVal('nt-data-fine')
     },
@@ -2199,6 +2243,8 @@ function ntValida() {
   if (!SRDipendenti.selectedDipendente(document.getElementById('nt-dipendente'))) {
     return 'Seleziona il dipendente';
   }
+  const nPart = Number(ntVal('nt-partecipanti'));
+  if (!Number.isFinite(nPart) || nPart < 1) return 'Inserisci il numero di partecipanti (≥ 1)';
   if (!ntVal('nt-data-inizio')) return 'Inserisci data inizio trasferta';
   if (!ntVal('nt-data-fine')) return 'Inserisci data fine trasferta';
   const cards = document.querySelectorAll('.nt-tappa-card');
@@ -2234,6 +2280,7 @@ function ntReset() {
   ntUid = 0;
   const dipSel = document.getElementById('nt-dipendente');
   if (dipSel) dipSel.value = '';
+  document.getElementById('nt-partecipanti').value = '1';
   document.getElementById('nt-data-inizio').value = '';
   document.getElementById('nt-data-fine').value = '';
   document.getElementById('nt-note-generali').value = '';
