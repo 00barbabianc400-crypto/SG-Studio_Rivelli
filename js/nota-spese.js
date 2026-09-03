@@ -112,18 +112,41 @@
     }
     const categoria = String(incoming.categoria || '').trim();
     if (!categoria) throw new Error('Categoria obbligatoria');
+
+    let pasto = incoming.pasto ? String(incoming.pasto).trim() : null;
+    let mezzo = incoming.mezzo ? String(incoming.mezzo).trim() : null;
+    let dettaglio = incoming.dettaglio != null ? String(incoming.dettaglio).trim() : null;
+
+    if (categoria === 'cibi_bevande') {
+      mezzo = null;
+      dettaglio = null;
+      if (!pasto) throw new Error('Pasto obbligatorio');
+    } else if (categoria === 'mezzi') {
+      pasto = null;
+      dettaglio = null;
+      if (!mezzo) throw new Error('Mezzo obbligatorio');
+    } else if (categoria === 'altro') {
+      pasto = null;
+      mezzo = null;
+      if (!dettaglio) throw new Error('Specifica di cosa si tratta');
+    } else {
+      // legacy (parcheggio / benzina come categoria)
+      if (categoria !== 'cibi_bevande') pasto = null;
+    }
+
     const item = {
       id: incoming.id || uid(),
       created_at: incoming.created_at || new Date().toISOString(),
       tipo,
       categoria,
-      pasto: incoming.pasto ? String(incoming.pasto).trim() : null,
+      pasto,
+      mezzo,
+      dettaglio,
       importo: parseImporto(incoming.importo),
       foto_url: String(incoming.foto_url || incoming.url || '').trim(),
       foto_id: String(incoming.foto_id || incoming.fileId || '').trim(),
       mime: String(incoming.mime || 'image/jpeg')
     };
-    if (categoria !== 'cibi_bevande') item.pasto = null;
     if (!item.foto_id && !item.foto_url) {
       throw new Error('Giustificativo senza file Drive');
     }
@@ -178,7 +201,31 @@
 
   function labelCategoria(id) {
     const hit = CATEGORIE.find(c => c.id === id);
-    return hit ? hit.label : String(id || 'Altro');
+    if (hit) return hit.label;
+    if (id === 'parcheggio') return 'Parcheggio';
+    if (id === 'benzina') return 'Benzina';
+    return String(id || 'Altro');
+  }
+
+  function labelSottotipo(it) {
+    if (!it) return '';
+    if (it.pasto) {
+      const p = PASTI.find(x => x.id === it.pasto);
+      return p ? p.label : String(it.pasto);
+    }
+    if (it.mezzo) {
+      const m = MEZZI.find(x => x.id === it.mezzo);
+      return m ? m.label : String(it.mezzo);
+    }
+    if (it.dettaglio) return String(it.dettaglio).trim();
+    return '';
+  }
+
+  function labelVoce(it) {
+    if (!it) return '—';
+    const cat = labelCategoria(it.categoria);
+    const sub = labelSottotipo(it);
+    return sub ? cat + ' · ' + sub : cat;
   }
 
   function tappeStessaTrasferta(rows, trasfertaId) {
@@ -201,13 +248,19 @@
 
   const CATEGORIE = [
     { id: 'cibi_bevande', label: 'Cibi e bevande' },
-    { id: 'parcheggio', label: 'Parcheggio' },
-    { id: 'benzina', label: 'Benzina' }
+    { id: 'mezzi', label: 'Mezzi' },
+    { id: 'altro', label: 'Altro' }
   ];
   const PASTI = [
     { id: 'colazione', label: 'Colazione' },
     { id: 'pranzo', label: 'Pranzo' },
     { id: 'cena', label: 'Cena' }
+  ];
+  const MEZZI = [
+    { id: 'taxi', label: 'Taxi' },
+    { id: 'treno', label: 'Treno' },
+    { id: 'autobus', label: 'Autobus' },
+    { id: 'benzina', label: 'Benzina' }
   ];
   const TIPI = [
     { id: 'scontrino', label: 'Scontrino' },
@@ -231,11 +284,14 @@
     sumImportiByTipo,
     groupByCategoria,
     labelCategoria,
+    labelSottotipo,
+    labelVoce,
     tappeStessaTrasferta,
     aggregateTrasferta,
     uid,
     CATEGORIE,
     PASTI,
+    MEZZI,
     TIPI
   };
 })(typeof window !== 'undefined' ? window : globalThis);

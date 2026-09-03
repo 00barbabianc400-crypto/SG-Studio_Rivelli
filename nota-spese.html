@@ -260,10 +260,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 <input type="file" id="file-gallery" accept="image/*" class="hidden">
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
-<script src="js/config.js"></script>
-<script src="js/nota-spese.js"></script>
-<script src="js/scontrini.js"></script>
-<script src="js/auth.js"></script>
+<script src="js/config.js?v=37"></script>
+<script src="js/nota-spese.js?v=37"></script>
+<script src="js/scontrini.js?v=37"></script>
+<script src="js/auth.js?v=37"></script>
 <script>
 const state = {
   phase: 'tipo', // tipo | dettaglio
@@ -341,12 +341,15 @@ function resetComposeFields() {
 }
 
 function selectionLabel() {
-  return SRNotaSpese.labelVoce({
-    categoria: state.categoria,
-    pasto: state.pasto,
-    mezzo: state.mezzo,
-    dettaglio: state.dettaglio
-  });
+  if (SRNotaSpese && typeof SRNotaSpese.labelVoce === 'function') {
+    return SRNotaSpese.labelVoce({
+      categoria: state.categoria,
+      pasto: state.pasto,
+      mezzo: state.mezzo,
+      dettaglio: state.dettaglio
+    });
+  }
+  return [state.categoria, state.pasto || state.mezzo || state.dettaglio].filter(Boolean).join(' · ');
 }
 
 function startCompose(sel) {
@@ -362,7 +365,18 @@ function startCompose(sel) {
 
 function renderChipBoard() {
   const board = document.getElementById('chip-board');
-  function chips(list, onPick) {
+  const pasti = (SRNotaSpese && SRNotaSpese.PASTI) || [
+    { id: 'colazione', label: 'Colazione' },
+    { id: 'pranzo', label: 'Pranzo' },
+    { id: 'cena', label: 'Cena' }
+  ];
+  const mezzi = (SRNotaSpese && SRNotaSpese.MEZZI) || [
+    { id: 'taxi', label: 'Taxi' },
+    { id: 'treno', label: 'Treno' },
+    { id: 'autobus', label: 'Autobus' },
+    { id: 'benzina', label: 'Benzina' }
+  ];
+  function chips(list) {
     return '<div class="chip-row">' + list.map(item => {
       const ico = CHOICE_ICONS[item.id] || CHOICE_ICONS.altro;
       return '<button type="button" class="chip" data-id="' + item.id + '">'
@@ -373,11 +387,11 @@ function renderChipBoard() {
   board.innerHTML =
     '<div class="chip-section">'
     + '<div class="chip-title"><span class="choice-ico">' + CHOICE_ICONS.cibi_bevande + '</span>Cibi e bevande</div>'
-    + chips(SRNotaSpese.PASTI)
+    + chips(pasti)
     + '</div>'
     + '<div class="chip-section">'
     + '<div class="chip-title"><span class="choice-ico">' + CHOICE_ICONS.mezzi + '</span>Mezzi</div>'
-    + chips(SRNotaSpese.MEZZI)
+    + chips(mezzi)
     + '</div>'
     + '<div class="chip-section">'
     + '<div class="chip-title"><span class="choice-ico">' + CHOICE_ICONS.altro + '</span>Altro</div>'
@@ -481,9 +495,11 @@ function renderLista() {
     const euro = Number(it.importo).toFixed(2).replace('.', ',');
     const icoKey = it.pasto || it.mezzo || it.categoria || 'scontrino';
     const catIco = CHOICE_ICONS[icoKey] || CHOICE_ICONS.scontrino;
+    const voce = (SRNotaSpese.labelVoce && SRNotaSpese.labelVoce(it))
+      || ((it.categoria || '') + (it.pasto ? ' · ' + it.pasto : '') + (it.mezzo ? ' · ' + it.mezzo : '') + (it.dettaglio ? ' · ' + it.dettaglio : ''));
     return '<button type="button" class="list-item" data-view-idx="' + i + '" title="Apri giustificativo">'
       + '<span class="choice-ico" style="width:34px;height:34px;border-radius:9px">' + catIco + '</span>'
-      + '<span class="list-item-main">' + (it.tipo || '') + ' · ' + SRNotaSpese.labelVoce(it) + '</span>'
+      + '<span class="list-item-main">' + (it.tipo || '') + ' · ' + voce + '</span>'
       + '<strong class="list-item-amt">€ ' + euro + '</strong>'
       + '<span class="list-item-info">' + ICO_INFO + '</span>'
       + '</button>';
@@ -653,6 +669,9 @@ document.getElementById('nota-view-backdrop').addEventListener('click', e => {
 
 (async function boot() {
   try {
+    if (!window.SRAuth || !window.SRNotaSpese) {
+      throw new Error('Script nota-spese/auth non caricati. Aggiorna la cache (hard refresh).');
+    }
     if (!SRAuth.hasN8nToken()) await SRAuth.ensureN8nSession();
     if (!SRAuth.canAccessHubApp('nota_spese')) {
       location.replace('index.html');
@@ -672,8 +691,22 @@ document.getElementById('nota-view-backdrop').addEventListener('click', e => {
     renderChipBoard();
     renderLista();
   } catch (ex) {
-    if (SRAuth.isNotEnabledError(ex)) SRAuth.redirectNotEnabled();
-    else SRAuth.redirectToLogin('api');
+    console.error('nota-spese boot:', ex);
+    if (SRAuth && SRAuth.isNotEnabledError && SRAuth.isNotEnabledError(ex)) {
+      SRAuth.redirectNotEnabled();
+      return;
+    }
+    // Non mascherare bug JS / cache come "workflow n8n"
+    const msg = (ex && ex.message) ? String(ex.message) : String(ex || 'Errore');
+    if (/token|sessione|microsoft|n8n|api|network|fetch|Failed to fetch/i.test(msg)) {
+      if (SRAuth && SRAuth.redirectToLogin) SRAuth.redirectToLogin('api');
+      else location.replace('index.html?err=api');
+      return;
+    }
+    document.body.insertAdjacentHTML('afterbegin',
+      '<div style="margin:16px;padding:14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;color:#b42318;font:14px DM Sans,sans-serif">'
+      + 'Errore apertura Nota spese: ' + msg.replace(/[<>&]/g, '')
+      + '<br><a href="index.html">Torna alla home</a></div>');
   }
 })();
 </script>
