@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Modulo utilizzo auto">
+  <rect width="32" height="32" rx="7" fill="#eff6ff"/>
+  <g transform="translate(4 4)" stroke="#1e4fa3" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 4h8a2 2 0 0 1 2 2v14l-2-1.2L14 20l-2-1.2L10 20l-2-1.2L6 20V6a2 2 0 0 1 2-2z"/>
+    <path d="M9 9h6M9 13h6"/>
+  </g>
+</svg>

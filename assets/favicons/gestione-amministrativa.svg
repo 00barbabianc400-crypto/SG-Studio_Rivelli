@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Gestione amministrativa">
+  <rect width="32" height="32" rx="7" fill="#eff6ff"/>
+  <g transform="translate(4 4)" stroke="#1e4fa3" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 19V5M4 19h16"/>
+    <path d="M8 16v-5M12 16V8M16 16v-3"/>
+  </g>
+</svg>

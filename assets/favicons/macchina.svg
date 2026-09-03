@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Auto aziendale">
+  <rect width="32" height="32" rx="7" fill="#eff6ff"/>
+  <g transform="translate(4 4)" stroke="#1e4fa3" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 16l1.5-6h11L19 16"/>
+    <path d="M4 16h16v2a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H10a2 2 0 0 1-4 0H5a1 1 0 0 1-1-1v-2z"/>
+    <path d="M7.5 10l1-3h7l1 3"/>
+  </g>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Gestione trasferte">
+  <rect width="32" height="32" rx="7" fill="#eff6ff"/>
+  <g transform="translate(4 4)" stroke="#1e4fa3" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="6" cy="18" r="2"/>
+    <circle cx="18" cy="6" r="2"/>
+    <path d="M8.2 16.2c3.5-2.5 4.1-7.5 7.8-10.2"/>
+  </g>
+</svg>
