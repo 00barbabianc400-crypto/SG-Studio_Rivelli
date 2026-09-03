@@ -488,15 +488,44 @@ tr:hover .btn-del { opacity: 1; }
 .prog-cli-name { font-size: 15px; font-weight: 700; color: var(--navy); margin: 0 0 10px; }
 .prog-obj { border-top: 1px dashed var(--border); padding-top: 12px; margin-top: 12px; }
 .prog-obj:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
-.prog-obj-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+.prog-obj-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
 .prog-obj-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
-.prog-obj-meta { font-size: 12px; color: var(--text-2); display: grid; gap: 4px; margin: 8px 0 10px; }
-.prog-obj-meta b { color: var(--text); }
+.prog-summary {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px;
+}
+@media (max-width: 560px) { .prog-summary { grid-template-columns: 1fr; } }
+.prog-summary-item {
+  background: oklch(98% 0.008 244); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 12px;
+}
+.prog-summary-item .lbl {
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3);
+}
+.prog-summary-item .val {
+  margin-top: 4px; font-size: 15px; font-weight: 700; color: var(--navy); font-family: 'DM Mono', monospace;
+}
+.prog-summary-item .sub { margin-top: 2px; font-size: 11px; color: var(--text-3); }
+.prog-summary-item.is-ok .val { color: var(--ok); }
+.prog-summary-item.is-bad .val { color: var(--err); }
 .prog-tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
 .prog-tag.ok { background: oklch(94% 0.05 145); color: var(--ok); }
 .prog-tag.bad { background: oklch(95% 0.04 25); color: var(--err); }
 .prog-tag.na { background: var(--hover, oklch(96% 0.01 244)); color: var(--text-3); }
-.prog-bar-row { display: grid; grid-template-columns: minmax(90px, 28%) 1fr 72px; gap: 10px; align-items: center; margin-bottom: 8px; font-size: 12px; }
+.prog-ms-section-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-3); margin: 0 0 8px;
+}
+.prog-ms-block {
+  border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; background: #fff;
+}
+.prog-ms-block:last-child { margin-bottom: 0; }
+.prog-ms-top {
+  display: grid; grid-template-columns: minmax(72px, 1fr) minmax(90px, 2fr) 52px;
+  gap: 10px; align-items: center; margin-bottom: 8px;
+}
+.prog-ms-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.prog-ms-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.prog-ms-pct { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; color: var(--navy); text-align: right; }
 .prog-bar-wrap { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
 .prog-bar { height: 100%; border-radius: 4px; min-width: 2px; background: linear-gradient(90deg, var(--navy), var(--blue)); }
 .prog-bar.is-low { background: linear-gradient(90deg, oklch(50% 0.18 25), oklch(62% 0.2 25)); }
@@ -550,6 +579,10 @@ tr:hover .btn-del { opacity: 1; }
 .obj-cli-item:last-child { border-bottom: none; }
 .obj-cli-item:hover, .obj-cli-item.is-active { background: oklch(95% 0.02 244); color: var(--blue); }
 .obj-cli-item small { display: block; font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.obj-cli-item small.has-obiettivi {
+  color: oklch(55% 0.14 85);
+  font-weight: 600;
+}
 .obj-editor { display: none; }
 .obj-editor.is-open { display: block; }
 .obj-editor-title { font-size: 14px; font-weight: 700; color: var(--navy); margin: 0 0 12px; }
@@ -597,12 +630,15 @@ tr:hover .btn-del { opacity: 1; }
   display: inline-block; vertical-align: -2px; animation: obj-spin .7s linear infinite;
 }
 @keyframes obj-spin { to { transform: rotate(360deg); } }
-.prog-dip-list { margin: 6px 0 10px; padding: 0; list-style: none; display: grid; gap: 4px; }
+.prog-dip-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
 .prog-dip-list li {
   font-size: 12px; color: var(--text-2);
-  display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: baseline;
+  padding: 6px 8px; background: oklch(98.5% 0.006 244); border-radius: 8px;
 }
-.prog-dip-list b { color: var(--text); font-weight: 600; }
+.prog-dip-list .dip-name { font-weight: 600; color: var(--text); }
+.prog-dip-list .dip-cost { font-family: 'DM Mono', monospace; font-size: 11.5px; text-align: right; white-space: nowrap; }
+.prog-dip-empty { font-size: 11px; color: var(--text-3); padding: 4px 2px; }
 .mon-detail-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3); box-shadow: var(--shadow-sm); overflow: hidden; }
 .mon-detail-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .mon-detail-table th {
@@ -3402,7 +3438,7 @@ function renderObjCliList(q) {
     const active = c.nome === objSelectedNome ? ' is-active' : '';
     return `<button type="button" class="obj-cli-item${active}" data-cli="${escHtml(c.nome)}">
       ${escHtml(c.nome)}
-      <small>${nObj ? (nObj + ' obiettiv' + (nObj === 1 ? 'o' : 'i')) : 'Nessun obiettivo'}${c.id == null ? ' · senza id DT' : ''}</small>
+      <small class="${nObj ? 'has-obiettivi' : ''}">${nObj ? (nObj + ' obiettiv' + (nObj === 1 ? 'o' : 'i')) : 'Nessun obiettivo'}${c.id == null ? ' · senza id DT' : ''}</small>
     </button>`;
   }).join('');
   listEl.querySelectorAll('[data-cli]').forEach(btn => {
@@ -3718,36 +3754,64 @@ function renderProgDetail(q) {
           : (o.rientro
             ? '<span class="prog-tag ok">In rientro a completamento</span>'
             : '<span class="prog-tag bad">In perdita a completamento</span>'));
-      const bars = (o.milestone || []).map(m => {
-        const dipMs = (m.dipendenti || []).map(d =>
-          `<li><span>${escHtml(d.dipendente)}</span><b>${escHtml(String(d.ore))} h${d.costo_orario > 0 ? ' · ' + escHtml(fmtEuroProg(d.costo_orario)) + '/h' : ''}</b></li>`
-        ).join('');
-        return `
-        <div class="prog-bar-row">
-          <span class="mon-chart-label" title="${escHtml(m.attivita)}">${escHtml(m.attivita)}</span>
-          <div class="prog-bar-wrap">
-            <div class="prog-bar ${barClass(m.bucket)}" style="width:${Math.max(2, Math.min(100, m.pct))}%"></div>
+      const compareCls = o.rientro === true ? ' is-ok' : (o.rientro === false ? ' is-bad' : '');
+      const delta = (o.costo_proiettato != null && Number.isFinite(o.costo))
+        ? (o.costo - o.costo_proiettato)
+        : null;
+      const deltaLabel = delta == null
+        ? '—'
+        : ((delta >= 0 ? '+' : '') + fmtEuroProg(delta) + (delta >= 0 ? ' vs fatturato' : ' oltre fatturato'));
+      const milestones = (o.milestone || []).map(m => {
+        const dips = (m.dipendenti || []);
+        const dipHtml = dips.length
+          ? `<ul class="prog-dip-list">${dips.map(d => `
+              <li>
+                <span class="dip-name">${escHtml(d.dipendente)}</span>
+                <span class="dip-cost">${escHtml(String(d.ore))} h · ${escHtml(fmtEuroProg(d.costo))}${d.costo_orario > 0 ? ' · ' + escHtml(fmtEuroProg(d.costo_orario)) + '/h' : ''}</span>
+              </li>`).join('')}</ul>`
+          : '<p class="prog-dip-empty">Nessuna ora su questa milestone</p>';
+        return `<div class="prog-ms-block">
+          <div class="prog-ms-top">
+            <div>
+              <div class="prog-ms-name">${escHtml(m.attivita)}</div>
+              <div class="prog-ms-meta">${escHtml(String(m.ore_fatte))} / ${escHtml(String(m.ore_target))} h</div>
+            </div>
+            <div class="prog-bar-wrap">
+              <div class="prog-bar ${barClass(m.bucket)}" style="width:${Math.max(2, Math.min(100, m.pct))}%"></div>
+            </div>
+            <div class="prog-ms-pct">${escHtml(fmtPct(m.pct))}</div>
           </div>
-          <span class="mon-chart-val">${escHtml(fmtPct(m.pct))}</span>
-        </div>
-        ${dipMs ? `<ul class="prog-dip-list" style="margin:-2px 0 10px">${dipMs}</ul>` : ''}`;
+          ${dipHtml}
+        </div>`;
       }).join('');
-      const dipObj = (o.dipendenti || []).map(d =>
-        `<li><span>${escHtml(d.dipendente)}</span><b>${escHtml(String(d.ore))} h · ${escHtml(fmtEuroProg(d.costo))}${d.costo_orario > 0 ? ' · ' + escHtml(fmtEuroProg(d.costo_orario)) + '/h' : ' · rateo —'}</b></li>`
-      ).join('');
       return `<div class="prog-obj">
         <div class="prog-obj-head">
           <h3>${escHtml(o.nome)}</h3>
           ${tag}
         </div>
-        <div class="prog-obj-meta">
-          <div>Costo fatturato <b>${escHtml(fmtEuroProg(o.costo))}</b></div>
-          <div>Costo interno (ore × costo_orario) <b>${escHtml(fmtEuroProg(o.costo_interno))}</b></div>
-          <div>Proiezione a 100% <b>${escHtml(o.costo_proiettato == null ? '—' : fmtEuroProg(o.costo_proiettato))}</b></div>
-          <div>Avanzamento obiettivo <b>${escHtml(fmtPct(o.pct))}</b> · ${escHtml(String(o.ore_fatte))} / ${escHtml(String(o.ore_target))} h</div>
+        <div class="prog-summary">
+          <div class="prog-summary-item">
+            <div class="lbl">Costo fatturato</div>
+            <div class="val">${escHtml(fmtEuroProg(o.costo))}</div>
+          </div>
+          <div class="prog-summary-item${compareCls}">
+            <div class="lbl">Costo interno totale</div>
+            <div class="val">${escHtml(fmtEuroProg(o.costo_interno))}</div>
+            <div class="sub">somma contributi dipendenti</div>
+          </div>
+          <div class="prog-summary-item${compareCls}">
+            <div class="lbl">Proiezione a 100%</div>
+            <div class="val">${escHtml(o.costo_proiettato == null ? '—' : fmtEuroProg(o.costo_proiettato))}</div>
+            <div class="sub">${escHtml(deltaLabel)}</div>
+          </div>
+          <div class="prog-summary-item">
+            <div class="lbl">Avanzamento obiettivo</div>
+            <div class="val">${escHtml(fmtPct(o.pct))}</div>
+            <div class="sub">${escHtml(String(o.ore_fatte))} / ${escHtml(String(o.ore_target))} h</div>
+          </div>
         </div>
-        ${dipObj ? `<div class="prog-obj-meta"><div>Dipendenti</div></div><ul class="prog-dip-list">${dipObj}</ul>` : ''}
-        ${bars || '<p class="obj-warn">Nessuna milestone</p>'}
+        <div class="prog-ms-section-title">Avanzamento per milestone</div>
+        ${milestones || '<p class="obj-warn">Nessuna milestone</p>'}
       </div>`;
     }).join('');
     return `<div class="prog-cli-card"><div class="prog-cli-name">${escHtml(c.nome)}</div>${objs}</div>`;
