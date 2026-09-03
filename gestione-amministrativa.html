@@ -1177,12 +1177,11 @@ function fmtEuroNota(n) {
 }
 
 function renderNotaItemChip(it, flatIdx) {
-  const cat = SRNotaSpese.labelCategoria(it.categoria);
+  const voce = SRNotaSpese.labelVoce(it);
   const tipo = String(it.tipo || '') === 'fattura' ? 'Fattura' : 'Scontrino';
-  const pasto = it.pasto ? ' · ' + it.pasto : '';
   return `<button type="button" class="ns-item" data-ns-idx="${flatIdx}" title="Apri giustificativo">
     <span class="sc-ico-wrap">${SRScontrini.ICO_RECEIPT}</span>
-    <span class="ns-item-meta">${esc(tipo)}<span>${esc(cat + pasto)}</span></span>
+    <span class="ns-item-meta">${esc(tipo)}<span>${esc(voce)}</span></span>
     <span class="ns-item-amt">${esc(fmtEuroNota(it.importo))}</span>
   </button>`;
 }
@@ -1315,10 +1314,8 @@ function apriNotaSpesaViewerAmm(it) {
   img.src = SRScontrini.thumbnailUrl(it);
   document.getElementById('sc-view-title').textContent =
     (String(it.tipo).toLowerCase() === 'fattura' ? 'Fattura' : 'Scontrino') + ' · trasferta';
-  document.getElementById('sc-view-dt1').textContent = 'Categoria';
-  const pasto = it.pasto ? ' · ' + it.pasto : '';
-  document.getElementById('sc-view-luogo').textContent =
-    SRNotaSpese.labelCategoria(it.categoria) + pasto;
+  document.getElementById('sc-view-dt1').textContent = 'Voce';
+  document.getElementById('sc-view-luogo').textContent = SRNotaSpese.labelVoce(it);
   document.getElementById('sc-view-dt2').textContent = 'Orario';
   document.getElementById('sc-view-orario').textContent = it.created_at
     ? new Date(it.created_at).toLocaleString('it-IT')

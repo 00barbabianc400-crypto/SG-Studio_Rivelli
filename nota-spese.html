@@ -12,7 +12,7 @@
   --navy: #0a1628; --blue: #1e4fa3; --blue-lt: #2d6ef0;
   --surface: #fff; --bg: #f7f9fc; --border: #e2e7f4;
   --text: #1e3050; --text-2: #4a6180; --text-3: #8fa3be;
-  --ok: #1aaa6b; --warn: #b86e00; --danger: #d93025;
+  --ok: #1aaa6b; --danger: #d93025;
   --r2: 8px; --r3: 12px; --shadow-sm: 0 1px 4px rgba(10,22,40,.06);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -39,12 +39,34 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 }
 .tappa-ro small { display: block; font-weight: 500; color: var(--text-2); margin-top: 4px; font-size: 12px; }
 .step-label { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px; }
+.chip-section { margin-bottom: 18px; }
+.chip-section:last-child { margin-bottom: 0; }
+.chip-title {
+  font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.chip-title .choice-ico { width: 28px; height: 28px; border-radius: 8px; }
+.chip-title .choice-ico svg { width: 15px; height: 15px; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  appearance: none; border: 1.5px solid var(--border); background: #fff;
+  border-radius: 999px; padding: 10px 14px; font: inherit; font-size: 13px; font-weight: 600;
+  color: var(--text); cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.chip:hover { border-color: var(--blue-lt); background: #f5f8ff; }
+.chip .chip-ico {
+  width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+  background: #eff6ff; color: #2563eb;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.chip .chip-ico svg { width: 15px; height: 15px; }
 .choice-grid { display: grid; gap: 10px; }
 .choice-btn {
   appearance: none; border: 1.5px solid var(--border); background: #fff; border-radius: var(--r2);
   padding: 12px 14px; font: inherit; font-size: 15px; font-weight: 600; color: var(--text);
   text-align: left; cursor: pointer; transition: border-color .15s, background .15s, color .15s;
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 12px; width: 100%;
 }
 .choice-btn:hover { border-color: var(--blue-lt); background: #f5f8ff; }
 .choice-btn.is-selected { border-color: var(--blue-lt); background: #eff6ff; color: var(--blue); }
@@ -57,16 +79,14 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .choice-ico svg { width: 22px; height: 22px; }
 .list-item .choice-ico svg { width: 18px; height: 18px; }
 .choice-label { flex: 1; min-width: 0; }
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; margin-bottom: 6px; }
+.field input[type="text"] {
+  width: 100%; border: 1.5px solid var(--border); border-radius: var(--r2); padding: 12px; font: inherit; font-size: 16px;
+}
 .field-with-ico { display: flex; align-items: flex-start; gap: 12px; }
 .field-with-ico .choice-ico { margin-top: 18px; }
 .field-with-ico .field { flex: 1; margin-bottom: 0; }
-.btn-with-ico { display: inline-flex; align-items: center; gap: 8px; }
-.btn-with-ico svg { width: 18px; height: 18px; flex-shrink: 0; }
-.field { margin-bottom: 14px; }
-.field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; margin-bottom: 6px; }
-.field input[type="number"], .field input[type="text"] {
-  width: 100%; border: 1.5px solid var(--border); border-radius: var(--r2); padding: 12px; font: inherit; font-size: 16px;
-}
 .photo-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
 .btn {
   appearance: none; border: none; border-radius: var(--r2); padding: 12px 16px; font: inherit; font-weight: 600;
@@ -75,8 +95,14 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .btn-primary { background: var(--blue-lt); color: #fff; }
 .btn-primary:disabled { opacity: .55; cursor: not-allowed; }
 .btn-ghost { background: #fff; border: 1.5px solid var(--border); color: var(--text); }
+.btn-with-ico { display: inline-flex; align-items: center; gap: 8px; }
+.btn-with-ico svg { width: 18px; height: 18px; flex-shrink: 0; }
 .btn-row { display: flex; gap: 10px; justify-content: space-between; margin-top: 16px; }
 .preview { max-width: 100%; border-radius: var(--r2); border: 1px solid var(--border); max-height: 220px; object-fit: contain; background: #f3f4f6; }
+.compose-ctx {
+  font-size: 13px; color: var(--text-2); margin-bottom: 14px; padding: 10px 12px;
+  background: #f5f8ff; border: 1px solid #dbeafe; border-radius: var(--r2);
+}
 .list-item {
   display: flex; justify-content: space-between; gap: 10px; align-items: center;
   width: 100%; padding: 10px 4px; border: none; border-bottom: 1px solid var(--border);
@@ -160,13 +186,9 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   <div id="panel" class="hidden">
     <div class="tappa-ro" id="tappa-label">—</div>
 
-    <div class="card">
-      <div class="step-label" id="step-title">Categoria</div>
-      <div id="step-body"></div>
-      <div class="btn-row">
-        <button type="button" class="btn btn-ghost" id="btn-back">Indietro</button>
-        <button type="button" class="btn btn-primary" id="btn-next">Avanti</button>
-      </div>
+    <div class="card" id="chip-card">
+      <div class="step-label">Aggiungi giustificativo</div>
+      <div id="chip-board"></div>
     </div>
 
     <div class="card">
@@ -182,13 +204,43 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   <p class="app-loader-text">Caricamento su Drive…</p>
 </div>
 
+<div class="modal-backdrop" id="altro-backdrop" aria-hidden="true">
+  <div class="modal-sc" role="dialog" aria-modal="true" aria-labelledby="altro-title">
+    <div class="modal-head"><h2 id="altro-title">Altro</h2></div>
+    <div class="modal-body">
+      <div class="field">
+        <label for="altro-dettaglio">Di cosa si tratta?</label>
+        <input type="text" id="altro-dettaglio" placeholder="es. Pedaggio, lavanderia…" maxlength="120" autocomplete="off">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" id="altro-annulla">Annulla</button>
+      <button type="button" class="btn btn-primary" id="altro-conferma">Conferma</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="compose-backdrop" aria-hidden="true">
+  <div class="modal-sc" role="dialog" aria-modal="true" aria-labelledby="compose-title">
+    <div class="modal-head"><h2 id="compose-title">Documento</h2></div>
+    <div class="modal-body">
+      <div class="compose-ctx" id="compose-ctx">—</div>
+      <div id="compose-body"></div>
+    </div>
+    <div class="modal-foot" id="compose-foot">
+      <button type="button" class="btn btn-ghost" id="compose-back">Indietro</button>
+      <button type="button" class="btn btn-primary" id="compose-next">Avanti</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="nota-view-backdrop" aria-hidden="true">
   <div class="modal-sc" role="dialog" aria-modal="true" aria-labelledby="ns-view-title">
     <div class="modal-head"><h2 id="ns-view-title">Giustificativo</h2></div>
     <div class="modal-body">
       <img id="ns-view-img" class="sc-view-img" alt="Giustificativo">
       <dl class="sc-view-dl">
-        <dt>Categoria</dt>
+        <dt>Voce</dt>
         <dd id="ns-view-cat">—</dd>
         <dt>Importo</dt>
         <dd id="ns-view-importo">—</dd>
@@ -214,9 +266,11 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 <script src="js/auth.js"></script>
 <script>
 const state = {
-  step: 0,
+  phase: 'tipo', // tipo | dettaglio
   categoria: null,
   pasto: null,
+  mezzo: null,
+  dettaglio: null,
   tipo: null,
   importo: '',
   photo: null,
@@ -244,36 +298,111 @@ function hideLoader() {
   el.setAttribute('aria-busy', 'false');
 }
 
-function stepsForCategoria(cat) {
-  const base = ['categoria'];
-  if (cat === 'cibi_bevande') base.push('pasto');
-  base.push('tipo', 'importo', 'foto');
-  return base;
-}
-
-function currentSteps() {
-  return stepsForCategoria(state.categoria);
-}
-
 const SVG_ATTR = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
 function svgIcon(paths) {
   return '<svg ' + SVG_ATTR + '>' + paths + '</svg>';
 }
 
-/** Icone stroke ad hoc (no emoji) per scelte wizard */
 const CHOICE_ICONS = {
   cibi_bevande: svgIcon('<path d="M8 3v8a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V3"/><path d="M10 13v8"/><path d="M16 3v18"/><path d="M16 8h2a2 2 0 0 1 0 4h-2"/>'),
-  parcheggio: svgIcon('<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 7h4.5a3 3 0 0 1 0 6H9z"/><path d="M9 13v4"/>'),
-  benzina: svgIcon('<path d="M5 21V7l2-4h8l2 4v14"/><path d="M5 11h12"/><path d="M17 11l3 2v5a1.5 1.5 0 0 1-3 0"/><path d="M9 15h4"/>'),
+  mezzi: svgIcon('<path d="M4 16l1.5-6h13L20 16"/><path d="M3 16h18v2a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H4a1 1 0 0 1-1-1v-2z"/>'),
+  altro: svgIcon('<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'),
   colazione: svgIcon('<path d="M6 10h10a4 4 0 0 1 0 8H6z"/><path d="M6 10V8a2 2 0 0 1 2-2h4"/><path d="M18 8c1.2.4 2 1.4 2 2.8"/><path d="M8 21h8"/>'),
   pranzo: svgIcon('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/>'),
   cena: svgIcon('<path d="M12 4c-3 2.5-5 5.5-5 9a5 5 0 0 0 10 0c0-3.5-2-6.5-5-9z"/><path d="M9 21h6"/><path d="M12 17v4"/>'),
+  taxi: svgIcon('<path d="M4 15l1.5-5h13L20 15"/><path d="M3 15h18v3H3z"/><circle cx="7.5" cy="18.5" r="1.5"/><circle cx="16.5" cy="18.5" r="1.5"/><path d="M9 8h6l1 2H8z"/>'),
+  treno: svgIcon('<rect x="6" y="3" width="12" height="14" rx="2"/><path d="M6 10h12M9 17l-2 3M15 17l2 3M10 6h4"/><circle cx="9" cy="13" r="1"/><circle cx="15" cy="13" r="1"/>'),
+  autobus: svgIcon('<rect x="4" y="4" width="16" height="12" rx="2"/><path d="M4 10h16M8 16v2M16 16v2"/><circle cx="8" cy="14" r="1"/><circle cx="16" cy="14" r="1"/>'),
+  benzina: svgIcon('<path d="M5 21V7l2-4h8l2 4v14"/><path d="M5 11h12"/><path d="M17 11l3 2v5a1.5 1.5 0 0 1-3 0"/><path d="M9 15h4"/>'),
   scontrino: svgIcon('<path d="M6 3.5h12v17l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3.5z"/><path d="M9 8h6M9 12h6M9 16h4"/>'),
   fattura: svgIcon('<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M10 12h5M10 16h5M10 8h2"/>'),
   importo: svgIcon('<circle cx="12" cy="12" r="9"/><path d="M12 6v12"/><path d="M15.5 9.5c-.6-1.2-1.8-2-3.5-2-2 0-3.5 1.2-3.5 2.8S10 13 12 13s3.5 1 3.5 2.7c0 1.6-1.5 2.8-3.5 2.8-1.7 0-2.9-.8-3.5-2"/>'),
   camera: svgIcon('<path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'),
   gallery: svgIcon('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M3 16l5-4 4 3 3-2 6 3"/>')
 };
+
+const ICO_INFO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
+
+function openBackdrop(id) {
+  const el = document.getElementById(id);
+  el.classList.add('open');
+  el.setAttribute('aria-hidden', 'false');
+}
+function closeBackdrop(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('open');
+  el.setAttribute('aria-hidden', 'true');
+}
+
+function resetComposeFields() {
+  state.tipo = null;
+  state.importo = '';
+  state.photo = null;
+}
+
+function selectionLabel() {
+  return SRNotaSpese.labelVoce({
+    categoria: state.categoria,
+    pasto: state.pasto,
+    mezzo: state.mezzo,
+    dettaglio: state.dettaglio
+  });
+}
+
+function startCompose(sel) {
+  state.categoria = sel.categoria;
+  state.pasto = sel.pasto || null;
+  state.mezzo = sel.mezzo || null;
+  state.dettaglio = sel.dettaglio || null;
+  resetComposeFields();
+  state.phase = 'tipo';
+  renderCompose();
+  openBackdrop('compose-backdrop');
+}
+
+function renderChipBoard() {
+  const board = document.getElementById('chip-board');
+  function chips(list, onPick) {
+    return '<div class="chip-row">' + list.map(item => {
+      const ico = CHOICE_ICONS[item.id] || CHOICE_ICONS.altro;
+      return '<button type="button" class="chip" data-id="' + item.id + '">'
+        + '<span class="chip-ico">' + ico + '</span>' + item.label + '</button>';
+    }).join('') + '</div>';
+  }
+
+  board.innerHTML =
+    '<div class="chip-section">'
+    + '<div class="chip-title"><span class="choice-ico">' + CHOICE_ICONS.cibi_bevande + '</span>Cibi e bevande</div>'
+    + chips(SRNotaSpese.PASTI)
+    + '</div>'
+    + '<div class="chip-section">'
+    + '<div class="chip-title"><span class="choice-ico">' + CHOICE_ICONS.mezzi + '</span>Mezzi</div>'
+    + chips(SRNotaSpese.MEZZI)
+    + '</div>'
+    + '<div class="chip-section">'
+    + '<div class="chip-title"><span class="choice-ico">' + CHOICE_ICONS.altro + '</span>Altro</div>'
+    + '<div class="chip-row"><button type="button" class="chip" id="chip-altro">'
+    + '<span class="chip-ico">' + CHOICE_ICONS.altro + '</span>Altro</button></div>'
+    + '</div>';
+
+  board.querySelectorAll('.chip-section')[0].querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', () => startCompose({
+      categoria: 'cibi_bevande',
+      pasto: btn.dataset.id
+    }));
+  });
+  board.querySelectorAll('.chip-section')[1].querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', () => startCompose({
+      categoria: 'mezzi',
+      mezzo: btn.dataset.id
+    }));
+  });
+  document.getElementById('chip-altro').addEventListener('click', () => {
+    document.getElementById('altro-dettaglio').value = '';
+    openBackdrop('altro-backdrop');
+    setTimeout(() => document.getElementById('altro-dettaglio').focus(), 50);
+  });
+}
 
 function renderChoices(list, selected) {
   return list.map(item => {
@@ -286,7 +415,60 @@ function renderChoices(list, selected) {
   }).join('');
 }
 
-const ICO_INFO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
+function renderCompose() {
+  document.getElementById('compose-ctx').textContent = selectionLabel();
+  const body = document.getElementById('compose-body');
+  const back = document.getElementById('compose-back');
+  const next = document.getElementById('compose-next');
+
+  if (state.phase === 'tipo') {
+    document.getElementById('compose-title').textContent = 'Scontrino o fattura';
+    back.textContent = 'Annulla';
+    next.style.display = 'none';
+    body.innerHTML = '<div class="choice-grid">' + renderChoices(SRNotaSpese.TIPI, state.tipo) + '</div>';
+    body.querySelectorAll('.choice-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.tipo = btn.dataset.id;
+        state.phase = 'dettaglio';
+        renderCompose();
+      });
+    });
+    return;
+  }
+
+  document.getElementById('compose-title').textContent = 'Importo e foto';
+  back.textContent = 'Indietro';
+  next.style.display = '';
+  next.textContent = 'Salva';
+  const prev = state.photo
+    ? '<img class="preview" alt="Anteprima" src="' + state.photo.dataUrl + '">'
+    : '<p class="empty">Scatta o scegli una foto dello scontrino/fattura.</p>';
+  body.innerHTML =
+    '<div class="field-with-ico">'
+    + '<span class="choice-ico">' + CHOICE_ICONS.importo + '</span>'
+    + '<div class="field"><label for="ns-importo">Euro</label>'
+    + '<input type="text" id="ns-importo" inputmode="decimal" placeholder="es. 12,50" value="'
+    + (state.importo || '') + '"></div></div>'
+    + '<div class="photo-actions" style="margin-top:14px">'
+    + '<button type="button" class="btn btn-ghost btn-with-ico" id="btn-cam">' + CHOICE_ICONS.camera + ' Fotocamera</button>'
+    + '<button type="button" class="btn btn-ghost btn-with-ico" id="btn-gal">' + CHOICE_ICONS.gallery + ' Galleria</button>'
+    + '</div>' + prev;
+  const inp = document.getElementById('ns-importo');
+  inp.addEventListener('input', () => { state.importo = inp.value; });
+  document.getElementById('btn-cam').onclick = () => document.getElementById('file-camera').click();
+  document.getElementById('btn-gal').onclick = () => document.getElementById('file-gallery').click();
+  inp.focus();
+}
+
+function chiudiCompose() {
+  closeBackdrop('compose-backdrop');
+  state.phase = 'tipo';
+  state.categoria = null;
+  state.pasto = null;
+  state.mezzo = null;
+  state.dettaglio = null;
+  resetComposeFields();
+}
 
 function renderLista() {
   const box = document.getElementById('lista-esistenti');
@@ -295,15 +477,13 @@ function renderLista() {
     box.innerHTML = '<p class="empty">Nessun giustificativo su questa tappa.</p>';
     return;
   }
-  const catMap = Object.fromEntries(SRNotaSpese.CATEGORIE.map(c => [c.id, c.label]));
   box.innerHTML = list.map((it, i) => {
-    const cat = catMap[it.categoria] || it.categoria;
-    const pasto = it.pasto ? ' · ' + it.pasto : '';
     const euro = Number(it.importo).toFixed(2).replace('.', ',');
-    const catIco = CHOICE_ICONS[it.categoria] || CHOICE_ICONS.scontrino;
+    const icoKey = it.pasto || it.mezzo || it.categoria || 'scontrino';
+    const catIco = CHOICE_ICONS[icoKey] || CHOICE_ICONS.scontrino;
     return '<button type="button" class="list-item" data-view-idx="' + i + '" title="Apri giustificativo">'
       + '<span class="choice-ico" style="width:34px;height:34px;border-radius:9px">' + catIco + '</span>'
-      + '<span class="list-item-main">' + (it.tipo || '') + ' · ' + cat + pasto + '</span>'
+      + '<span class="list-item-main">' + (it.tipo || '') + ' · ' + SRNotaSpese.labelVoce(it) + '</span>'
       + '<strong class="list-item-amt">€ ' + euro + '</strong>'
       + '<span class="list-item-info">' + ICO_INFO + '</span>'
       + '</button>';
@@ -321,9 +501,7 @@ function apriNotaViewer(it) {
   img.src = SRScontrini.thumbnailUrl(it);
   const tipo = String(it.tipo || '').toLowerCase() === 'fattura' ? 'Fattura' : 'Scontrino';
   document.getElementById('ns-view-title').textContent = tipo;
-  const pasto = it.pasto ? ' · ' + it.pasto : '';
-  document.getElementById('ns-view-cat').textContent =
-    (SRNotaSpese.labelCategoria(it.categoria) || it.categoria || '—') + pasto;
+  document.getElementById('ns-view-cat').textContent = SRNotaSpese.labelVoce(it);
   document.getElementById('ns-view-importo').textContent =
     '€ ' + Number(it.importo).toFixed(2).replace('.', ',');
   document.getElementById('ns-view-orario').textContent = it.created_at
@@ -343,83 +521,7 @@ function apriNotaViewer(it) {
     w.document.close();
     setTimeout(() => w.print(), 400);
   };
-  const bd = document.getElementById('nota-view-backdrop');
-  bd.classList.add('open');
-  bd.setAttribute('aria-hidden', 'false');
-}
-
-function chiudiNotaViewer() {
-  const bd = document.getElementById('nota-view-backdrop');
-  bd.classList.remove('open');
-  bd.setAttribute('aria-hidden', 'true');
-}
-
-function renderStep() {
-  const steps = currentSteps();
-  const key = steps[state.step] || 'categoria';
-  const title = {
-    categoria: 'Categoria',
-    pasto: 'Pasto',
-    tipo: 'Documento',
-    importo: 'Importo speso',
-    foto: 'Foto giustificativo'
-  }[key];
-  document.getElementById('step-title').textContent = title;
-  const body = document.getElementById('step-body');
-  document.getElementById('btn-back').style.visibility = state.step === 0 ? 'hidden' : 'visible';
-  document.getElementById('btn-next').textContent = key === 'foto' ? 'Salva' : 'Avanti';
-
-  if (key === 'categoria') {
-    body.innerHTML = '<div class="choice-grid">' + renderChoices(SRNotaSpese.CATEGORIE, state.categoria) + '</div>';
-    body.querySelectorAll('.choice-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        state.categoria = btn.dataset.id;
-        if (state.categoria !== 'cibi_bevande') state.pasto = null;
-        renderStep();
-      });
-    });
-  } else if (key === 'pasto') {
-    body.innerHTML = '<div class="choice-grid">' + renderChoices(SRNotaSpese.PASTI, state.pasto) + '</div>';
-    body.querySelectorAll('.choice-btn').forEach(btn => {
-      btn.addEventListener('click', () => { state.pasto = btn.dataset.id; renderStep(); });
-    });
-  } else if (key === 'tipo') {
-    body.innerHTML = '<div class="choice-grid">' + renderChoices(SRNotaSpese.TIPI, state.tipo) + '</div>';
-    body.querySelectorAll('.choice-btn').forEach(btn => {
-      btn.addEventListener('click', () => { state.tipo = btn.dataset.id; renderStep(); });
-    });
-  } else if (key === 'importo') {
-    body.innerHTML = '<div class="field-with-ico">'
-      + '<span class="choice-ico">' + CHOICE_ICONS.importo + '</span>'
-      + '<div class="field"><label for="ns-importo">Euro</label>'
-      + '<input type="text" id="ns-importo" inputmode="decimal" placeholder="es. 12,50" value="'
-      + (state.importo || '') + '"></div></div>';
-    const inp = document.getElementById('ns-importo');
-    inp.addEventListener('input', () => { state.importo = inp.value; });
-    inp.focus();
-  } else if (key === 'foto') {
-    const prev = state.photo
-      ? '<img class="preview" alt="Anteprima" src="' + state.photo.dataUrl + '">'
-      : '<p class="empty">Scatta o scegli una foto dello scontrino/fattura.</p>';
-    body.innerHTML = '<div class="photo-actions">'
-      + '<button type="button" class="btn btn-ghost btn-with-ico" id="btn-cam">' + CHOICE_ICONS.camera + ' Fotocamera</button>'
-      + '<button type="button" class="btn btn-ghost btn-with-ico" id="btn-gal">' + CHOICE_ICONS.gallery + ' Galleria</button>'
-      + '</div>' + prev;
-    document.getElementById('btn-cam').onclick = () => document.getElementById('file-camera').click();
-    document.getElementById('btn-gal').onclick = () => document.getElementById('file-gallery').click();
-  }
-}
-
-function canAdvance() {
-  const key = currentSteps()[state.step];
-  if (key === 'categoria') return !!state.categoria;
-  if (key === 'pasto') return !!state.pasto;
-  if (key === 'tipo') return !!state.tipo;
-  if (key === 'importo') {
-    try { SRNotaSpese.parseImporto(state.importo); return true; } catch { return false; }
-  }
-  if (key === 'foto') return !!(state.photo && state.photo.dataUrl);
-  return false;
+  openBackdrop('nota-view-backdrop');
 }
 
 function readFile(file) {
@@ -438,18 +540,8 @@ async function onFile(input) {
   if (!file.type.startsWith('image/')) return toast('Solo immagini', 'err');
   const dataUrl = await readFile(file);
   state.photo = { dataUrl, mime: file.type || 'image/jpeg' };
-  renderStep();
+  if (state.phase === 'dettaglio') renderCompose();
 }
-
-document.getElementById('file-camera').addEventListener('change', e => onFile(e.target));
-document.getElementById('file-gallery').addEventListener('change', e => onFile(e.target));
-
-document.getElementById('btn-back').addEventListener('click', () => {
-  if (state.step > 0) {
-    state.step -= 1;
-    renderStep();
-  }
-});
 
 async function postGoogleScript(payload) {
   const url = (SR_CONFIG || {}).GOOGLE_SCRIPT_URL;
@@ -467,7 +559,12 @@ async function postGoogleScript(payload) {
 }
 
 async function salva() {
-  if (!canAdvance()) return toast('Completa il passo corrente', 'err');
+  try { SRNotaSpese.parseImporto(state.importo); } catch {
+    return toast('Inserisci un importo valido', 'err');
+  }
+  if (!state.photo || !state.photo.dataUrl) return toast('Aggiungi una foto', 'err');
+  if (!state.tipo) return toast('Scegli scontrino o fattura', 'err');
+
   const u = SRAuth.getUser() || {};
   showLoader('Caricamento foto su Drive…');
   try {
@@ -484,6 +581,8 @@ async function salva() {
       tipo: state.tipo,
       categoria: state.categoria,
       pasto: state.pasto,
+      mezzo: state.mezzo,
+      dettaglio: state.dettaglio,
       importo: state.importo,
       foto_url: up.url,
       foto_id: up.fileId,
@@ -506,14 +605,8 @@ async function salva() {
     SRAuth.updateTappaNotaSpese(state.tappa.id, json, data.note);
     const refreshed = SRAuth.getTrasferteTappe().find(r => Number(r.id) === Number(state.tappa.id));
     if (refreshed) state.tappa = refreshed;
-    state.step = 0;
-    state.categoria = null;
-    state.pasto = null;
-    state.tipo = null;
-    state.importo = '';
-    state.photo = null;
+    chiudiCompose();
     renderLista();
-    renderStep();
     hideLoader();
     toast('Giustificativo salvato', 'ok');
   } catch (e) {
@@ -522,20 +615,40 @@ async function salva() {
   }
 }
 
-document.getElementById('btn-next').addEventListener('click', () => {
-  if (!canAdvance()) return toast('Completa il passo corrente', 'err');
-  const steps = currentSteps();
-  if (state.step >= steps.length - 1) {
-    salva();
-    return;
-  }
-  state.step += 1;
-  renderStep();
+document.getElementById('file-camera').addEventListener('change', e => onFile(e.target));
+document.getElementById('file-gallery').addEventListener('change', e => onFile(e.target));
+
+document.getElementById('altro-annulla').addEventListener('click', () => closeBackdrop('altro-backdrop'));
+document.getElementById('altro-conferma').addEventListener('click', () => {
+  const dettaglio = String(document.getElementById('altro-dettaglio').value || '').trim();
+  if (!dettaglio) return toast('Specifica di cosa si tratta', 'err');
+  closeBackdrop('altro-backdrop');
+  startCompose({ categoria: 'altro', dettaglio });
+});
+document.getElementById('altro-backdrop').addEventListener('click', e => {
+  if (e.target.id === 'altro-backdrop') closeBackdrop('altro-backdrop');
 });
 
-document.getElementById('ns-view-chiudi').addEventListener('click', chiudiNotaViewer);
+document.getElementById('compose-back').addEventListener('click', () => {
+  if (state.phase === 'dettaglio') {
+    state.phase = 'tipo';
+    state.importo = '';
+    state.photo = null;
+    renderCompose();
+    return;
+  }
+  chiudiCompose();
+});
+document.getElementById('compose-next').addEventListener('click', () => {
+  if (state.phase === 'dettaglio') salva();
+});
+document.getElementById('compose-backdrop').addEventListener('click', e => {
+  if (e.target.id === 'compose-backdrop') chiudiCompose();
+});
+
+document.getElementById('ns-view-chiudi').addEventListener('click', () => closeBackdrop('nota-view-backdrop'));
 document.getElementById('nota-view-backdrop').addEventListener('click', e => {
-  if (e.target.id === 'nota-view-backdrop') chiudiNotaViewer();
+  if (e.target.id === 'nota-view-backdrop') closeBackdrop('nota-view-backdrop');
 });
 
 (async function boot() {
@@ -556,8 +669,8 @@ document.getElementById('nota-view-backdrop').addEventListener('click', e => {
     document.getElementById('tappa-label').innerHTML =
       SRNotaSpese.labelTappa(tappa)
       + '<small>' + (tappa.trasferta_id || '') + (tappa.cliente_tappa ? ' · ' + tappa.cliente_tappa : '') + '</small>';
+    renderChipBoard();
     renderLista();
-    renderStep();
   } catch (ex) {
     if (SRAuth.isNotEnabledError(ex)) SRAuth.redirectNotEnabled();
     else SRAuth.redirectToLogin('api');
