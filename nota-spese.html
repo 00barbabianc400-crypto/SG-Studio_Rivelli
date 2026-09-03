@@ -87,7 +87,18 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .field-with-ico { display: flex; align-items: flex-start; gap: 12px; }
 .field-with-ico .choice-ico { margin-top: 18px; }
 .field-with-ico .field { flex: 1; margin-bottom: 0; }
-.photo-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.photo-actions {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
+  justify-content: center; align-items: center;
+}
+.btn-cam {
+  background: #e8ebf0; border: 1.5px solid #cfd6e0; color: #3a4a60;
+}
+.btn-cam:hover { background: #dde2ea; border-color: #b8c2d0; }
+.btn-gal {
+  background: #e6f6ee; border: 1.5px solid #b7e4cb; color: #0f7a45;
+}
+.btn-gal:hover { background: #d5f0e2; border-color: #95d4b0; }
 .btn {
   appearance: none; border: none; border-radius: var(--r2); padding: 12px 16px; font: inherit; font-weight: 600;
   cursor: pointer; font-size: 14px;
@@ -146,7 +157,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(80px);
   background: var(--navy); color: #fff; padding: 12px 16px; border-radius: var(--r2);
-  font-size: 13px; z-index: 2000; opacity: 0; transition: .25s; max-width: calc(100vw - 32px);
+  font-size: 13px; z-index: 11000; opacity: 0; transition: .25s; max-width: calc(100vw - 32px);
+  pointer-events: none;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast.ok { background: var(--ok); }
@@ -464,8 +476,8 @@ function renderCompose() {
     + '<input type="text" id="ns-importo" inputmode="decimal" placeholder="es. 12,50" value="'
     + (state.importo || '') + '"></div></div>'
     + '<div class="photo-actions" style="margin-top:14px">'
-    + '<button type="button" class="btn btn-ghost btn-with-ico" id="btn-cam">' + CHOICE_ICONS.camera + ' Fotocamera</button>'
-    + '<button type="button" class="btn btn-ghost btn-with-ico" id="btn-gal">' + CHOICE_ICONS.gallery + ' Galleria</button>'
+    + '<button type="button" class="btn btn-cam btn-with-ico" id="btn-cam">' + CHOICE_ICONS.camera + ' Fotocamera</button>'
+    + '<button type="button" class="btn btn-gal btn-with-ico" id="btn-gal">' + CHOICE_ICONS.gallery + ' Galleria</button>'
     + '</div>' + prev;
   const inp = document.getElementById('ns-importo');
   inp.addEventListener('input', () => { state.importo = inp.value; });
