@@ -125,6 +125,12 @@ select, input { font: inherit; }
 
 /* ─── PAGE HEAD ────────────────────────────────────────────── */
 .page-head { margin-top: 36px; margin-bottom: 24px; }
+.page-head-row {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  flex-wrap: wrap;
+}
+.page-head-row .page-title { margin: 0; }
+.page-head-row .page-sub { margin: 6px 0 0; }
 .page-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--navy); letter-spacing: -0.01em; }
 .page-sub { font-size: 12.5px; color: var(--text-3); margin-top: 4px; }
 
@@ -444,6 +450,58 @@ tr:hover .btn-del { opacity: 1; }
 .mon-kpi-val { font-family: 'DM Mono', monospace; font-size: 26px; font-weight: 500; color: var(--navy); margin-top: 6px; line-height: 1; }
 .mon-kpi-val.warn { color: oklch(48% 0.16 58); }
 .mon-kpi-val.ok { color: var(--ok); }
+.prog-panel {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3);
+  box-shadow: var(--shadow-sm); padding: 16px 18px 18px; margin: 0 0 20px;
+}
+.prog-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.prog-panel-head h2 { margin: 0; font-size: 15px; font-weight: 700; color: var(--navy); }
+.prog-panel-head p { margin: 4px 0 0; font-size: 12px; color: var(--text-3); }
+.prog-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media (max-width: 700px) { .prog-kpis { grid-template-columns: 1fr; } }
+.prog-kpi {
+  appearance: none; border: 1px solid var(--border); background: oklch(98% 0.008 244);
+  border-radius: 12px; padding: 12px 14px; text-align: left; cursor: pointer; font: inherit; color: inherit;
+}
+.prog-kpi:hover { border-color: var(--blue-lt); }
+.prog-kpi-label { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); }
+.prog-kpi-val { font-family: 'DM Mono', monospace; font-size: 24px; font-weight: 500; margin-top: 4px; line-height: 1; }
+.prog-kpi.is-low .prog-kpi-val { color: var(--err); }
+.prog-kpi.is-mid .prog-kpi-val { color: oklch(48% 0.16 58); }
+.prog-kpi.is-high .prog-kpi-val { color: var(--ok); }
+.prog-modal {
+  background: var(--surface); border-radius: var(--r3); box-shadow: var(--shadow);
+  border: 1px solid var(--border); width: min(860px, calc(100vw - 24px));
+  max-height: min(92vh, 880px); display: flex; flex-direction: column; overflow: hidden;
+}
+.prog-modal-head { padding: 18px 20px 12px; border-bottom: 1px solid var(--border); }
+.prog-modal-head h2 { margin: 0; font-size: 16px; font-weight: 700; color: var(--navy); }
+.prog-modal-head p { margin: 6px 0 0; font-size: 12px; color: var(--text-3); }
+.prog-modal-body { padding: 16px 20px; overflow: auto; flex: 1; }
+.prog-modal-foot {
+  padding: 12px 20px 16px; border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end;
+}
+.prog-cli-card {
+  border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 14px; background: #fff;
+}
+.prog-cli-name { font-size: 15px; font-weight: 700; color: var(--navy); margin: 0 0 10px; }
+.prog-obj { border-top: 1px dashed var(--border); padding-top: 12px; margin-top: 12px; }
+.prog-obj:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+.prog-obj-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+.prog-obj-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
+.prog-obj-meta { font-size: 12px; color: var(--text-2); display: grid; gap: 4px; margin: 8px 0 10px; }
+.prog-obj-meta b { color: var(--text); }
+.prog-tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
+.prog-tag.ok { background: oklch(94% 0.05 145); color: var(--ok); }
+.prog-tag.bad { background: oklch(95% 0.04 25); color: var(--err); }
+.prog-tag.na { background: var(--hover, oklch(96% 0.01 244)); color: var(--text-3); }
+.prog-bar-row { display: grid; grid-template-columns: minmax(90px, 28%) 1fr 72px; gap: 10px; align-items: center; margin-bottom: 8px; font-size: 12px; }
+.prog-bar-wrap { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.prog-bar { height: 100%; border-radius: 4px; min-width: 2px; background: linear-gradient(90deg, var(--navy), var(--blue)); }
+.prog-bar.is-low { background: linear-gradient(90deg, oklch(50% 0.18 25), oklch(62% 0.2 25)); }
+.prog-bar.is-mid { background: linear-gradient(90deg, oklch(52% 0.14 58), oklch(62% 0.16 58)); }
+.prog-bar.is-high { background: linear-gradient(90deg, oklch(52% 0.14 145), oklch(62% 0.16 145)); }
 .mon-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 20px; }
 @media (max-width: 900px) { .mon-grid { grid-template-columns: 1fr; } }
 .mon-card {
@@ -465,6 +523,51 @@ tr:hover .btn-del { opacity: 1; }
 .mon-chart-val { font-family: 'DM Mono', monospace; font-size: 11.5px; color: var(--navy); text-align: right; }
 .mon-empty { padding: 24px; text-align: center; color: var(--text-3); font-size: 13px; }
 .mon-loading { padding: 48px; text-align: center; color: var(--text-3); }
+.obj-modal {
+  background: var(--surface); border-radius: var(--r3); box-shadow: var(--shadow);
+  border: 1px solid var(--border); width: min(720px, calc(100vw - 24px));
+  max-height: min(90vh, 820px); display: flex; flex-direction: column; overflow: hidden;
+}
+.obj-modal-head { padding: 18px 20px 12px; border-bottom: 1px solid var(--border); }
+.obj-modal-head h2 { margin: 0; font-size: 16px; font-weight: 700; color: var(--navy); }
+.obj-modal-head p { margin: 6px 0 0; font-size: 12px; color: var(--text-3); }
+.obj-modal-body { padding: 16px 20px; overflow: auto; flex: 1; }
+.obj-modal-foot {
+  padding: 12px 20px 16px; border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;
+}
+.obj-search-wrap { position: relative; margin-bottom: 14px; }
+.obj-search-wrap input { width: 100%; }
+.obj-cli-list {
+  max-height: 160px; overflow: auto; border: 1px solid var(--border);
+  border-radius: 10px; background: oklch(98% 0.008 244); margin-top: 8px;
+}
+.obj-cli-item {
+  display: block; width: 100%; text-align: left; border: none; background: transparent;
+  padding: 10px 12px; font: inherit; cursor: pointer; color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.obj-cli-item:last-child { border-bottom: none; }
+.obj-cli-item:hover, .obj-cli-item.is-active { background: oklch(95% 0.02 244); color: var(--blue); }
+.obj-cli-item small { display: block; font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.obj-editor { display: none; }
+.obj-editor.is-open { display: block; }
+.obj-editor-title { font-size: 14px; font-weight: 700; color: var(--navy); margin: 0 0 12px; }
+.obj-card {
+  border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 12px;
+  background: #fff;
+}
+.obj-card-head { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 10px; }
+.obj-card-head .field { flex: 1; min-width: 140px; }
+.obj-card-head label, .obj-ms label {
+  display: block; font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--text-3); margin-bottom: 4px;
+}
+.obj-ms-row {
+  display: grid; grid-template-columns: 1fr 90px 36px; gap: 8px; align-items: end; margin-bottom: 8px;
+}
+.obj-actions-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.obj-warn { font-size: 12px; color: oklch(48% 0.16 58); margin: 0 0 10px; }
 .mon-detail-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r3); box-shadow: var(--shadow-sm); overflow: hidden; }
 .mon-detail-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .mon-detail-table th {
@@ -755,8 +858,13 @@ tr:hover .btn-del { opacity: 1; }
   <div id="view-monitoraggio" class="view-panel hidden">
 
     <div class="page-head">
-      <h1 class="page-title">Monitoraggio timesheet</h1>
-      <p class="page-sub" id="mon-page-sub">Consultazione righe registrate · dati da Data Table</p>
+      <div class="page-head-row">
+        <div>
+          <h1 class="page-title">Monitoraggio timesheet</h1>
+          <p class="page-sub" id="mon-page-sub">Consultazione righe registrate · dati da Data Table</p>
+        </div>
+        <button type="button" class="btn btn-primary hidden" id="btn-obiettivi-cli">Obiettivi clienti</button>
+      </div>
     </div>
 
     <div id="mon-loading" class="mon-loading hidden">Caricamento dati…</div>
@@ -798,6 +906,30 @@ tr:hover .btn-del { opacity: 1; }
         <div class="mon-kpi">
           <div class="mon-kpi-label">Righe</div>
           <div class="mon-kpi-val" id="mon-kpi-righe">0</div>
+        </div>
+      </div>
+
+      <div class="prog-panel" id="prog-panel">
+        <div class="prog-panel-head">
+          <div>
+            <h2>Gestione progressione attività</h2>
+            <p>Milestone sotto il 20%, intorno al 50% (20–70%) e sopra il 70% · ore timesheet vs obiettivi</p>
+          </div>
+          <button type="button" class="btn btn-ghost" id="btn-prog-open">Apri dettaglio</button>
+        </div>
+        <div class="prog-kpis">
+          <button type="button" class="prog-kpi is-low" data-prog-bucket="sotto20">
+            <div class="prog-kpi-label">Sotto 20%</div>
+            <div class="prog-kpi-val" id="prog-kpi-low">0</div>
+          </button>
+          <button type="button" class="prog-kpi is-mid" data-prog-bucket="circa50">
+            <div class="prog-kpi-label">Intorno al 50%</div>
+            <div class="prog-kpi-val" id="prog-kpi-mid">0</div>
+          </button>
+          <button type="button" class="prog-kpi is-high" data-prog-bucket="sopra70">
+            <div class="prog-kpi-label">Sopra 70%</div>
+            <div class="prog-kpi-val" id="prog-kpi-high">0</div>
+          </button>
         </div>
       </div>
 
@@ -997,10 +1129,58 @@ tr:hover .btn-del { opacity: 1; }
   </div>
 </div>
 
+<div class="modal-backdrop" id="obj-backdrop" aria-hidden="true">
+  <div class="obj-modal" role="dialog" aria-labelledby="obj-modal-title" aria-modal="true">
+    <div class="obj-modal-head">
+      <h2 id="obj-modal-title">Obiettivi clienti</h2>
+      <p>Cerca un cliente, imposta obiettivi con costo e milestone (attività × ore target)</p>
+    </div>
+    <div class="obj-modal-body">
+      <div class="obj-search-wrap">
+        <label for="obj-search" style="display:block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:6px">Cliente</label>
+        <input type="search" id="obj-search" class="client-input" placeholder="Cerca cliente…" autocomplete="off">
+        <div class="obj-cli-list" id="obj-cli-list"></div>
+      </div>
+      <div class="obj-editor" id="obj-editor">
+        <p class="obj-warn hidden" id="obj-no-id">Questo cliente non ha id Data Table: salvataggio non disponibile finché retrieve non espone <code>id</code>.</p>
+        <h3 class="obj-editor-title" id="obj-editor-title">—</h3>
+        <div id="obj-list"></div>
+        <div class="obj-actions-row">
+          <button type="button" class="btn btn-ghost" id="obj-add">+ Obiettivo</button>
+        </div>
+      </div>
+    </div>
+    <div class="obj-modal-foot">
+      <button type="button" class="btn btn-ghost" id="obj-close">Chiudi</button>
+      <button type="button" class="btn btn-primary" id="obj-save" disabled>Salva</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="prog-backdrop" aria-hidden="true">
+  <div class="prog-modal" role="dialog" aria-labelledby="prog-modal-title" aria-modal="true">
+    <div class="prog-modal-head">
+      <h2 id="prog-modal-title">Gestione progressione attività</h2>
+      <p>Obiettivi attivi, avanzamento milestone e confronto costo fatturato vs costo interno (ore × costo_orario)</p>
+    </div>
+    <div class="prog-modal-body">
+      <div class="obj-search-wrap">
+        <label for="prog-search" style="display:block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:6px">Cliente</label>
+        <input type="search" id="prog-search" class="client-input" placeholder="Cerca cliente…" autocomplete="off">
+      </div>
+      <div id="prog-detail"></div>
+    </div>
+    <div class="prog-modal-foot">
+      <button type="button" class="btn btn-ghost" id="prog-close">Chiudi</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/push.js"></script>
+<script src="js/obiettivi-cliente.js"></script>
 <script>
 /* ═══════════════════════════════════════════════
    DATI 
@@ -1010,6 +1190,7 @@ const WEBHOOK_SAVE = SR_CONFIG.WEBHOOK_TS_SAVE;
 const WEBHOOK_UPDATE = SR_CONFIG.WEBHOOK_TS_UPDATE;
 const WEBHOOK_MONITOR = SR_CONFIG.WEBHOOK_TS_MONITOR;
 const WEBHOOK_LOAD_TIMESHEET = SR_CONFIG.WEBHOOK_TS_LOAD;
+const WEBHOOK_TS_CONFIG = SR_CONFIG.WEBHOOK_TS_CONFIG;
 
 const LUOGHI = ['UFFICIO', 'SMART', 'FUORISEDE'];
 
@@ -1020,9 +1201,13 @@ const SLOT_DEFAULT = [
 ];
 
 let CLIENTI = [];
+let CLIENTI_ROWS = [];
+let CLIENTI_ROWS_FULL = [];
 let ATTIVITA = [];
 let SLOT_ORE = [];
 let DIPENDENTI = [];
+let DIPENDENTI_ROWS = [];
+let DIPENDENTI_RATES = new Map();
 let parametriPronti = false;
 let dipendenteMatch = null;
 let timesheetAutorizzato = true;
@@ -1522,17 +1707,33 @@ function normalizzaElencoRisposta(payload) {
 
 /** Risposta n8n: array misto con chiavi Dipendenti | Cliente | Attivita | Ore */
 function parseRetrieveData(rows) {
-  const out = { dipendenti: [], clienti: [], attivita: [], fasceOre: [] };
+  const out = { dipendenti: [], dipendentiRows: [], clienti: [], attivita: [], fasceOre: [] };
+  const clientiByName = new Map();
+  const dipByName = new Map();
   rows.forEach(row => {
     if (!row || typeof row !== 'object') return;
-    if (row.Dipendenti) out.dipendenti.push(String(row.Dipendenti).trim());
-    else if (row.Cliente) out.clienti.push(String(row.Cliente).trim());
-    else if (row.Attivita) out.attivita.push(String(row.Attivita).trim());
+    if (row.Dipendenti) {
+      const d = (typeof SRObiettiviCliente !== 'undefined' && SRObiettiviCliente.normalizeDipendenteRow)
+        ? SRObiettiviCliente.normalizeDipendenteRow(row)
+        : { nome: String(row.Dipendenti).trim(), costo_orario: 0 };
+      if (!d || !d.nome) return;
+      dipByName.set(d.nome.toLowerCase(), d);
+    } else if (row.Cliente || row.cliente) {
+      const nome = String(row.Cliente || row.cliente || '').trim();
+      if (!nome) return;
+      const key = nome.toLowerCase();
+      const id = row.id != null && row.id !== '' ? row.id : null;
+      const prev = clientiByName.get(key);
+      if (!prev || (id != null && prev.id == null)) {
+        clientiByName.set(key, { id, nome, obiettivi: [], attivita_x_ore: [] });
+      }
+    } else if (row.Attivita) out.attivita.push(String(row.Attivita).trim());
     else if (row.Ore) out.fasceOre.push(String(row.Ore).trim());
   });
   const dedupe = arr => [...new Set(arr)].filter(Boolean);
-  out.dipendenti = dedupe(out.dipendenti);
-  out.clienti = dedupe(out.clienti);
+  out.dipendentiRows = [...dipByName.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
+  out.dipendenti = out.dipendentiRows.map(d => d.nome);
+  out.clienti = [...clientiByName.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
   out.attivita = dedupe(out.attivita);
   out.fasceOre = dedupe(out.fasceOre);
   return out;
@@ -1572,8 +1773,16 @@ async function caricaParametri() {
     document.body.classList.remove('app-loading');
     throw new Error('elenchi incompleti (dipendenti, clienti, attività o fasce orarie)');
   }
-  DIPENDENTI = parsed.dipendenti;
-  CLIENTI = parsed.clienti;
+  DIPENDENTI_ROWS = parsed.dipendentiRows && parsed.dipendentiRows.length
+    ? parsed.dipendentiRows
+    : parsed.dipendenti.map(n => ({ nome: n, costo_orario: 0 }));
+  DIPENDENTI = DIPENDENTI_ROWS.map(d => d.nome);
+  DIPENDENTI_RATES = (typeof SRObiettiviCliente !== 'undefined' && SRObiettiviCliente.buildCostoOrarioMap)
+    ? SRObiettiviCliente.buildCostoOrarioMap(DIPENDENTI_ROWS)
+    : new Map();
+  CLIENTI_ROWS_FULL = parsed.clienti.map(c => JSON.parse(JSON.stringify(c)));
+  CLIENTI_ROWS = CLIENTI_ROWS_FULL.map(c => JSON.parse(JSON.stringify(c)));
+  CLIENTI = CLIENTI_ROWS.map(c => c.nome);
   ATTIVITA = parsed.attivita;
   SLOT_ORE = parsed.fasceOre;
   parametriPronti = true;
@@ -2583,11 +2792,23 @@ function impostaLayoutMonitor(abilitato) {
   monitorAbilitato = !!abilitato;
   const analytics = document.getElementById('mon-analytics');
   const sub = document.getElementById('mon-page-sub');
+  const btnObj = document.getElementById('btn-obiettivi-cli');
   if (analytics) analytics.classList.toggle('hidden', !monitorAbilitato);
+  if (btnObj) btnObj.classList.toggle('hidden', !monitorAbilitato);
   if (sub) {
     sub.textContent = monitorAbilitato
       ? 'Analytics su ore, clienti, attività e straordinari · dati da Data Table'
       : 'Consultazione righe registrate · dati da Data Table';
+  }
+  // Non-admin: niente obiettivi/costo in memoria. Admin: non toccare (caricati via config get).
+  if (!monitorAbilitato) {
+    CLIENTI_ROWS_FULL = CLIENTI_ROWS_FULL.map(c => ({
+      id: c.id,
+      nome: c.nome,
+      obiettivi: [],
+      attivita_x_ore: []
+    }));
+    CLIENTI_ROWS = CLIENTI_ROWS_FULL.map(c => ({ ...c }));
   }
 }
 
@@ -2997,6 +3218,7 @@ function applicaFiltriMonitor({ refreshTblFiltri = true } = {}) {
     renderBarChart('mon-chart-dip', sommaPerChiave(righe, 'dipendente'));
     renderBarChart('mon-chart-extra', sommaPerChiave(righe.filter(r => r.isExtra), 'cliente'), { extra: true });
     renderDettaglioRighe(righeDettaglio);
+    renderProgressione(righe);
     return;
   }
 
@@ -3041,7 +3263,12 @@ async function caricaMonitoraggio(force) {
     impostaLayoutMonitor(abilitato);
     monitorDatiRaw = estraiMonitorRighe(raw).map(normalizzaRigaMonitor);
     monitorCaricato = true;
-    if (monitorAbilitato) popolaFiltriMonitor();
+    if (monitorAbilitato) {
+      popolaFiltriMonitor();
+      try { await caricaObiettiviDaConfig(); } catch (e) {
+        console.warn('[config-data]', e);
+      }
+    }
     loading.classList.add('hidden');
     dash.classList.remove('hidden');
     applicaFiltriMonitor();
@@ -3090,6 +3317,400 @@ document.getElementById('mon-page-prev').addEventListener('click', () => {
 document.getElementById('mon-page-next').addEventListener('click', () => {
   monDetailPage += 1;
   applicaFiltriMonitor({ refreshTblFiltri: false });
+});
+
+/* ═══════════════════════════════════════════════
+   OBIETTIVI CLIENTI (solo monitorAbilitato)
+═══════════════════════════════════════════════ */
+let objDraft = null;
+let objSelectedNome = '';
+
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function findClienteRow(nome) {
+  const key = String(nome || '').trim().toLowerCase();
+  return CLIENTI_ROWS.find(c => String(c.nome).toLowerCase() === key)
+    || CLIENTI_ROWS_FULL.find(c => String(c.nome).toLowerCase() === key)
+    || null;
+}
+
+function syncClienteRowCache(row) {
+  if (!row || !row.nome) return;
+  const key = row.nome.toLowerCase();
+  const upsert = (arr) => {
+    const i = arr.findIndex(c => String(c.nome).toLowerCase() === key);
+    const copy = JSON.parse(JSON.stringify(row));
+    if (i >= 0) arr[i] = copy;
+    else arr.push(copy);
+  };
+  upsert(CLIENTI_ROWS_FULL);
+  if (monitorAbilitato) upsert(CLIENTI_ROWS);
+  CLIENTI = CLIENTI_ROWS_FULL.map(c => c.nome).sort((a, b) => a.localeCompare(b, 'it'));
+}
+
+function renderObjCliList(q) {
+  const listEl = document.getElementById('obj-cli-list');
+  if (!listEl) return;
+  const lq = String(q || '').trim().toLowerCase();
+  const source = monitorAbilitato ? CLIENTI_ROWS_FULL : CLIENTI_ROWS;
+  const list = (source || []).filter(c => !lq || c.nome.toLowerCase().includes(lq));
+  if (!list.length) {
+    listEl.innerHTML = '<div class="client-dd-empty" style="padding:10px 12px">Nessun cliente</div>';
+    return;
+  }
+  listEl.innerHTML = list.slice(0, 80).map(c => {
+    const nObj = (c.obiettivi && c.obiettivi.length) || 0;
+    const active = c.nome === objSelectedNome ? ' is-active' : '';
+    return `<button type="button" class="obj-cli-item${active}" data-cli="${escHtml(c.nome)}">
+      ${escHtml(c.nome)}
+      <small>${nObj ? (nObj + ' obiettiv' + (nObj === 1 ? 'o' : 'i')) : 'Nessun obiettivo'}${c.id == null ? ' · senza id DT' : ''}</small>
+    </button>`;
+  }).join('');
+  listEl.querySelectorAll('[data-cli]').forEach(btn => {
+    btn.addEventListener('click', () => selectObjCliente(btn.getAttribute('data-cli')));
+  });
+}
+
+function attivitaOptionsHtml(selected) {
+  const sel = String(selected || '');
+  return ATTIVITA.map(a =>
+    `<option value="${escHtml(a)}"${a === sel ? ' selected' : ''}>${escHtml(a)}</option>`
+  ).join('');
+}
+
+function renderObjEditor() {
+  const editor = document.getElementById('obj-editor');
+  const title = document.getElementById('obj-editor-title');
+  const list = document.getElementById('obj-list');
+  const noId = document.getElementById('obj-no-id');
+  const saveBtn = document.getElementById('obj-save');
+  if (!editor || !objDraft) {
+    if (editor) editor.classList.remove('is-open');
+    if (saveBtn) saveBtn.disabled = true;
+    return;
+  }
+  editor.classList.add('is-open');
+  title.textContent = objDraft.nome;
+  const missingId = objDraft.id == null || objDraft.id === '';
+  if (noId) noId.classList.toggle('hidden', !missingId);
+  if (saveBtn) saveBtn.disabled = missingId;
+
+  list.innerHTML = (objDraft.obiettivi || []).map((o, oi) => {
+    const ms = (o.milestone || []).map((m, mi) => `
+      <div class="obj-ms-row" data-oi="${oi}" data-mi="${mi}">
+        <div class="obj-ms">
+          <label>Attività</label>
+          <select class="cell-select obj-ms-att">${attivitaOptionsHtml(m.attivita)}</select>
+        </div>
+        <div class="obj-ms">
+          <label>Ore</label>
+          <input type="number" min="0" step="0.5" class="client-input obj-ms-ore" value="${escHtml(String(m.ore))}">
+        </div>
+        <button type="button" class="btn btn-ghost obj-ms-del" title="Rimuovi" style="padding:8px 10px">×</button>
+      </div>`).join('');
+    return `<div class="obj-card" data-oi="${oi}">
+      <div class="obj-card-head">
+        <div class="field">
+          <label>Obiettivo</label>
+          <input type="text" class="client-input obj-nome" value="${escHtml(o.nome)}">
+        </div>
+        <div class="field" style="max-width:140px">
+          <label>Costo (€)</label>
+          <input type="text" class="client-input obj-costo" inputmode="decimal" value="${escHtml(String(o.costo))}">
+        </div>
+        <button type="button" class="btn btn-ghost obj-del" style="padding:8px 12px">Elimina</button>
+      </div>
+      <div class="obj-ms">${ms || '<p class="obj-warn">Nessuna milestone</p>'}
+        <button type="button" class="btn btn-ghost obj-ms-add" data-oi="${oi}" style="font-size:12px;padding:6px 12px">+ Milestone</button>
+      </div>
+    </div>`;
+  }).join('') || '<p class="mon-empty">Nessun obiettivo — aggiungine uno</p>';
+
+  list.querySelectorAll('.obj-card').forEach(card => {
+    const oi = Number(card.dataset.oi);
+    card.querySelector('.obj-nome')?.addEventListener('input', e => {
+      objDraft.obiettivi[oi].nome = e.target.value;
+    });
+    card.querySelector('.obj-costo')?.addEventListener('input', e => {
+      objDraft.obiettivi[oi].costo = e.target.value;
+    });
+    card.querySelector('.obj-del')?.addEventListener('click', () => {
+      objDraft.obiettivi.splice(oi, 1);
+      renderObjEditor();
+    });
+    card.querySelectorAll('.obj-ms-row').forEach(row => {
+      const mi = Number(row.dataset.mi);
+      row.querySelector('.obj-ms-att')?.addEventListener('change', e => {
+        objDraft.obiettivi[oi].milestone[mi].attivita = e.target.value;
+      });
+      row.querySelector('.obj-ms-ore')?.addEventListener('input', e => {
+        objDraft.obiettivi[oi].milestone[mi].ore = e.target.value;
+      });
+      row.querySelector('.obj-ms-del')?.addEventListener('click', () => {
+        objDraft.obiettivi[oi].milestone.splice(mi, 1);
+        renderObjEditor();
+      });
+    });
+    card.querySelector('.obj-ms-add')?.addEventListener('click', () => {
+      const first = ATTIVITA[0] || '';
+      if (!objDraft.obiettivi[oi].milestone) objDraft.obiettivi[oi].milestone = [];
+      objDraft.obiettivi[oi].milestone.push({ attivita: first, ore: 1 });
+      renderObjEditor();
+    });
+  });
+}
+
+function selectObjCliente(nome) {
+  objSelectedNome = nome;
+  const row = findClienteRow(nome);
+  if (!row) return;
+  objDraft = JSON.parse(JSON.stringify(row));
+  if (!Array.isArray(objDraft.obiettivi)) objDraft.obiettivi = [];
+  renderObjCliList(document.getElementById('obj-search')?.value || '');
+  renderObjEditor();
+}
+
+async function caricaObiettiviDaConfig() {
+  const resp = await SRAuth.fetch(WEBHOOK_TS_CONFIG, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ action: 'get' })
+  });
+  const raw = await resp.json().catch(() => null);
+  if (!resp.ok || (raw && raw.ok === false) || (raw && raw.action === 'error')) {
+    throw new Error((raw && raw.message) || ('HTTP ' + resp.status));
+  }
+  const rows = Array.isArray(raw) ? raw
+    : (raw && Array.isArray(raw.clienti) ? raw.clienti
+      : (raw && Array.isArray(raw.data) ? raw.data : normalizzaElencoRisposta(raw)));
+  const byName = new Map(CLIENTI_ROWS_FULL.map(c => [c.nome.toLowerCase(), { ...c }]));
+  rows.forEach(row => {
+    const parsed = SRObiettiviCliente.normalizeClienteRow(row);
+    if (!parsed || !parsed.nome) return;
+    const key = parsed.nome.toLowerCase();
+    const base = byName.get(key) || { id: null, nome: parsed.nome, obiettivi: [], attivita_x_ore: [] };
+    byName.set(key, {
+      id: parsed.id != null ? parsed.id : base.id,
+      nome: parsed.nome,
+      obiettivi: parsed.obiettivi || [],
+      attivita_x_ore: parsed.attivita_x_ore || []
+    });
+  });
+  CLIENTI_ROWS_FULL = [...byName.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
+  CLIENTI_ROWS = CLIENTI_ROWS_FULL.map(c => JSON.parse(JSON.stringify(c)));
+  CLIENTI = CLIENTI_ROWS_FULL.map(c => c.nome);
+}
+
+async function openObjModal() {
+  if (!monitorAbilitato) return;
+  objDraft = null;
+  objSelectedNome = '';
+  const search = document.getElementById('obj-search');
+  if (search) search.value = '';
+  document.getElementById('obj-editor')?.classList.remove('is-open');
+  document.getElementById('obj-save').disabled = true;
+  document.getElementById('obj-backdrop').classList.add('open');
+  document.getElementById('obj-backdrop').setAttribute('aria-hidden', 'false');
+  const listEl = document.getElementById('obj-cli-list');
+  if (listEl) listEl.innerHTML = '<div class="client-dd-empty" style="padding:10px 12px">Caricamento…</div>';
+  try {
+    await caricaObiettiviDaConfig();
+    renderObjCliList(search?.value || '');
+  } catch (e) {
+    if (listEl) listEl.innerHTML = '<div class="client-dd-empty" style="padding:10px 12px">Errore caricamento</div>';
+    showToast('⚠ Obiettivi: ' + (e.message || e), 'error');
+  }
+}
+
+function closeObjModal() {
+  document.getElementById('obj-backdrop').classList.remove('open');
+  document.getElementById('obj-backdrop').setAttribute('aria-hidden', 'true');
+  objDraft = null;
+  objSelectedNome = '';
+}
+
+async function salvaObiettiviCliente() {
+  if (!objDraft || !monitorAbilitato) return;
+  const O = SRObiettiviCliente;
+  let normalized;
+  try {
+    normalized = (objDraft.obiettivi || []).map(o => O.normalizeObiettivo(o, { keepId: true }));
+  } catch (e) {
+    showToast(e.message || 'Dati obiettivo non validi', 'error');
+    return;
+  }
+  const payload = O.buildUpdatePayload(objDraft, normalized);
+  if (payload.action === 'insert' && !payload.cliente) {
+    showToast('Cliente non valido', 'error');
+    return;
+  }
+  const btn = document.getElementById('obj-save');
+  btn.disabled = true;
+  try {
+    const resp = await SRAuth.fetch(WEBHOOK_TS_CONFIG, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const raw = await resp.json().catch(() => ({}));
+    if (!resp.ok || raw.ok === false || raw.action === 'error') {
+      throw new Error(raw.message || ('HTTP ' + resp.status));
+    }
+    const savedId = raw.id != null ? raw.id : (raw.cliente && raw.cliente.id != null ? raw.cliente.id : objDraft.id);
+    objDraft.id = savedId != null ? savedId : objDraft.id;
+    objDraft.obiettivi = normalized;
+    objDraft.attivita_x_ore = O.deriveAttivitaXOre(normalized);
+    syncClienteRowCache(objDraft);
+    showToast('✓ Obiettivi salvati');
+    renderObjCliList(document.getElementById('obj-search')?.value || '');
+    renderObjEditor();
+    if (monitorCaricato) renderProgressione(filtraRigheMonitor());
+  } catch (e) {
+    showToast('⚠ ' + (e.message || e), 'error');
+  } finally {
+    btn.disabled = !(objDraft && objDraft.id != null && objDraft.id !== '');
+  }
+}
+
+document.getElementById('btn-obiettivi-cli')?.addEventListener('click', openObjModal);
+document.getElementById('obj-close')?.addEventListener('click', closeObjModal);
+document.getElementById('obj-backdrop')?.addEventListener('click', e => {
+  if (e.target.id === 'obj-backdrop') closeObjModal();
+});
+document.getElementById('obj-search')?.addEventListener('input', e => renderObjCliList(e.target.value));
+document.getElementById('obj-add')?.addEventListener('click', () => {
+  if (!objDraft) return;
+  const first = ATTIVITA[0] || '';
+  objDraft.obiettivi.push({
+    id: SRObiettiviCliente.uidObj(),
+    nome: 'Nuovo obiettivo',
+    costo: 0,
+    milestone: first ? [{ attivita: first, ore: 1 }] : []
+  });
+  renderObjEditor();
+});
+document.getElementById('obj-save')?.addEventListener('click', () => salvaObiettiviCliente());
+
+let progCache = { bucketCounts: { sotto20: 0, circa50: 0, sopra70: 0 }, clienti: [] };
+let progBucketFilter = '';
+
+function fmtEuroProg(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return '—';
+  return v.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+function fmtPct(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return '0%';
+  const r = Math.round(v * 10) / 10;
+  return (r % 1 === 0 ? String(r) : r.toFixed(1)) + '%';
+}
+
+function barClass(bucket) {
+  if (bucket === 'sotto20') return 'is-low';
+  if (bucket === 'circa50') return 'is-mid';
+  return 'is-high';
+}
+
+function renderProgressione(righe) {
+  if (!monitorAbilitato || typeof SRObiettiviCliente === 'undefined') return;
+  const clienti = (CLIENTI_ROWS_FULL || []).filter(c => (c.obiettivi || []).length);
+  progCache = SRObiettiviCliente.computeProgressione(clienti, righe || [], DIPENDENTI_RATES);
+  const b = progCache.bucketCounts || {};
+  const low = document.getElementById('prog-kpi-low');
+  const mid = document.getElementById('prog-kpi-mid');
+  const high = document.getElementById('prog-kpi-high');
+  if (low) low.textContent = String(b.sotto20 || 0);
+  if (mid) mid.textContent = String(b.circa50 || 0);
+  if (high) high.textContent = String(b.sopra70 || 0);
+  if (document.getElementById('prog-backdrop')?.classList.contains('open')) {
+    renderProgDetail(document.getElementById('prog-search')?.value || '');
+  }
+}
+
+function renderProgDetail(q) {
+  const el = document.getElementById('prog-detail');
+  if (!el) return;
+  const lq = String(q || '').trim().toLowerCase();
+  let list = progCache.clienti || [];
+  if (lq) list = list.filter(c => c.nome.toLowerCase().includes(lq));
+  if (progBucketFilter) {
+    list = list.map(c => ({
+      ...c,
+      obiettivi: (c.obiettivi || []).map(o => ({
+        ...o,
+        milestone: (o.milestone || []).filter(m => m.bucket === progBucketFilter)
+      })).filter(o => o.milestone.length)
+    })).filter(c => c.obiettivi.length);
+  }
+  if (!list.length) {
+    el.innerHTML = '<div class="mon-empty">Nessun obiettivo da mostrare. Configura gli obiettivi clienti, poi ricarica.</div>';
+    return;
+  }
+  el.innerHTML = list.map(c => {
+    const objs = (c.obiettivi || []).map(o => {
+      const tag = o.missing_rate
+        ? '<span class="prog-tag na">Manca costo_orario</span>'
+        : (o.rientro == null
+          ? '<span class="prog-tag na">Nessuna ora</span>'
+          : (o.rientro
+            ? '<span class="prog-tag ok">In rientro a completamento</span>'
+            : '<span class="prog-tag bad">In perdita a completamento</span>'));
+      const bars = (o.milestone || []).map(m => `
+        <div class="prog-bar-row">
+          <span class="mon-chart-label" title="${escHtml(m.attivita)}">${escHtml(m.attivita)}</span>
+          <div class="prog-bar-wrap">
+            <div class="prog-bar ${barClass(m.bucket)}" style="width:${Math.max(2, Math.min(100, m.pct))}%"></div>
+          </div>
+          <span class="mon-chart-val">${escHtml(fmtPct(m.pct))}</span>
+        </div>`).join('');
+      return `<div class="prog-obj">
+        <div class="prog-obj-head">
+          <h3>${escHtml(o.nome)}</h3>
+          ${tag}
+        </div>
+        <div class="prog-obj-meta">
+          <div>Costo fatturato <b>${escHtml(fmtEuroProg(o.costo))}</b></div>
+          <div>Costo interno (ore × costo_orario) <b>${escHtml(fmtEuroProg(o.costo_interno))}</b></div>
+          <div>Proiezione a 100% <b>${escHtml(o.costo_proiettato == null ? '—' : fmtEuroProg(o.costo_proiettato))}</b></div>
+          <div>Avanzamento obiettivo <b>${escHtml(fmtPct(o.pct))}</b> · ${escHtml(String(o.ore_fatte))} / ${escHtml(String(o.ore_target))} h</div>
+        </div>
+        ${bars || '<p class="obj-warn">Nessuna milestone</p>'}
+      </div>`;
+    }).join('');
+    return `<div class="prog-cli-card"><div class="prog-cli-name">${escHtml(c.nome)}</div>${objs}</div>`;
+  }).join('');
+}
+
+function openProgModal(bucket) {
+  if (!monitorAbilitato) return;
+  progBucketFilter = bucket || '';
+  const search = document.getElementById('prog-search');
+  if (search) search.value = '';
+  document.getElementById('prog-backdrop').classList.add('open');
+  document.getElementById('prog-backdrop').setAttribute('aria-hidden', 'false');
+  renderProgDetail('');
+}
+
+function closeProgModal() {
+  document.getElementById('prog-backdrop').classList.remove('open');
+  document.getElementById('prog-backdrop').setAttribute('aria-hidden', 'true');
+  progBucketFilter = '';
+}
+
+document.getElementById('btn-prog-open')?.addEventListener('click', () => openProgModal(''));
+document.getElementById('prog-close')?.addEventListener('click', closeProgModal);
+document.getElementById('prog-backdrop')?.addEventListener('click', e => {
+  if (e.target.id === 'prog-backdrop') closeProgModal();
+});
+document.getElementById('prog-search')?.addEventListener('input', e => renderProgDetail(e.target.value));
+document.querySelectorAll('[data-prog-bucket]').forEach(btn => {
+  btn.addEventListener('click', () => openProgModal(btn.getAttribute('data-prog-bucket')));
 });
 
 /* ═══════════════════════════════════════════════

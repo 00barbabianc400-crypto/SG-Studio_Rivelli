@@ -11,6 +11,7 @@ window.SR_CONFIG = {
   WEBHOOK_TS_UPDATE: 'https://studiorivelli.app.n8n.cloud/webhook/update-data-auth',
   WEBHOOK_TS_MONITOR: 'https://studiorivelli.app.n8n.cloud/webhook/monitor-data-auth',
   WEBHOOK_TS_LOAD: 'https://studiorivelli.app.n8n.cloud/webhook/load-timesheet-auth',
+  WEBHOOK_TS_CONFIG: 'https://studiorivelli.app.n8n.cloud/webhook/config-data-auth',
 
   /* Push: crea webhook JWT-auth "push-subscribe-auth" in n8n; VAPID_PRIVATE solo in Variables n8n */
   WEBHOOK_PUSH_SUBSCRIBE: 'https://studiorivelli.app.n8n.cloud/webhook/push-subscribe-auth',
