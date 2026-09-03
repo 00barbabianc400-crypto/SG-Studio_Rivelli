@@ -261,8 +261,22 @@ body {
   padding: 12px 20px 18px; border-top: 1px solid var(--border);
   display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;
 }
+.detail-hero {
+  display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px;
+}
+.detail-part-chip {
+  align-self: flex-start;
+  margin-left: 18px;
+  font-size: 12px; font-weight: 600; color: var(--text);
+  background: var(--accent-soft); border: 1px solid #dbeafe;
+  padding: 4px 11px; border-radius: var(--radius-pill); line-height: 1.3;
+}
+.seg-tabs-wrap {
+  display: flex; justify-content: center; width: 100%;
+  margin: 0 0 16px; padding: 0;
+}
 .seg-tabs {
-  display: inline-flex; gap: 4px; padding: 4px; margin: 0 0 14px;
+  display: inline-flex; gap: 4px; padding: 4px; margin: 0;
   background: var(--hover); border: 1px solid var(--border); border-radius: var(--radius-pill);
 }
 .seg-tab {
@@ -321,7 +335,7 @@ body {
 .ns-empty { font-size: 12px; color: var(--faint); padding: 4px 0; }
 .detail-op {
   display: inline-flex; align-items: center; gap: 8px;
-  font-size: 16px; font-weight: 700; margin-bottom: 4px;
+  font-size: 16px; font-weight: 700; margin-bottom: 0;
   border: none; background: transparent; padding: 0; cursor: pointer;
   font-family: inherit; color: var(--accent); text-align: left;
 }
@@ -1162,7 +1176,6 @@ function renderOrganizzazioneTappa(t) {
   ].filter(([, v]) => costoHaValore(v));
   return `<dl>
       <dt>ID trasferta</dt><dd>${esc(t.trasferta_id || '—')}</dd>
-      <dt>Partecipanti</dt><dd>${esc(String(Number(t.numero_partecipanti) >= 1 ? Math.floor(Number(t.numero_partecipanti)) : '—'))}</dd>
       <dt>Tappa</dt><dd>${esc(t.tappa_numero || '—')} · ${esc(t.citta || '—')}</dd>
       <dt>Periodo</dt><dd>${esc(fmtPeriodoIt(t.data_arrivo, t.data_partenza))}</dd>
       <dt>Cliente</dt><dd>${esc(t.cliente_tappa || '—')}</dd>
@@ -1274,9 +1287,11 @@ function renderDettaglioTappaBody() {
   const modal = document.getElementById('detail-modal');
   modal.classList.toggle('modal-wide', tab === 'scontrini');
 
-  const tabs = `<div class="seg-tabs" role="tablist">
-    <button type="button" class="seg-tab${tab === 'organizzazione' ? ' is-active' : ''}" data-tab="organizzazione">Organizzazione trasferta</button>
-    <button type="button" class="seg-tab${tab === 'scontrini' ? ' is-active' : ''}" data-tab="scontrini">Scontrini trasferta</button>
+  const tabs = `<div class="seg-tabs-wrap">
+    <div class="seg-tabs" role="tablist">
+      <button type="button" class="seg-tab${tab === 'organizzazione' ? ' is-active' : ''}" data-tab="organizzazione">Organizzazione trasferta</button>
+      <button type="button" class="seg-tab${tab === 'scontrini' ? ' is-active' : ''}" data-tab="scontrini">Scontrini trasferta</button>
+    </div>
   </div>`;
 
   let panel = '';
@@ -1289,17 +1304,19 @@ function renderDettaglioTappaBody() {
     ctx.flatNote = board.flat;
   }
 
+  const nPart = Number(t.numero_partecipanti);
+  const partChip = (Number.isFinite(nPart) && nPart >= 1)
+    ? `<span class="detail-part-chip">${esc(Math.floor(nPart) === 1 ? '1 partecipante' : (Math.floor(nPart) + ' partecipanti'))}</span>`
+    : '';
+
   document.getElementById('detail-body').innerHTML = `
-    <button type="button" class="detail-op" id="detail-filter-op" data-op="${esc(t.nome_persona)}">
-      <span class="detail-op-dot" style="background:${col}"></span>
-      ${esc(t.nome_persona || '—')}
-    </button>
-    ${(() => {
-      const n = Number(t.numero_partecipanti);
-      if (!Number.isFinite(n) || n < 1) return '';
-      const label = Math.floor(n) === 1 ? '1 partecipante' : (Math.floor(n) + ' partecipanti');
-      return `<p style="margin:6px 0 0;font-size:13px;color:var(--muted)">${esc(label)}</p>`;
-    })()}
+    <div class="detail-hero">
+      <button type="button" class="detail-op" id="detail-filter-op" data-op="${esc(t.nome_persona)}">
+        <span class="detail-op-dot" style="background:${col}"></span>
+        ${esc(t.nome_persona || '—')}
+      </button>
+      ${partChip}
+    </div>
     ${tabs}
     <div id="detail-panel">${panel}</div>`;
 
