@@ -227,6 +227,22 @@
     return String(s || '').trim().toLowerCase();
   }
 
+  function aggregateDipendenti(rows, rates) {
+    const map = new Map();
+    (rows || []).forEach(r => {
+      const nome = String(r.dipendente || '').trim() || '(non indicato)';
+      const ore = Number(r.ore_ore) || 0;
+      if (ore <= 0) return;
+      const rate = lookupCostoOrario(rates, r.dipendente);
+      const prev = map.get(nome) || { dipendente: nome, ore: 0, costo_orario: rate, costo: 0 };
+      prev.ore = round2(prev.ore + ore);
+      prev.costo = round2(prev.costo + ore * rate);
+      if (rate > 0) prev.costo_orario = rate;
+      map.set(nome, prev);
+    });
+    return [...map.values()].sort((a, b) => b.ore - a.ore || a.dipendente.localeCompare(b.dipendente, 'it'));
+  }
+
   function computeProgressione(clienti, righe, rates) {
     const bucketCounts = { sotto20: 0, circa50: 0, sopra70: 0 };
     const outClienti = [];
@@ -252,11 +268,11 @@
         const missingRate = rowsObj.some(r =>
           (Number(r.ore_ore) || 0) > 0 && lookupCostoOrario(rates, r.dipendente) <= 0);
         const rientro = (costo_proiettato == null || missingRate) ? null : costo_proiettato <= costo;
+        const dipendenti = aggregateDipendenti(rowsObj, rates);
         const milestone = msIn.map(m => {
           const target = Number(m.ore) || 0;
-          const oreM = round2(rowsCli
-            .filter(r => keyNorm(r.attivita) === keyNorm(m.attivita))
-            .reduce((s, r) => s + (Number(r.ore_ore) || 0), 0));
+          const rowsM = rowsCli.filter(r => keyNorm(r.attivita) === keyNorm(m.attivita));
+          const oreM = round2(rowsM.reduce((s, r) => s + (Number(r.ore_ore) || 0), 0));
           const mpct = target > 0 ? round2((oreM / target) * 100) : 0;
           const bucket = bucketProgresso(mpct);
           bucketCounts[bucket] += 1;
@@ -265,7 +281,8 @@
             ore_target: target,
             ore_fatte: oreM,
             pct: mpct,
-            bucket
+            bucket,
+            dipendenti: aggregateDipendenti(rowsM, rates)
           };
         });
         return {
@@ -279,6 +296,7 @@
           costo_proiettato,
           rientro,
           missing_rate: missingRate,
+          dipendenti,
           milestone
         };
       });
