@@ -471,9 +471,8 @@ tr:hover .btn-del { opacity: 1; }
 .prog-kpi.is-high .prog-kpi-val { color: var(--ok); }
 .prog-modal {
   background: var(--surface); border-radius: var(--r3); box-shadow: var(--shadow);
-  border: 1px solid var(--border); width: min(940px, calc(100vw - 16px));
-  height: min(96vh, 980px); max-height: min(96vh, 980px);
-  display: flex; flex-direction: column; overflow: hidden;
+  border: 1px solid var(--border); width: min(860px, calc(100vw - 24px));
+  max-height: min(92vh, 880px); display: flex; flex-direction: column; overflow: hidden;
 }
 .prog-modal-head { padding: 18px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .prog-modal-head h2 { margin: 0; font-size: 16px; font-weight: 700; color: var(--navy); }
@@ -559,11 +558,24 @@ tr:hover .btn-del { opacity: 1; }
 .obj-modal {
   background: var(--surface); border-radius: var(--r3); box-shadow: var(--shadow);
   border: 1px solid var(--border); width: min(720px, calc(100vw - 24px));
-  max-height: min(90vh, 820px); display: flex; flex-direction: column; overflow: hidden;
+  max-height: min(94vh, 940px); display: flex; flex-direction: column; overflow: hidden;
 }
 .obj-modal-head { padding: 18px 20px 12px; border-bottom: 1px solid var(--border); }
 .obj-modal-head h2 { margin: 0; font-size: 16px; font-weight: 700; color: var(--navy); }
 .obj-modal-head p { margin: 6px 0 0; font-size: 12px; color: var(--text-3); }
+.obj-modal-head-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.obj-batch-btn { white-space: nowrap; flex-shrink: 0; }
+.obj-batch-panel { display: none; }
+.obj-batch-panel.is-open { display: block; }
+.obj-batch-search-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.obj-batch-search-row input { flex: 1; min-width: 160px; }
+.obj-chip-grid { display: flex; flex-wrap: wrap; gap: 8px; max-height: 220px; overflow: auto; padding: 4px 2px; }
+.obj-chip {
+  appearance: none; border: 1px solid var(--border); border-radius: 999px; background: #fff;
+  padding: 7px 14px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text-2); cursor: pointer;
+}
+.obj-chip:hover { border-color: var(--blue); }
+.obj-chip.is-active { background: var(--navy); border-color: var(--navy); color: #fff; }
 .obj-modal-body { padding: 16px 20px; overflow: auto; flex: 1; }
 .obj-modal-foot {
   padding: 12px 20px 16px; border-top: 1px solid var(--border);
@@ -572,7 +584,7 @@ tr:hover .btn-del { opacity: 1; }
 .obj-search-wrap { position: relative; margin-bottom: 14px; }
 .obj-search-wrap input { width: 100%; }
 .obj-cli-list {
-  max-height: 160px; overflow: auto; border: 1px solid var(--border);
+  max-height: 260px; overflow: auto; border: 1px solid var(--border);
   border-radius: 10px; background: oklch(98% 0.008 244); margin-top: 8px;
 }
 .obj-cli-item {
@@ -1209,11 +1221,16 @@ tr:hover .btn-del { opacity: 1; }
 <div class="modal-backdrop" id="obj-backdrop" aria-hidden="true">
   <div class="obj-modal" role="dialog" aria-labelledby="obj-modal-title" aria-modal="true">
     <div class="obj-modal-head">
-      <h2 id="obj-modal-title">Obiettivi clienti</h2>
-      <p>Cerca un cliente, imposta obiettivi con costo e milestone (attività × ore target)</p>
+      <div class="obj-modal-head-row">
+        <div>
+          <h2 id="obj-modal-title">Obiettivi clienti</h2>
+          <p id="obj-modal-desc">Cerca un cliente, imposta obiettivi con costo e milestone (attività × ore target)</p>
+        </div>
+        <button type="button" class="btn btn-ghost obj-batch-btn" id="obj-batch-toggle">Configurazione multipla</button>
+      </div>
     </div>
     <div class="obj-modal-body">
-      <div class="obj-search-wrap">
+      <div class="obj-search-wrap" id="obj-search-wrap">
         <label for="obj-search" style="display:block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:6px">Cliente</label>
         <input type="search" id="obj-search" class="client-input" placeholder="Cerca cliente…" autocomplete="off">
         <div class="obj-cli-list" id="obj-cli-list"></div>
@@ -1225,6 +1242,22 @@ tr:hover .btn-del { opacity: 1; }
         <div class="obj-actions-row">
           <button type="button" class="btn btn-ghost" id="obj-add">+ Obiettivo</button>
         </div>
+      </div>
+      <div class="obj-batch-panel" id="obj-batch-panel">
+        <p class="obj-warn" style="color:var(--text-3)">Crea un obiettivo template e applicalo in un'unica operazione a più clienti.</p>
+        <div id="obj-batch-tmpl"></div>
+        <div class="obj-actions-row">
+          <button type="button" class="btn btn-ghost" id="obj-batch-add-ms">+ Milestone</button>
+        </div>
+        <hr style="margin:16px 0;border:none;border-top:1px solid var(--border)">
+        <label style="display:block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:6px">Clienti (seleziona uno o più)</label>
+        <div class="obj-batch-search-row">
+          <input type="search" id="obj-batch-search" class="client-input" placeholder="Filtra clienti…" autocomplete="off">
+          <button type="button" class="btn btn-ghost" id="obj-batch-sel-all">Seleziona tutte</button>
+          <button type="button" class="btn btn-ghost" id="obj-batch-sel-none">Deseleziona</button>
+        </div>
+        <div class="obj-chip-grid" id="obj-batch-chips"></div>
+        <p class="obj-warn" id="obj-batch-count" style="margin-top:10px"></p>
       </div>
     </div>
     <div class="obj-modal-foot">
@@ -1257,7 +1290,7 @@ tr:hover .btn-del { opacity: 1; }
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/push.js"></script>
-<script src="js/obiettivi-cliente.js?v=39"></script>
+<script src="js/obiettivi-cliente.js?v=40"></script>
 <script>
 /* ═══════════════════════════════════════════════
    DATI 
@@ -3590,6 +3623,7 @@ async function openObjModal() {
   if (!monitorAbilitato) return;
   objDraft = null;
   objSelectedNome = '';
+  closeObjBatch();
   const search = document.getElementById('obj-search');
   if (search) search.value = '';
   document.getElementById('obj-editor')?.classList.remove('is-open');
@@ -3671,6 +3705,204 @@ async function salvaObiettiviCliente() {
   }
 }
 
+let objMode = 'single'; // 'single' | 'batch'
+let objBatchDraft = null; // { nome, costo, milestone: [...] }
+let objBatchSelected = new Set();
+
+function renderObjBatchTemplate() {
+  const wrap = document.getElementById('obj-batch-tmpl');
+  if (!wrap || !objBatchDraft) return;
+  const ICO_X = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4L4 12"/></svg>';
+  const ms = (objBatchDraft.milestone || []).map((m, mi) => `
+    <div class="obj-ms-row" data-mi="${mi}">
+      <div class="obj-ms">
+        <label>Attività</label>
+        <select class="cell-select obj-batch-ms-att">${attivitaOptionsHtml(m.attivita)}</select>
+      </div>
+      <div class="obj-ms">
+        <label>Ore</label>
+        <input type="number" min="0" step="0.5" class="client-input obj-batch-ms-ore" value="${escHtml(String(m.ore))}">
+      </div>
+      <button type="button" class="obj-ms-del" title="Rimuovi milestone" aria-label="Rimuovi milestone">${ICO_X}</button>
+    </div>`).join('');
+  wrap.innerHTML = `<div class="obj-card">
+    <div class="obj-card-head">
+      <div class="field">
+        <label>Obiettivo</label>
+        <input type="text" class="client-input" id="obj-batch-nome" value="${escHtml(objBatchDraft.nome)}">
+      </div>
+      <div class="field" style="max-width:140px">
+        <label>Costo (€)</label>
+        <input type="text" class="client-input" id="obj-batch-costo" inputmode="decimal" value="${escHtml(String(objBatchDraft.costo))}">
+      </div>
+    </div>
+    <div class="obj-ms">${ms || '<p class="obj-warn">Nessuna milestone</p>'}</div>
+  </div>`;
+  wrap.querySelector('#obj-batch-nome')?.addEventListener('input', e => { objBatchDraft.nome = e.target.value; });
+  wrap.querySelector('#obj-batch-costo')?.addEventListener('input', e => { objBatchDraft.costo = e.target.value; });
+  wrap.querySelectorAll('.obj-ms-row').forEach(row => {
+    const mi = Number(row.dataset.mi);
+    row.querySelector('.obj-batch-ms-att')?.addEventListener('change', e => { objBatchDraft.milestone[mi].attivita = e.target.value; });
+    row.querySelector('.obj-batch-ms-ore')?.addEventListener('input', e => { objBatchDraft.milestone[mi].ore = e.target.value; });
+    row.querySelector('.obj-ms-del')?.addEventListener('click', () => {
+      objBatchDraft.milestone.splice(mi, 1);
+      renderObjBatchTemplate();
+    });
+  });
+}
+
+function updateObjBatchCount() {
+  const el = document.getElementById('obj-batch-count');
+  if (el) el.textContent = objBatchSelected.size + ' client' + (objBatchSelected.size === 1 ? 'e' : 'i') + ' selezionat' + (objBatchSelected.size === 1 ? 'o' : 'i');
+}
+
+function objBatchSource() {
+  return monitorAbilitato ? CLIENTI_ROWS_FULL : CLIENTI_ROWS;
+}
+
+function renderObjBatchChips(q) {
+  const wrap = document.getElementById('obj-batch-chips');
+  if (!wrap) return;
+  const lq = String(q || '').trim().toLowerCase();
+  const list = (objBatchSource() || []).filter(c => !lq || c.nome.toLowerCase().includes(lq));
+  wrap.innerHTML = list.length
+    ? list.map(c => {
+        const active = objBatchSelected.has(c.nome) ? ' is-active' : '';
+        return `<button type="button" class="obj-chip${active}" data-cli="${escHtml(c.nome)}">${escHtml(c.nome)}</button>`;
+      }).join('')
+    : '<div class="client-dd-empty" style="padding:10px 12px">Nessun cliente</div>';
+  wrap.querySelectorAll('[data-cli]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const nome = btn.getAttribute('data-cli');
+      if (objBatchSelected.has(nome)) objBatchSelected.delete(nome);
+      else objBatchSelected.add(nome);
+      renderObjBatchChips(document.getElementById('obj-batch-search')?.value || '');
+    });
+  });
+  updateObjBatchCount();
+}
+
+function openObjBatch() {
+  objMode = 'batch';
+  objDraft = null;
+  objSelectedNome = '';
+  objBatchDraft = { nome: 'Nuovo obiettivo', costo: 0, milestone: ATTIVITA[0] ? [{ attivita: ATTIVITA[0], ore: 1 }] : [] };
+  objBatchSelected = new Set();
+  document.getElementById('obj-search-wrap')?.classList.add('hidden');
+  document.getElementById('obj-editor')?.classList.remove('is-open');
+  document.getElementById('obj-batch-panel')?.classList.add('is-open');
+  const toggle = document.getElementById('obj-batch-toggle');
+  if (toggle) toggle.textContent = 'Torna alla configurazione singola';
+  const title = document.getElementById('obj-modal-title');
+  if (title) title.textContent = 'Configurazione multipla obiettivi';
+  const desc = document.getElementById('obj-modal-desc');
+  if (desc) desc.textContent = 'Crea un obiettivo e applicalo a più clienti in una sola operazione';
+  document.getElementById('obj-save').disabled = false;
+  const search = document.getElementById('obj-batch-search');
+  if (search) search.value = '';
+  renderObjBatchTemplate();
+  renderObjBatchChips('');
+}
+
+function closeObjBatch() {
+  objMode = 'single';
+  objBatchDraft = null;
+  objBatchSelected = new Set();
+  document.getElementById('obj-batch-panel')?.classList.remove('is-open');
+  document.getElementById('obj-search-wrap')?.classList.remove('hidden');
+  const toggle = document.getElementById('obj-batch-toggle');
+  if (toggle) toggle.textContent = 'Configurazione multipla';
+  const title = document.getElementById('obj-modal-title');
+  if (title) title.textContent = 'Obiettivi clienti';
+  const desc = document.getElementById('obj-modal-desc');
+  if (desc) desc.textContent = 'Cerca un cliente, imposta obiettivi con costo e milestone (attività × ore target)';
+  document.getElementById('obj-save').disabled = !(objDraft && objDraft.id != null && objDraft.id !== '');
+  renderObjCliList(document.getElementById('obj-search')?.value || '');
+}
+
+async function salvaObjBatch() {
+  if (objMode !== 'batch' || !objBatchDraft || !monitorAbilitato) return;
+  if (typeof SRObiettiviCliente === 'undefined') {
+    showToast('⚠ Modulo obiettivi non caricato (js/obiettivi-cliente.js)', 'error');
+    return;
+  }
+  if (!objBatchSelected.size) {
+    showToast('Seleziona almeno un cliente', 'error');
+    return;
+  }
+  const O = SRObiettiviCliente;
+  const rows = (objBatchSource() || []).filter(c => objBatchSelected.has(c.nome));
+  let payload;
+  try {
+    payload = O.buildBatchUpdatePayload(rows, objBatchDraft);
+  } catch (e) {
+    showToast(e.message || 'Dati obiettivo non validi', 'error');
+    return;
+  }
+  if (!payload.items.length) {
+    showToast('Nessun cliente valido (id mancante)', 'error');
+    return;
+  }
+  const btn = document.getElementById('obj-save');
+  const prevLabel = btn.textContent;
+  btn.disabled = true;
+  btn.classList.add('is-loading');
+  btn.textContent = 'Salvataggio…';
+  try {
+    const resp = await SRAuth.fetch(WEBHOOK_TS_CONFIG, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const rawResp = await resp.json().catch(() => ({}));
+    const results = Array.isArray(rawResp) ? rawResp : [rawResp];
+    const errItem = results.find(r => r && (r.ok === false || r.action === 'error'));
+    if (!resp.ok || errItem) {
+      throw new Error((errItem && errItem.message) || ('HTTP ' + resp.status));
+    }
+    payload.items.forEach(item => {
+      const row = rows.find(r => r.id === item.id);
+      if (!row) return;
+      syncClienteRowCache({
+        id: row.id,
+        nome: row.nome,
+        obiettivi: JSON.parse(item.obiettivi_x_attivita_x_conteggio),
+        attivita_x_ore: JSON.parse(item.attivita_x_ore)
+      });
+    });
+    showToast('✓ Obiettivo applicato a ' + payload.items.length + ' client' + (payload.items.length === 1 ? 'e' : 'i'));
+    closeObjBatch();
+    if (monitorCaricato) renderProgressione(filtraRigheMonitor());
+  } catch (e) {
+    showToast('⚠ ' + (e.message || e), 'error');
+  } finally {
+    btn.classList.remove('is-loading');
+    btn.textContent = prevLabel || 'Salva';
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('obj-batch-toggle')?.addEventListener('click', () => {
+  if (objMode === 'batch') closeObjBatch();
+  else openObjBatch();
+});
+document.getElementById('obj-batch-add-ms')?.addEventListener('click', () => {
+  if (!objBatchDraft) return;
+  const first = ATTIVITA[0] || '';
+  objBatchDraft.milestone.push({ attivita: first, ore: 1 });
+  renderObjBatchTemplate();
+});
+document.getElementById('obj-batch-search')?.addEventListener('input', e => renderObjBatchChips(e.target.value));
+document.getElementById('obj-batch-sel-all')?.addEventListener('click', () => {
+  const lq = (document.getElementById('obj-batch-search')?.value || '').trim().toLowerCase();
+  (objBatchSource() || []).filter(c => !lq || c.nome.toLowerCase().includes(lq)).forEach(c => objBatchSelected.add(c.nome));
+  renderObjBatchChips(document.getElementById('obj-batch-search')?.value || '');
+});
+document.getElementById('obj-batch-sel-none')?.addEventListener('click', () => {
+  objBatchSelected.clear();
+  renderObjBatchChips(document.getElementById('obj-batch-search')?.value || '');
+});
+
 document.getElementById('btn-obiettivi-cli')?.addEventListener('click', openObjModal);
 document.getElementById('obj-close')?.addEventListener('click', closeObjModal);
 document.getElementById('obj-backdrop')?.addEventListener('click', e => {
@@ -3692,7 +3924,10 @@ document.getElementById('obj-add')?.addEventListener('click', () => {
   });
   renderObjEditor();
 });
-document.getElementById('obj-save')?.addEventListener('click', () => salvaObiettiviCliente());
+document.getElementById('obj-save')?.addEventListener('click', () => {
+  if (objMode === 'batch') salvaObjBatch();
+  else salvaObiettiviCliente();
+});
 
 let progCache = { bucketCounts: { sotto20: 0, circa50: 0, sopra70: 0 }, clienti: [] };
 let progBucketFilter = '';

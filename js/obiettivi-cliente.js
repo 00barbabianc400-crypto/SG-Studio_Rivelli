@@ -170,6 +170,27 @@
     };
   }
 
+  function buildBatchUpdatePayload(rows, obiettivoTemplate) {
+    const tmpl = normalizeObiettivo(obiettivoTemplate);
+    const items = (rows || [])
+      .filter(r => r && r.id != null && r.id !== '')
+      .map(r => {
+        const obiettivi = [...(r.obiettivi || []), {
+          id: uidObj(),
+          nome: tmpl.nome,
+          costo: tmpl.costo,
+          milestone: tmpl.milestone.map(m => ({ ...m }))
+        }];
+        const flat = deriveAttivitaXOre(obiettivi);
+        return {
+          id: r.id,
+          obiettivi_x_attivita_x_conteggio: serializeJson(obiettivi),
+          attivita_x_ore: serializeJson(flat)
+        };
+      });
+    return { action: 'update', items };
+  }
+
   function stripObiettivi(rows) {
     return (rows || []).map(r => ({
       id: r.id,
@@ -316,6 +337,7 @@
     serializeJson,
     normalizeClienteRow,
     buildUpdatePayload,
+    buildBatchUpdatePayload,
     stripObiettivi,
     bucketProgresso,
     normalizeDipendenteRow,
