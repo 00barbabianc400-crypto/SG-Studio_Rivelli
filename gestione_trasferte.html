@@ -269,6 +269,43 @@
   .tr-card-actions {
     margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
   }
+  .tr-icon-btn {
+    width: 38px; height: 38px; border-radius: 10px; border: 1.5px solid var(--gray-200);
+    background: var(--white); color: var(--blue-main); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; padding: 0;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .tr-icon-btn:hover { background: var(--blue-pale); border-color: var(--blue-bright); }
+  .tr-icon-btn.danger { color: var(--danger); }
+  .tr-icon-btn.danger:hover { background: #fef2f2; border-color: #fecaca; }
+  .tr-icon-btn svg { width: 18px; height: 18px; display: block; }
+  #fase-dettaglio.modal-overlay {
+    z-index: 1900; align-items: center; justify-content: center; padding: 16px;
+  }
+  #fase-dettaglio.modal-overlay.show { display: flex; }
+  .modal-edit-tr {
+    background: var(--white); border-radius: var(--radius-lg);
+    width: min(1100px, calc(100vw - 28px)); max-height: min(94vh, 980px);
+    box-shadow: var(--shadow-md); display: flex; flex-direction: column; overflow: hidden;
+    border: 1px solid var(--gray-200);
+  }
+  .modal-edit-tr-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 16px 20px; border-bottom: 1px solid var(--gray-200); background: var(--blue-pale);
+    flex-shrink: 0;
+  }
+  .modal-edit-tr-head h2 {
+    margin: 0; font-size: 16px; font-weight: 700; color: var(--blue-mid);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .modal-edit-tr-body {
+    overflow: auto; padding: 16px 20px 8px; flex: 1; background: var(--gray-100);
+  }
+  .modal-edit-tr-body .section { margin-bottom: 14px; }
+  .modal-edit-tr-foot {
+    flex-shrink: 0; margin: 0; border-radius: 0; border: none; border-top: 1px solid var(--gray-200);
+    box-shadow: none;
+  }
   .toast {
     position: fixed; bottom: 24px; right: 24px; background: var(--blue-deep); color: white;
     padding: 12px 20px; border-radius: 10px; font-size: 14px; box-shadow: var(--shadow-md);
@@ -459,39 +496,47 @@
     </div>
   </div>
 
-  <!-- Fase 2: dettaglio (nascosta finché non carica) -->
-  <div id="fase-dettaglio" class="hidden">
-
-    <div class="section">
-      <div class="section-header">
-        <div class="section-icon">👤</div>
-        <span class="section-title">Riepilogo trasferta</span>
-        <span class="id-badge" id="badge-id" style="margin-left:auto"></span>
-      </div>
-      <div class="section-body">
-        <div class="riepilogo-grid" id="riepilogo-anagrafica"></div>
-        <p id="note-generali-ro" class="hidden" style="margin-top:14px;font-size:13px;color:var(--gray-600);padding:10px;background:var(--gray-100);border-radius:8px"></p>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-header">
-        <div class="section-icon">🗺️</div>
-        <span class="section-title">Itinerario e prenotazioni</span>
-      </div>
-      <div class="section-body" id="contenitore-tappe"></div>
-    </div>
-
-    <div class="action-bar">
-      <button class="btn btn-outline" onclick="nuovaRicerca()">↩ Elenco trasferte</button>
-      <button class="btn btn-secondary" id="btn-salva" onclick="salvaProgresso()">💾 Salva progresso</button>
-      <button class="btn btn-primary" id="btn-invia" onclick="inviaPrenotazioni()">📤 Invia prenotazioni</button>
-    </div>
   </div>
 
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Modale modifica trasferta (overlay) -->
+<div class="modal-overlay" id="fase-dettaglio" aria-hidden="true">
+  <div class="modal-edit-tr" role="dialog" aria-modal="true" aria-labelledby="edit-tr-title">
+    <div class="modal-edit-tr-head">
+      <h2 id="edit-tr-title">Modifica trasferta <span class="id-badge" id="badge-id"></span></h2>
+      <button type="button" class="tr-icon-btn" onclick="nuovaRicerca()" title="Chiudi" aria-label="Chiudi">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4L4 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-edit-tr-body">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-icon">👤</div>
+          <span class="section-title">Riepilogo trasferta</span>
+        </div>
+        <div class="section-body">
+          <div class="riepilogo-grid" id="riepilogo-anagrafica"></div>
+          <p id="note-generali-ro" class="hidden" style="margin-top:14px;font-size:13px;color:var(--gray-600);padding:10px;background:var(--gray-100);border-radius:8px"></p>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-header">
+          <div class="section-icon">🗺️</div>
+          <span class="section-title">Itinerario e prenotazioni</span>
+        </div>
+        <div class="section-body" id="contenitore-tappe"></div>
+      </div>
+    </div>
+    <div class="action-bar modal-edit-tr-foot">
+      <button class="btn btn-outline" onclick="nuovaRicerca()">↩ Elenco trasferte</button>
+      <button class="btn btn-secondary" id="btn-salva" onclick="salvaProgresso()">💾 Salva progresso</button>
+      <button class="btn btn-primary" id="btn-invia" onclick="inviaPrenotazioni()">📤 Invia prenotazioni</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="modal-elimina">
   <div class="modal">
@@ -1785,7 +1830,11 @@ function renderTrasferta(trasferta, trasfertaId) {
 
   bindSwitchLabels(container);
   bindTappaEditFields(container);
-  document.getElementById('fase-dettaglio').classList.remove('hidden');
+  const overlay = document.getElementById('fase-dettaglio');
+  if (overlay) {
+    overlay.classList.add('show');
+    overlay.setAttribute('aria-hidden', 'false');
+  }
 }
 
 // ========== Fase 1: elenco trasferte (get-all) ==========
@@ -1851,6 +1900,8 @@ function renderListaTrasferte(list) {
     el.innerHTML = '<p class="tr-empty">Nessuna trasferta attiva. Premi «Carica dati» oppure crea una nuova trasferta.</p>';
     return;
   }
+  const ICO_EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
+  const ICO_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
   el.innerHTML = items.map(({ id, trasferta }) => {
     const ana = trasferta.anagrafica || {};
     const nTappe = (trasferta.itinerario || []).length;
@@ -1866,8 +1917,8 @@ function renderListaTrasferte(list) {
         <div>Prenotazioni: <b>${esc(riepilogoStatoTrasferta(trasferta))}</b></div>
       </div>
       <div class="tr-card-actions">
-        <button type="button" class="btn btn-danger" data-elimina="${esc(id)}">Elimina</button>
-        <button type="button" class="btn btn-primary" data-apri="${esc(id)}">Modifica</button>
+        <button type="button" class="tr-icon-btn danger" data-elimina="${esc(id)}" title="Elimina" aria-label="Elimina">${ICO_TRASH}</button>
+        <button type="button" class="tr-icon-btn" data-apri="${esc(id)}" title="Modifica" aria-label="Modifica">${ICO_EDIT}</button>
       </div>
     </article>`;
   }).join('');
@@ -1879,6 +1930,34 @@ function renderListaTrasferte(list) {
   });
 }
 
+/** Aggiorna la card in cache dalla sessione corrente (senza GET). */
+function syncCacheTrasfertaCorrente() {
+  if (!sessionTrasfertaId || !sessionTrasferta) return;
+  const entry = {
+    id: sessionTrasfertaId,
+    trasferta: JSON.parse(JSON.stringify(sessionTrasferta)),
+    rows: (sessionTrasferta._righe_db || []).slice()
+  };
+  const idx = elencoTrasferteCache.findIndex(x => String(x.id) === String(sessionTrasfertaId));
+  if (idx >= 0) elencoTrasferteCache[idx] = entry;
+  else elencoTrasferteCache.unshift(entry);
+}
+
+function chiudiDettaglioTrasferta(opts) {
+  const doSync = !opts || opts.sync !== false;
+  if (doSync) syncCacheTrasfertaCorrente();
+  const overlay = document.getElementById('fase-dettaglio');
+  if (overlay) {
+    overlay.classList.remove('show');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
+  sessionTrasferta = null;
+  sessionTrasfertaId = null;
+  const box = document.getElementById('contenitore-tappe');
+  if (box) box.innerHTML = '';
+  renderListaTrasferte(elencoTrasferteCache);
+}
+
 async function fetchTutteTrasferte() {
   const raw = await apiPost(WEBHOOK_RECUPERO, {});
   const righe = estraiRigheN8n(raw);
@@ -1886,30 +1965,16 @@ async function fetchTutteTrasferte() {
   return elencoTrasferteCache;
 }
 
-async function fetchTrasfertaById(id) {
-  const list = await fetchTutteTrasferte();
-  const found = list.find(x => String(x.id) === String(id));
-  if (!found || !found.trasferta || !Array.isArray(found.trasferta.itinerario)) {
-    throw new Error('Nessuna trasferta trovata per ID ' + id);
-  }
-  return found.trasferta;
-}
-
-async function caricaTrasfertaSilente(id) {
-  const trasferta = await fetchTrasfertaById(id);
-  renderTrasferta(trasferta, id);
-}
-
 async function apriTrasfertaDaLista(id) {
   if (!id) return;
-  try {
-    showToast('Apertura trasferta…');
-    await caricaTrasfertaSilente(id);
-    showToast('Trasferta caricata', 'success');
-    document.getElementById('fase-dettaglio').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  } catch (e) {
-    showToast('Apertura fallita: ' + (e.message || e), 'error');
+  const found = elencoTrasferteCache.find(x => String(x.id) === String(id));
+  if (!found || !found.trasferta) {
+    showToast('Trasferta non in elenco — premi «Carica dati»', 'warn');
+    return;
   }
+  // Clone: le modifiche restano in sessione finché non salvi / sync cache
+  const clone = JSON.parse(JSON.stringify(found.trasferta));
+  renderTrasferta(clone, id);
 }
 
 async function caricaTrasferta() {
@@ -1919,7 +1984,7 @@ async function caricaTrasferta() {
   msg.classList.remove('hidden');
   try {
     const list = await fetchTutteTrasferte();
-    document.getElementById('fase-dettaglio').classList.add('hidden');
+    chiudiDettaglioTrasferta({ sync: false });
     renderListaTrasferte(list);
     showToast(list.length ? (list.length + ' trasferte caricate') : 'Nessuna trasferta attiva', 'success');
   } catch (e) {
@@ -1932,11 +1997,7 @@ async function caricaTrasferta() {
 }
 
 function nuovaRicerca() {
-  sessionTrasferta = null;
-  sessionTrasfertaId = null;
-  document.getElementById('fase-dettaglio').classList.add('hidden');
-  document.getElementById('contenitore-tappe').innerHTML = '';
-  renderListaTrasferte(elencoTrasferteCache);
+  chiudiDettaglioTrasferta({ sync: true });
   document.getElementById('fase-ricerca')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -1990,13 +2051,11 @@ async function confermaElimina() {
     elencoTrasferteCache = elencoTrasferteCache.filter(x => String(x.id) !== String(id));
     document.getElementById('modal-elimina').classList.remove('show');
     pendingDeleteId = null;
-    if (deleteContext === 'after-invio' || String(sessionTrasfertaId) === String(id)) {
-      sessionTrasferta = null;
-      sessionTrasfertaId = null;
-      document.getElementById('fase-dettaglio').classList.add('hidden');
-      document.getElementById('contenitore-tappe').innerHTML = '';
+    if (String(sessionTrasfertaId) === String(id)) {
+      chiudiDettaglioTrasferta({ sync: false });
+    } else {
+      renderListaTrasferte(elencoTrasferteCache);
     }
-    renderListaTrasferte(elencoTrasferteCache);
     document.getElementById('fase-ricerca')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (e) {
     showToast('Errore: ' + (e.message || e), 'error');
@@ -2270,18 +2329,23 @@ async function salvaProgresso() {
   try {
     showToast('Salvataggio in corso…');
     const payload = buildPayloadSalvataggio();
-    await apiPost(WEBHOOK_SALVATAGGIO, payload);
-    const avevaNuove = (payload.meta?.righe_nuove || 0) > 0;
+    const raw = await apiPost(WEBHOOK_SALVATAGGIO, payload);
     sessionTrasferta._tappe_eliminate = [];
-    if (avevaNuove) {
-      showToast('Salvato — ricarico per registrare le nuove tappe…', 'success', 2800);
-      await caricaTrasfertaSilente(sessionTrasfertaId);
-      showToast('Progresso salvato (nuove tappe con id DB)', 'success', 3500);
+    // Preferisci righe restituite da n8n (id DB aggiornati); altrimenti payload locale
+    const righeResp = estraiRigheN8n(raw).filter(r => String(r.trasferta_id) === String(sessionTrasfertaId));
+    if (righeResp.length) {
+      const aggiornata = normalizzaDaRigheN8n(righeResp);
+      if (aggiornata) {
+        sessionTrasferta = aggiornata;
+        sessionTrasferta._tappe_eliminate = [];
+      }
     } else {
       sessionTrasferta._righe_db = payload.righe_db;
       sessionTrasferta.itinerario = payload.trasferta.itinerario;
-      showToast('Progresso salvato — puoi continuare o inviare più tardi', 'success', 3500);
+      if (payload.trasferta.anagrafica) sessionTrasferta.anagrafica = payload.trasferta.anagrafica;
     }
+    showToast('Progresso salvato', 'success');
+    chiudiDettaglioTrasferta({ sync: true });
   } catch (e) {
     showToast('Salvataggio fallito: ' + (e.message || e), 'error');
     console.error('salvaProgresso:', e);
@@ -2311,9 +2375,26 @@ async function inviaPrenotazioni() {
       sessionTrasferta.anagrafica.numero_partecipanti = parseNumeroPartecipanti(editPart.value);
     }
     showToast('Invio in corso…');
-    await apiPost(WEBHOOK_INVIO_PRENOTAZIONI, buildPayloadInvio());
+    const payload = buildPayloadInvio();
+    await apiPost(WEBHOOK_INVIO_PRENOTAZIONI, payload);
+    // Aggiorna cache locale dallo stato inviato, poi torna all'elenco
+    sessionTrasferta._righe_db = payload.righe_db || sessionTrasferta._righe_db;
+    if (payload.trasferta) {
+      sessionTrasferta.itinerario = payload.trasferta.itinerario || sessionTrasferta.itinerario;
+      if (payload.trasferta.anagrafica) sessionTrasferta.anagrafica = payload.trasferta.anagrafica;
+    }
     showToast('Prenotazioni inviate con successo', 'success', 3000);
-    apriModaleDopoInvio();
+    const idInvio = sessionTrasfertaId;
+    chiudiDettaglioTrasferta({ sync: true });
+    // Chiede se eliminare (sopra l'elenco, senza altra GET)
+    pendingDeleteId = idInvio;
+    deleteContext = 'after-invio';
+    const title = document.getElementById('modal-elimina-title');
+    if (title) title.textContent = 'Prenotazioni inviate';
+    document.getElementById('modal-elimina-testo').innerHTML =
+      'Vuoi eliminare il record della trasferta <strong>' + esc(idInvio) + '</strong> dal sistema?<br><br>'
+      + 'Se elimini, non dovrai gestirla di nuovo. Se lo tieni, resta nell\'elenco trasferte attive.';
+    document.getElementById('modal-elimina').classList.add('show');
   } catch (e) {
     showToast('Invio fallito: ' + (e.message || e), 'error');
     console.error('inviaPrenotazioni:', e);
