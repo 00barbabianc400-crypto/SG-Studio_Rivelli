@@ -274,11 +274,13 @@ body {
 .org-card.is-focus { border-color: var(--accent); box-shadow: 0 0 0 2px #dbeafe; }
 .org-card-head { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.35; }
 .org-card-head small { display: block; font-weight: 500; color: var(--muted); margin-top: 2px; font-size: 11px; }
-.org-dl {
-  display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 0; font-size: 12px;
+.org-rows { display: grid; gap: 4px; margin: 0; }
+.org-row {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+  font-size: 13px;
 }
-.org-dl dt { color: var(--muted); font-weight: 600; margin: 0; }
-.org-dl dd { margin: 0; color: var(--text); font-weight: 500; }
+.org-row span { color: var(--muted); font-weight: 600; flex-shrink: 0; }
+.org-row b { color: var(--text); font-weight: 600; text-align: right; word-break: break-word; }
 .modal-head { padding: 18px 20px 12px; border-bottom: 1px solid var(--border); }
 .modal-head h2 { font-size: 16px; font-weight: 700; }
 .modal-body { padding: 16px 20px; }
@@ -1190,28 +1192,85 @@ function valoreCampoServizio(key, val) {
   return String(val);
 }
 
+function parseServizi(raw) {
+  if (!raw) return null;
+  if (typeof raw === 'object') return raw;
+  try { return JSON.parse(raw); } catch (_) { return null; }
+}
+
+function mezzoRaggiungimentoRow(t) {
+  const n = Number(t.tappa_numero);
+  if (!Number.isFinite(n) || n <= 1) return '';
+  const val = String(t.mezzo_raggiungimento || '').trim();
+  return `<div class="org-row"><span>Mezzo di raggiungimento</span><b>${esc(val || '—')}</b></div>`;
+}
+
+function orgRow(label, value) {
+  return `<div class="org-row"><span>${esc(label)}</span><b>${esc(value)}</b></div>`;
+}
+
+function renderOrganizzazioneTappaCard(t, isFocus) {
+  // Solo totale tappa: i costi singoli vivono nelle chip servizi
+  const tot = costoHaValore(t.costo_tappa_totale) ? fmtEuro(t.costo_tappa_totale) : '';
+  return `<article class="org-card${isFocus ? ' is-focus' : ''}">
+    <div class="org-card-head">Tappa ${esc(t.tappa_numero || '—')} · ${esc(t.citta || '—')}
+      <small>${esc(fmtPeriodoIt(t.data_arrivo, t.data_partenza))}</small>
+    </div>
+    <div class="org-rows">
+      ${orgRow('Cliente', t.cliente_tappa || '—')}
+      ${orgRow('Attività', t.tipo_attivita || '—')}
+      ${orgRow('Pernottamento', t.pernottamento || '—')}
+      ${mezzoRaggiungimentoRow(t)}
+      ${orgRow('Prenotazioni', t.stato_prenotazioni || '—')}
+      ${t.note_tappa ? orgRow('Note', t.note_tappa) : ''}
+      ${tot ? orgRow('Totale tappa', tot) : ''}
+    </div>
+    ${renderServiziHtml(t.servizi_json)}
+  </article>`;
+}
+
 function flattenServizio(dati) {
   const rows = [];
   if (!dati || typeof dati !== 'object') return rows;
-  Object.entries(dati).forEach(([k, v]) => {
-    if (k === 'prenotazione_operatrice' && v && typeof v === 'object') {
-      Object.entries(v).forEach(([pk, pv]) => {
-        const shown = valoreCampoServizio(pk, pv);
-        if (shown) rows.push([CAMPO_LABEL[pk] || pk, shown]);
-      });
+  // Ridondanti rispetto a tag/card titolo/date tappa
+  const skip = new Set([
+    'stato', 'prenotato', 'giornate_da', 'giornate_a', 'mezzo_viaggio',
+    'metodo_pagamento', 'valore_voucher', 'differenza_pagamento', 'metodo_pagamento_differenza'
+  ]);
+  let costoShown = false;
+
+  function pushCosto(v) {
+    if (costoShown) return;
+    const shown = fmtEuro(v);
+    if (!shown || shown === '—') {
+      const raw = String(v == null ? '' : v).trim();
+      if (!raw || raw === '0' || raw === '0,00') return;
+      rows.push(['Costo', raw.includes('€') ? raw : raw + ' €']);
+    } else {
+      rows.push(['Costo', shown]);
+    }
+    costoShown = true;
+  }
+
+  function addEntry(k, v) {
+    if (skip.has(k)) return;
+    if (k === 'costo' || k === 'costo_servizio') {
+      pushCosto(v);
       return;
     }
     if (v && typeof v === 'object') return;
     const shown = valoreCampoServizio(k, v);
     if (shown) rows.push([CAMPO_LABEL[k] || k, shown]);
+  }
+
+  Object.entries(dati).forEach(([k, v]) => {
+    if (k === 'prenotazione_operatrice' && v && typeof v === 'object') {
+      Object.entries(v).forEach(([pk, pv]) => addEntry(pk, pv));
+      return;
+    }
+    addEntry(k, v);
   });
   return rows;
-}
-
-function parseServizi(raw) {
-  if (!raw) return null;
-  if (typeof raw === 'object') return raw;
-  try { return JSON.parse(raw); } catch (_) { return null; }
 }
 
 function renderServiziHtml(raw) {
@@ -1219,11 +1278,13 @@ function renderServiziHtml(raw) {
   if (!sj || typeof sj !== 'object') return '';
   const cards = Object.entries(sj).map(([key, dati]) => {
     const rows = flattenServizio(dati);
-    if (!rows.length) return '';
     const title = SERVIZI_LABEL[key] || key;
-    const statoRow = rows.find(r => r[0] === 'Stato');
-    const stato = statoRow ? statoRow[1] : '';
+    let stato = '';
+    if (dati && dati.stato) stato = labelStato(dati.stato);
+    else if (dati?.prenotazione_operatrice?.prenotato) stato = 'Prenotato';
+    // Non mostrare di nuovo "Stato" nelle righe (già nel tag)
     const rest = rows.filter(r => r[0] !== 'Stato');
+    if (!rest.length && !stato) return '';
     return `<div class="svc-card">
       <h4>${esc(title)}${stato ? `<span class="tag tag-trasferta">${esc(stato)}</span>` : ''}</h4>
       ${rest.length ? `<div class="svc-rows">${rest.map(([l, v]) =>
@@ -1232,41 +1293,6 @@ function renderServiziHtml(raw) {
   }).filter(Boolean);
   if (!cards.length) return '';
   return `<div class="tappe-box"><div class="tappe-title">Servizi</div><div class="svc-list">${cards.join('')}</div></div>`;
-}
-
-function mezzoRaggiungimentoDl(t) {
-  const n = Number(t.tappa_numero);
-  // Tappa 1: niente mezzo di arrivo — non mostrare la riga
-  if (!Number.isFinite(n) || n <= 1) return '';
-  const val = String(t.mezzo_raggiungimento || '').trim();
-  return `<dt>Mezzo di raggiungimento</dt><dd>${esc(val || '—')}</dd>`;
-}
-
-function renderOrganizzazioneTappaCard(t, isFocus) {
-  const costi = [
-    ['Hotel', t.costo_hotel],
-    ['Noleggio', t.costo_noleggio],
-    ['Parcheggio', t.costo_parcheggio],
-    ['Treno', t.costo_treno],
-    ['Aereo', t.costo_aereo],
-    ['Auto aziendale', t.costo_auto_az],
-    ['Totale tappa', t.costo_tappa_totale]
-  ].filter(([, v]) => costoHaValore(v));
-  return `<article class="org-card${isFocus ? ' is-focus' : ''}">
-    <div class="org-card-head">Tappa ${esc(t.tappa_numero || '—')} · ${esc(t.citta || '—')}
-      <small>${esc(fmtPeriodoIt(t.data_arrivo, t.data_partenza))}</small>
-    </div>
-    <dl class="org-dl">
-      <dt>Cliente</dt><dd>${esc(t.cliente_tappa || '—')}</dd>
-      <dt>Attività</dt><dd>${esc(t.tipo_attivita || '—')}</dd>
-      <dt>Pernottamento</dt><dd>${esc(t.pernottamento || '—')}</dd>
-      ${mezzoRaggiungimentoDl(t)}
-      <dt>Prenotazioni</dt><dd>${esc(t.stato_prenotazioni || '—')}</dd>
-      ${t.note_tappa ? `<dt>Note</dt><dd>${esc(t.note_tappa)}</dd>` : ''}
-      ${costi.map(([lbl, v]) => `<dt>${lbl}</dt><dd>${esc(fmtEuro(v))}</dd>`).join('')}
-    </dl>
-    ${renderServiziHtml(t.servizi_json)}
-  </article>`;
 }
 
 function renderOrganizzazioneTrasferta(siblings, focusTappa) {

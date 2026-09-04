@@ -242,6 +242,33 @@
     padding: 22px; background: var(--white); border: 1px solid var(--gray-200);
     border-radius: var(--radius-lg); box-shadow: var(--shadow); margin-top: 20px;
   }
+  .lista-toolbar {
+    display: flex; justify-content: center; margin-bottom: 16px;
+  }
+  .lista-trasferte { display: flex; flex-direction: column; gap: 12px; }
+  .tr-empty {
+    text-align: center; color: var(--gray-400); font-size: 13px; padding: 18px 12px;
+    background: var(--gray-100); border-radius: var(--radius); border: 1px dashed var(--gray-200);
+  }
+  .tr-card {
+    background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-lg);
+    padding: 16px 18px; box-shadow: var(--shadow);
+  }
+  .tr-card-top {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;
+  }
+  .tr-card-title { font-size: 15px; font-weight: 700; color: var(--blue-mid); }
+  .tr-card-id {
+    font-family: 'DM Mono', monospace; font-size: 11px; color: var(--gray-400);
+    background: var(--blue-pale); padding: 4px 8px; border-radius: 6px; word-break: break-all;
+  }
+  .tr-card-meta {
+    margin-top: 10px; display: grid; gap: 4px; font-size: 13px; color: var(--gray-600);
+  }
+  .tr-card-meta b { color: var(--gray-800); font-weight: 600; }
+  .tr-card-actions {
+    margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
+  }
   .toast {
     position: fixed; bottom: 24px; right: 24px; background: var(--blue-deep); color: white;
     padding: 12px 20px; border-radius: 10px; font-size: 14px; box-shadow: var(--shadow-md);
@@ -415,21 +442,20 @@
     </div>
   </div>
 
-  <!-- Fase 1: ricerca -->
+  <!-- Fase 1: elenco trasferte attive -->
   <div class="section" id="fase-ricerca">
     <div class="section-header">
-      <div class="section-icon">🔍</div>
-      <span class="section-title">Recupera trasferta</span>
+      <div class="section-icon">📋</div>
+      <span class="section-title">Trasferte attive</span>
     </div>
     <div class="section-body">
-      <div class="field-row">
-        <div class="field" style="flex:2">
-          <label>ID Trasferta</label>
-          <input type="text" id="input-trasferta-id" placeholder="es. TR-2026-0042" autocomplete="off">
-        </div>
+      <div class="lista-toolbar">
         <button class="btn btn-primary" id="btn-carica" onclick="caricaTrasferta()">Carica dati</button>
       </div>
       <p class="loading-inline hidden" id="msg-caricamento">⏳ Recupero in corso…</p>
+      <div id="lista-trasferte" class="lista-trasferte">
+        <p class="tr-empty">Premi «Carica dati» per vedere le trasferte disponibili.</p>
+      </div>
     </div>
   </div>
 
@@ -457,7 +483,7 @@
     </div>
 
     <div class="action-bar">
-      <button class="btn btn-outline" onclick="nuovaRicerca()">↩ Altra trasferta</button>
+      <button class="btn btn-outline" onclick="nuovaRicerca()">↩ Elenco trasferte</button>
       <button class="btn btn-secondary" id="btn-salva" onclick="salvaProgresso()">💾 Salva progresso</button>
       <button class="btn btn-primary" id="btn-invia" onclick="inviaPrenotazioni()">📤 Invia prenotazioni</button>
     </div>
@@ -469,12 +495,12 @@
 
 <div class="modal-overlay" id="modal-elimina">
   <div class="modal">
-    <h3>✅ Prenotazioni inviate</h3>
+    <h3 id="modal-elimina-title">Eliminare la trasferta?</h3>
     <p id="modal-elimina-testo">Vuoi eliminare il record della trasferta <strong id="modal-id-testo"></strong> dal sistema?<br><br>
-    Se elimini, non dovrai gestire di nuovo questa trasferta. Se lo tieni, potrai riaprirla in seguito con lo stesso ID.</p>
+    Verranno cancellate solo le righe con questo <code>trasferta_id</code>.</p>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="chiudiModaleDopoInvio(false)">No, tieni il record</button>
-      <button class="btn btn-danger" id="btn-conferma-elimina" onclick="confermaElimina()">Sì, elimina record</button>
+      <button class="btn btn-secondary" onclick="chiudiModaleElimina()">Annulla</button>
+      <button class="btn btn-danger" id="btn-conferma-elimina" onclick="confermaElimina()">Sì, elimina</button>
     </div>
   </div>
 </div>
@@ -1007,9 +1033,34 @@ function buildItemServizio(tappa, key, datiRaw) {
 }
 
 // ========== UI: card prenotazione ==========
+function statoPrenotazioneDaCard(card) {
+  return (card.querySelector('[data-srv-field="stato"]')?.value || '').trim();
+}
+
+function isPrenotatoDaCard(card) {
+  return prenotatoInizialeDaStato(statoPrenotazioneDaCard(card));
+}
+
+/** Date servizio = sempre lo span della tappa (event. hotel/noleggio usano suggerisciGiornate). */
+function giornatePerCard(meta, datiServizio) {
+  const n = Number(meta && meta.tappa);
+  const block = document.querySelector(`.tappa-block[data-tappa="${n}"]`);
+  const fromDom = {
+    data_arrivo: block?.querySelector('[data-tappa-field=data_arrivo]')?.value || '',
+    data_partenza: block?.querySelector('[data-tappa-field=data_partenza]')?.value || ''
+  };
+  const fromSession = (sessionTrasferta?.itinerario || []).find(t => Number(t.tappa) === n) || {};
+  const tappa = {
+    ...fromSession,
+    data_arrivo: fromDom.data_arrivo || fromSession.data_arrivo || '',
+    data_partenza: fromDom.data_partenza || fromSession.data_partenza || ''
+  };
+  const key = meta.servizio_key || (meta.tipo === 'tratta' ? (mezzoToServizioKey(meta.mezzo) || 'spostamento') : null);
+  return suggerisciGiornate(tappa, 'servizio', key, datiServizio || {});
+}
+
 function renderPrenotazioneCard(item) {
   const meta = JSON.stringify(item).replace(/"/g, '&quot;');
-  const prenOn = item.prenotato_default ? 'checked' : '';
   const datiSrv = item.dati_servizio || item.dati_origine || {};
   const costoSrv = costoServizioDaItem(item);
   const metodoSel = item.metodo_pagamento || '';
@@ -1035,16 +1086,6 @@ function renderPrenotazioneCard(item) {
       </div>
       <div class="pren-fields">
         ${srvFields}
-        <div class="pren-field">
-          <label>Prenotato</label>
-          <div class="switch-row">
-            <label class="switch">
-              <input type="checkbox" data-field="prenotato" ${prenOn}>
-              <span class="switch-slider"></span>
-            </label>
-            <span class="switch-label" data-switch-label>No</span>
-          </div>
-        </div>
         ${isServizio ? `
         <div class="pren-field">
           <label>Costo servizio (€)</label>
@@ -1053,14 +1094,6 @@ function renderPrenotazioneCard(item) {
         <div class="pren-field">
           <label>Metodo pagamento</label>
           <select data-field="metodo_pagamento">${optionsPagamento(METODI_PAGAMENTO, metodoSel)}</select>
-        </div>
-        <div class="pren-field">
-          <label>Giorno / da</label>
-          <input type="date" data-field="giornate_da" value="${esc(item.giornate_da)}">
-        </div>
-        <div class="pren-field">
-          <label>Giorno / a</label>
-          <input type="date" data-field="giornate_a" value="${esc(item.giornate_a)}">
         </div>
         ${isServizio ? `
         <div class="pren-voucher-extra hidden" data-voucher-panel>
@@ -1119,13 +1152,6 @@ function syncVoucherPanel(card) {
 
 function bindPrenotazioneCards(root) {
   root.querySelectorAll('.prenotazione-card').forEach(card => {
-    const cb = card.querySelector('[data-field=prenotato]');
-    const lbl = card.querySelector('[data-switch-label]');
-    if (cb && lbl) {
-      const syncLbl = () => { lbl.textContent = cb.checked ? 'Sì' : 'No'; };
-      cb.addEventListener('change', syncLbl);
-      syncLbl();
-    }
     const selPag = card.querySelector('[data-field=metodo_pagamento]');
     if (selPag) selPag.addEventListener('change', () => syncVoucherPanel(card));
     const inpCosto = card.querySelector('[data-field=costo_servizio]');
@@ -1174,13 +1200,9 @@ function serviziKeysPerTappa(tappa) {
     const k = mezzoToServizioKey(mezzo);
     if (k) keys.add(k);
   });
-  // Servizi aggiunti manualmente (+ Aggiungi): non legati ai chip inter-tappa
+  // Source of truth: tutto ciò che è già in servizi_json (anche treno/aereo su tappa 1 senza chip mezzo)
   if (tappa.servizi) {
-    Object.keys(tappa.servizi).forEach(key => {
-      if (keys.has(key)) return;
-      if (isServizioLegatoAMezzoIntertappa(key)) return;
-      keys.add(key);
-    });
+    Object.keys(tappa.servizi).forEach(key => keys.add(key));
   }
   return [...keys];
 }
@@ -1374,6 +1396,19 @@ function renderTrasportoIntertappa(tappa) {
 
 function toggleChipMezzo(el, tappaNum) {
   el.classList.toggle('selected');
+  const mezzo = el.getAttribute('data-mezzo');
+  const key = mezzoToServizioKey(mezzo);
+  // Deselezione chip: togli il servizio collegato se nessun altro chip della stessa chiave resta attivo
+  if (!el.classList.contains('selected') && key && sessionTrasferta) {
+    const trasporto = document.querySelector(`.trasporto-intertappa[data-trasporto-tappa="${tappaNum}"]`);
+    const targets = new Set(mezziChipPerServizioKey(key));
+    const ancoraOn = [...(trasporto?.querySelectorAll('.chip-mezzo.selected') || [])]
+      .some(c => targets.has(c.getAttribute('data-mezzo')));
+    if (!ancoraOn) {
+      const tappa = sessionTrasferta.itinerario.find(t => t.tappa === tappaNum);
+      if (tappa?.servizi?.[key]) delete tappa.servizi[key];
+    }
+  }
   refreshPrenListTappa(tappaNum);
 }
 
@@ -1753,19 +1788,111 @@ function renderTrasferta(trasferta, trasfertaId) {
   document.getElementById('fase-dettaglio').classList.remove('hidden');
 }
 
-// ========== Fase 1: GET trasferta ==========
-async function fetchTrasfertaById(id) {
-  const raw = await apiPost(WEBHOOK_RECUPERO, { trasferta_id: id });
-  const trasferta = estraiPayloadRisposta(raw);
-  if (!trasferta || !Array.isArray(trasferta.itinerario)) {
-    const vuoto = Array.isArray(raw) && raw.length === 0;
-    throw new Error(
-      vuoto
-        ? 'Nessuna trasferta trovata per questo ID (risposta vuota da n8n)'
-        : 'Risposta non valida: controlla che n8n restituisca anagrafica + itinerario'
-    );
+// ========== Fase 1: elenco trasferte (get-all) ==========
+let elencoTrasferteCache = [];
+let pendingDeleteId = null;
+let deleteContext = 'lista'; // 'lista' | 'after-invio'
+
+/** Estrae righe flat DT (anche se n8n avvolge in body/data). */
+function estraiRigheN8n(data) {
+  if (data == null) return [];
+  if (Array.isArray(data)) {
+    if (!data.length) return [];
+    if (isRigaTabellaN8n(data[0])) return data.filter(isRigaTabellaN8n);
+    return data.flatMap(item => {
+      if (isRigaTabellaN8n(item)) return [item];
+      if (item && typeof item === 'object') {
+        if (item.json && isRigaTabellaN8n(item.json)) return [item.json];
+        return estraiRigheN8n(item.json || item.body || item.data || []);
+      }
+      return [];
+    });
   }
-  return trasferta;
+  if (typeof data !== 'object') return [];
+  if (data.body) return estraiRigheN8n(data.body);
+  if (data.data) return estraiRigheN8n(data.data);
+  if (data.righe) return estraiRigheN8n(data.righe);
+  if (data.json) return estraiRigheN8n(data.json);
+  return [];
+}
+
+/** Raggruppa le tappe per trasferta_id → elenco UI. */
+function raggruppaTrasferteDaRighe(righe) {
+  const map = new Map();
+  (righe || []).forEach(r => {
+    const id = String(r.trasferta_id || '').trim();
+    if (!id || !isRigaTabellaN8n(r)) return;
+    if (!map.has(id)) map.set(id, []);
+    map.get(id).push(r);
+  });
+  return [...map.entries()].map(([id, rows]) => {
+    const trasferta = normalizzaDaRigheN8n(rows);
+    return trasferta ? { id, trasferta, rows } : null;
+  }).filter(Boolean).sort((a, b) => {
+    const da = a.trasferta.anagrafica?.data_inizio || '';
+    const db = b.trasferta.anagrafica?.data_inizio || '';
+    return db.localeCompare(da) || String(a.id).localeCompare(String(b.id));
+  });
+}
+
+function riepilogoStatoTrasferta(trasferta) {
+  const stati = (trasferta.itinerario || []).map(t => String(t.stato_prenotazioni || '').trim()).filter(Boolean);
+  if (!stati.length) return '—';
+  if (stati.every(s => /complet/i.test(s))) return 'Completato';
+  if (stati.some(s => /corso|sospes/i.test(s))) return 'In corso';
+  return stati[0];
+}
+
+function renderListaTrasferte(list) {
+  const el = document.getElementById('lista-trasferte');
+  if (!el) return;
+  const items = list || [];
+  if (!items.length) {
+    el.innerHTML = '<p class="tr-empty">Nessuna trasferta attiva. Premi «Carica dati» oppure crea una nuova trasferta.</p>';
+    return;
+  }
+  el.innerHTML = items.map(({ id, trasferta }) => {
+    const ana = trasferta.anagrafica || {};
+    const nTappe = (trasferta.itinerario || []).length;
+    const citta = (trasferta.itinerario || []).map(t => t.citta).filter(Boolean).join(' → ') || '—';
+    return `<article class="tr-card" data-tr-id="${esc(id)}">
+      <div class="tr-card-top">
+        <div class="tr-card-title">${esc(ana.nome_cognome || '—')}</div>
+        <span class="tr-card-id">${esc(id)}</span>
+      </div>
+      <div class="tr-card-meta">
+        <div>Periodo: <b>${esc(formatDateIt(ana.data_inizio))} → ${esc(formatDateIt(ana.data_fine_prevista))}</b></div>
+        <div>Tappe: <b>${nTappe}</b> · ${esc(citta)}</div>
+        <div>Prenotazioni: <b>${esc(riepilogoStatoTrasferta(trasferta))}</b></div>
+      </div>
+      <div class="tr-card-actions">
+        <button type="button" class="btn btn-danger" data-elimina="${esc(id)}">Elimina</button>
+        <button type="button" class="btn btn-primary" data-apri="${esc(id)}">Modifica</button>
+      </div>
+    </article>`;
+  }).join('');
+  el.querySelectorAll('[data-apri]').forEach(btn => {
+    btn.addEventListener('click', () => apriTrasfertaDaLista(btn.getAttribute('data-apri')));
+  });
+  el.querySelectorAll('[data-elimina]').forEach(btn => {
+    btn.addEventListener('click', () => chiediEliminaTrasfertaLista(btn.getAttribute('data-elimina')));
+  });
+}
+
+async function fetchTutteTrasferte() {
+  const raw = await apiPost(WEBHOOK_RECUPERO, {});
+  const righe = estraiRigheN8n(raw);
+  elencoTrasferteCache = raggruppaTrasferteDaRighe(righe);
+  return elencoTrasferteCache;
+}
+
+async function fetchTrasfertaById(id) {
+  const list = await fetchTutteTrasferte();
+  const found = list.find(x => String(x.id) === String(id));
+  if (!found || !found.trasferta || !Array.isArray(found.trasferta.itinerario)) {
+    throw new Error('Nessuna trasferta trovata per ID ' + id);
+  }
+  return found.trasferta;
 }
 
 async function caricaTrasfertaSilente(id) {
@@ -1773,22 +1900,28 @@ async function caricaTrasfertaSilente(id) {
   renderTrasferta(trasferta, id);
 }
 
-async function caricaTrasferta() {
-  const id = document.getElementById('input-trasferta-id').value.trim();
-  if (!id) {
-    showToast('Inserisci l\'ID trasferta', 'warn');
-    return;
+async function apriTrasfertaDaLista(id) {
+  if (!id) return;
+  try {
+    showToast('Apertura trasferta…');
+    await caricaTrasfertaSilente(id);
+    showToast('Trasferta caricata', 'success');
+    document.getElementById('fase-dettaglio').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    showToast('Apertura fallita: ' + (e.message || e), 'error');
   }
+}
 
+async function caricaTrasferta() {
   const btn = document.getElementById('btn-carica');
   const msg = document.getElementById('msg-caricamento');
   btn.disabled = true;
   msg.classList.remove('hidden');
-
   try {
-    await caricaTrasfertaSilente(id);
-    showToast('Trasferta caricata', 'success');
-    document.getElementById('fase-dettaglio').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const list = await fetchTutteTrasferte();
+    document.getElementById('fase-dettaglio').classList.add('hidden');
+    renderListaTrasferte(list);
+    showToast(list.length ? (list.length + ' trasferte caricate') : 'Nessuna trasferta attiva', 'success');
   } catch (e) {
     showToast('Recupero fallito: ' + (e.message || e), 'error');
     console.error('caricaTrasferta:', e);
@@ -1803,7 +1936,82 @@ function nuovaRicerca() {
   sessionTrasfertaId = null;
   document.getElementById('fase-dettaglio').classList.add('hidden');
   document.getElementById('contenitore-tappe').innerHTML = '';
-  document.getElementById('input-trasferta-id').focus();
+  renderListaTrasferte(elencoTrasferteCache);
+  document.getElementById('fase-ricerca')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function chiediEliminaTrasfertaLista(id) {
+  if (!id) return;
+  pendingDeleteId = id;
+  deleteContext = 'lista';
+  const title = document.getElementById('modal-elimina-title');
+  if (title) title.textContent = 'Eliminare la trasferta?';
+  document.getElementById('modal-id-testo').textContent = id;
+  document.getElementById('modal-elimina-testo').innerHTML =
+    'Vuoi eliminare la trasferta <strong id="modal-id-testo">' + esc(id) + '</strong> dal sistema?<br><br>'
+    + 'Verranno cancellate solo le righe con questo <code>trasferta_id</code>.';
+  document.getElementById('modal-elimina').classList.add('show');
+}
+
+function apriModaleDopoInvio() {
+  if (!sessionTrasfertaId) return;
+  pendingDeleteId = sessionTrasfertaId;
+  deleteContext = 'after-invio';
+  const title = document.getElementById('modal-elimina-title');
+  if (title) title.textContent = 'Prenotazioni inviate';
+  document.getElementById('modal-id-testo').textContent = sessionTrasfertaId;
+  document.getElementById('modal-elimina-testo').innerHTML =
+    'Vuoi eliminare il record della trasferta <strong id="modal-id-testo">' + esc(sessionTrasfertaId) + '</strong> dal sistema?<br><br>'
+    + 'Se elimini, non dovrai gestirla di nuovo. Se lo tieni, resta nell\'elenco trasferte attive.';
+  document.getElementById('modal-elimina').classList.add('show');
+}
+
+function chiudiModaleElimina(vaiElenco) {
+  document.getElementById('modal-elimina').classList.remove('show');
+  pendingDeleteId = null;
+  if (vaiElenco) nuovaRicerca();
+}
+
+/** Compat: vecchio nome usato dopo invio (No, tieni record → resta in dettaglio) */
+function chiudiModaleDopoInvio(vaiNuovaRicerca) {
+  document.getElementById('modal-elimina').classList.remove('show');
+  pendingDeleteId = null;
+  if (vaiNuovaRicerca !== false) nuovaRicerca();
+}
+
+async function confermaElimina() {
+  const id = pendingDeleteId || sessionTrasfertaId;
+  if (!id) return;
+  const btn = document.getElementById('btn-conferma-elimina');
+  btn.disabled = true;
+  try {
+    await apiPost(WEBHOOK_CANCELLA_TRASFERTA, { trasferta_id: id });
+    showToast('Trasferta eliminata', 'success');
+    elencoTrasferteCache = elencoTrasferteCache.filter(x => String(x.id) !== String(id));
+    document.getElementById('modal-elimina').classList.remove('show');
+    pendingDeleteId = null;
+    if (deleteContext === 'after-invio' || String(sessionTrasfertaId) === String(id)) {
+      sessionTrasferta = null;
+      sessionTrasfertaId = null;
+      document.getElementById('fase-dettaglio').classList.add('hidden');
+      document.getElementById('contenitore-tappe').innerHTML = '';
+    }
+    renderListaTrasferte(elencoTrasferteCache);
+    document.getElementById('fase-ricerca')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    showToast('Errore: ' + (e.message || e), 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function showToast(msg, type, ms) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (type ? ' ' + type : '');
+  t.classList.add('show');
+  clearTimeout(t._hide);
+  t._hide = setTimeout(() => t.classList.remove('show'), ms || 3200);
 }
 
 // ========== Raccolta payload invio ==========
@@ -1830,22 +2038,27 @@ function raccogliPrenotazioniRuntime() {
       datiServizio = leggiDatiServizioDaCard(card);
       if (meta.mezzo && !datiServizio.mezzo_viaggio) datiServizio.mezzo_viaggio = meta.mezzo;
       if (costoServizio) datiServizio.costo = costoServizio;
+      // Stato UI è source of truth: allinea anche prenotato derivato
+      if (!datiServizio.stato) datiServizio.stato = 'da_prenotare';
       meta.dettaglio_origine = servizioDettaglioTesto(servizioKey, datiServizio);
       meta.servizio_key = servizioKey;
       meta.tipo = 'servizio';
     }
 
+    const prenotato = isPrenotatoDaCard(card);
+    const gg = giornatePerCard(meta, datiServizio);
+
     out.push({
       ...meta,
-      prenotato: card.querySelector('[data-field=prenotato]').checked,
+      prenotato,
       metodo_pagamento: metodo,
       costo_servizio: costoServizio,
       dati_servizio: datiServizio,
       valore_voucher: metodo === 'voucher' ? valoreVoucher : '',
       differenza_pagamento: metodo === 'voucher' ? differenza : 0,
       metodo_pagamento_differenza: metodo === 'voucher' && differenza > 0 ? metodoDiff : '',
-      giornate_da: card.querySelector('[data-field=giornate_da]').value,
-      giornate_a: card.querySelector('[data-field=giornate_a]').value
+      giornate_da: gg.da,
+      giornate_a: gg.a
     });
   });
   return out;
@@ -1856,7 +2069,7 @@ function validaPrenotazioni() {
   for (const card of cards) {
     const meta = JSON.parse(card.getAttribute('data-meta').replace(/&quot;/g, '"'));
     const titolo = meta.titolo || 'Servizio';
-    const prenotato = card.querySelector('[data-field=prenotato]').checked;
+    const prenotato = isPrenotatoDaCard(card);
     const metodo = card.querySelector('[data-field=metodo_pagamento]').value;
     if (prenotato && !metodo) return `${titolo}: seleziona il metodo di pagamento`;
     const srvKey = meta.servizio_key || (meta.tipo === 'tratta' ? (mezzoToServizioKey(meta.mezzo) || 'spostamento') : null);
@@ -1864,7 +2077,7 @@ function validaPrenotazioni() {
     if (richiedeCosto && prenotato) {
       const c = readCostoServizioCard(card);
       if (!c || parseCostoNum(c) <= 0) {
-        return `${titolo}: indica il costo del servizio (richiesto se segnato come prenotato)`;
+        return `${titolo}: indica il costo del servizio (richiesto se stato «Prenotato»/«Acquistato»)`;
       }
     }
     if (prenotato && metodo === 'voucher') {
@@ -2108,47 +2321,6 @@ async function inviaPrenotazioni() {
     btn.disabled = false;
   }
 }
-
-// ========== Popup elimina record (dopo invio riuscito) ==========
-function apriModaleDopoInvio() {
-  if (!sessionTrasfertaId) return;
-  document.getElementById('modal-id-testo').textContent = sessionTrasfertaId;
-  document.getElementById('modal-elimina').classList.add('show');
-}
-
-function chiudiModaleDopoInvio(vaiNuovaRicerca) {
-  document.getElementById('modal-elimina').classList.remove('show');
-  if (vaiNuovaRicerca !== false) nuovaRicerca();
-}
-
-async function confermaElimina() {
-  if (!sessionTrasfertaId) return;
-
-  const btn = document.getElementById('btn-conferma-elimina');
-  btn.disabled = true;
-  try {
-    await apiPost(WEBHOOK_CANCELLA_TRASFERTA, { trasferta_id: sessionTrasfertaId });
-    showToast('Record eliminato', 'success');
-    chiudiModaleDopoInvio();
-  } catch (e) {
-    showToast('Errore: ' + (e.message || e), 'error');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-function showToast(msg, type, ms) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast' + (type ? ' ' + type : '');
-  t.classList.add('show');
-  clearTimeout(t._hide);
-  t._hide = setTimeout(() => t.classList.remove('show'), ms || 3200);
-}
-
-document.getElementById('input-trasferta-id').addEventListener('keydown', e => {
-  if (e.key === 'Enter') caricaTrasferta();
-});
 
 // ========== Nuova Trasferta ==========
 let ntUid = 0;
