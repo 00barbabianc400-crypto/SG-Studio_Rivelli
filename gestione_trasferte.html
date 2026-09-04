@@ -479,6 +479,17 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-estendi-range" aria-hidden="true">
+  <div class="modal" role="dialog" aria-labelledby="modal-estendi-title" aria-modal="true">
+    <h3 id="modal-estendi-title">Estendere il periodo?</h3>
+    <p id="modal-estendi-testo"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="modal-estendi-no">No, ripristina data</button>
+      <button type="button" class="btn btn-primary" id="modal-estendi-si">Sì, estendi</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/dipendenti-list.js"></script>
@@ -1508,8 +1519,41 @@ function aggiornaRiepilogoDateTrasferta() {
   });
 }
 
-/** Se la tappa esce dal range trasferta, chiede conferma per estenderlo. Ritorna false se l'utente annulla. */
-function garantisciRangeTrasferta(arrivo, partenza) {
+let _estendiRangeResolve = null;
+
+/** Modale CSS (stesso stile di modal-elimina). Risolve true/false. */
+function chiediEstendiRange({ tappaDa, tappaA, oldInizio, oldFine, newInizio, newFine }) {
+  const overlay = document.getElementById('modal-estendi-range');
+  const testo = document.getElementById('modal-estendi-testo');
+  if (!overlay || !testo) return Promise.resolve(false);
+  testo.innerHTML =
+    'La tappa (<strong>' + formatDateIt(tappaDa) + ' → ' + formatDateIt(tappaA) + '</strong>) '
+    + 'esce dal periodo della trasferta (<strong>' + formatDateIt(oldInizio) + ' → ' + formatDateIt(oldFine) + '</strong>).'
+    + '<br><br>Vuoi estendere il periodo a <strong>' + formatDateIt(newInizio) + ' → ' + formatDateIt(newFine) + '</strong>?';
+  overlay.classList.add('show');
+  overlay.setAttribute('aria-hidden', 'false');
+  return new Promise(resolve => { _estendiRangeResolve = resolve; });
+}
+
+function rispondiEstendiRange(ok) {
+  const overlay = document.getElementById('modal-estendi-range');
+  if (overlay) {
+    overlay.classList.remove('show');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
+  const r = _estendiRangeResolve;
+  _estendiRangeResolve = null;
+  if (r) r(!!ok);
+}
+
+document.getElementById('modal-estendi-si')?.addEventListener('click', () => rispondiEstendiRange(true));
+document.getElementById('modal-estendi-no')?.addEventListener('click', () => rispondiEstendiRange(false));
+document.getElementById('modal-estendi-range')?.addEventListener('click', e => {
+  if (e.target.id === 'modal-estendi-range') rispondiEstendiRange(false);
+});
+
+/** Se la tappa esce dal range, chiede conferma CSS per estenderlo. */
+async function garantisciRangeTrasferta(arrivo, partenza) {
   if (!sessionTrasferta) return true;
   if (!sessionTrasferta.anagrafica) sessionTrasferta.anagrafica = {};
   const ana = sessionTrasferta.anagrafica;
@@ -1528,16 +1572,32 @@ function garantisciRangeTrasferta(arrivo, partenza) {
   if (!outLow && !outHigh) return true;
   const newInizio = outLow ? d.da : inizio;
   const newFine = outHigh ? fineTappa : fine;
-  const ok = window.confirm(
-    'La tappa (' + formatDateIt(d.da) + ' → ' + formatDateIt(fineTappa)
-    + ') esce dal periodo della trasferta (' + formatDateIt(inizio) + ' → ' + formatDateIt(fine)
-    + ').\n\nVuoi estendere il periodo a ' + formatDateIt(newInizio) + ' → ' + formatDateIt(newFine) + '?'
-  );
+  const ok = await chiediEstendiRange({
+    tappaDa: d.da,
+    tappaA: fineTappa,
+    oldInizio: inizio,
+    oldFine: fine,
+    newInizio,
+    newFine
+  });
   if (!ok) return false;
   ana.data_inizio = newInizio;
   ana.data_fine_prevista = newFine;
   aggiornaRiepilogoDateTrasferta();
   return true;
+}
+
+/** Ricalcola Inizio/Fine anagrafica dallo span reale delle tappe residue. */
+function ricalcolaAnagraficaDaItinerario() {
+  if (!sessionTrasferta) return;
+  if (!sessionTrasferta.anagrafica) sessionTrasferta.anagrafica = {};
+  const date = (sessionTrasferta.itinerario || [])
+    .flatMap(t => [t.data_arrivo, t.data_partenza].filter(Boolean))
+    .sort();
+  if (!date.length) return;
+  const span = ordinaCoppiaDate(date[0], date[date.length - 1]);
+  sessionTrasferta.anagrafica.data_inizio = span.da;
+  sessionTrasferta.anagrafica.data_fine_prevista = span.a;
 }
 
 function rimuoviTappa(tappaNum) {
@@ -1558,6 +1618,7 @@ function rimuoviTappa(tappaNum) {
   let nuovo = sessionTrasferta.itinerario.filter(t => t.tappa !== tappaNum);
   nuovo.forEach((t, i) => { t.tappa = i + 1; });
   sessionTrasferta.itinerario = nuovo;
+  ricalcolaAnagraficaDaItinerario();
   renderTrasferta(sessionTrasferta, sessionTrasfertaId);
   showToast('Tappa rimossa', 'success', 2200);
 }
@@ -1597,9 +1658,11 @@ function bindTappaEditFields(root) {
     });
     block.querySelectorAll('[data-tappa-field=data_arrivo],[data-tappa-field=data_partenza]').forEach(inp => {
       inp.dataset.prev = inp.value;
-      inp.addEventListener('change', () => {
+      inp.addEventListener('change', async () => {
         const arrivoEl = block.querySelector('[data-tappa-field=data_arrivo]');
         const partenzaEl = block.querySelector('[data-tappa-field=data_partenza]');
+        const prevA = arrivoEl?.dataset.prev || '';
+        const prevP = partenzaEl?.dataset.prev || '';
         const rawA = arrivoEl?.value || '';
         const rawP = partenzaEl?.value || '';
         const d = ordinaCoppiaDate(rawA, rawP || rawA);
@@ -1607,11 +1670,11 @@ function bindTappaEditFields(root) {
           arrivoEl.value = d.da;
           partenzaEl.value = d.a;
         }
-        if (!garantisciRangeTrasferta(d.da, d.a || d.da)) {
-          inp.value = inp.dataset.prev || '';
+        if (!(await garantisciRangeTrasferta(d.da, d.a || d.da))) {
+          if (arrivoEl) arrivoEl.value = prevA;
+          if (partenzaEl) partenzaEl.value = prevP;
           return;
         }
-        inp.dataset.prev = inp.value;
         if (arrivoEl) arrivoEl.dataset.prev = arrivoEl.value;
         if (partenzaEl) partenzaEl.dataset.prev = partenzaEl.value;
         const meta = block.querySelector('.tappa-block-meta');
@@ -2260,6 +2323,113 @@ function ntAddTappa() {
       }
     }
   }
+  ntBindTappaDate(uid);
+  // Se le date auto (+1) estendono il periodo, chiedi confirm; se No, lascia le date tappa ma non tocca Inizio/Fine
+  // (in pratica se rifiuta le date restano e la validazione all'invio segnala; meglio ripristinare a vuoto se appena auto-impostate)
+  (async () => {
+    const arr = document.getElementById(`nt-${uid}-arrivo`);
+    const part = document.getElementById(`nt-${uid}-partenza`);
+    const autoFilled = !!(arr && arr.value);
+    if (!(await ntEnsureExtendRangeDaTappe()) && autoFilled && !isFirst) {
+      if (arr) { arr.value = ''; arr.dataset.prev = ''; }
+      if (part) { part.value = ''; part.dataset.prev = ''; }
+      showToast('Date tappa annullate: periodo non esteso', 'warn');
+    } else {
+      if (arr) arr.dataset.prev = arr.value;
+      if (part) part.dataset.prev = part.value;
+    }
+  })();
+}
+
+/** Span date di tutte le tappe del form Nuova trasferta. */
+function ntSpanTappe() {
+  const date = [];
+  document.querySelectorAll('.nt-tappa-card').forEach(card => {
+    const uid = card.id.replace('nt-tappa-', '');
+    const a = ntVal(`nt-${uid}-arrivo`);
+    const p = ntVal(`nt-${uid}-partenza`) || a;
+    if (a) date.push(a);
+    if (p) date.push(p);
+  });
+  if (!date.length) return null;
+  date.sort();
+  return ordinaCoppiaDate(date[0], date[date.length - 1]);
+}
+
+/** Ricalcola Inizio/Fine dallo span tappe (usato al delete — senza confirm). */
+function ntSyncRangeDaTappe() {
+  const inizioEl = document.getElementById('nt-data-inizio');
+  const fineEl = document.getElementById('nt-data-fine');
+  if (!inizioEl || !fineEl) return;
+  const span = ntSpanTappe();
+  if (!span) return;
+  inizioEl.value = span.da;
+  fineEl.value = span.a;
+}
+
+/**
+ * Se lo span tappe esce da Inizio/Fine, chiede confirm CSS per estendere.
+ * Ritorna false se l'utente rifiuta (chiamante ripristina le date).
+ */
+async function ntEnsureExtendRangeDaTappe() {
+  const inizioEl = document.getElementById('nt-data-inizio');
+  const fineEl = document.getElementById('nt-data-fine');
+  if (!inizioEl || !fineEl) return true;
+  const span = ntSpanTappe();
+  if (!span) return true;
+  const inizio = inizioEl.value || '';
+  const fine = fineEl.value || '';
+  if (!inizio && !fine) {
+    inizioEl.value = span.da;
+    fineEl.value = span.a;
+    return true;
+  }
+  const outLow = !!(span.da && inizio && span.da < inizio);
+  const outHigh = !!(span.a && fine && span.a > fine);
+  if (!outLow && !outHigh) return true;
+  const newInizio = outLow ? span.da : inizio;
+  const newFine = outHigh ? span.a : fine;
+  const ok = await chiediEstendiRange({
+    tappaDa: span.da,
+    tappaA: span.a,
+    oldInizio: inizio,
+    oldFine: fine,
+    newInizio,
+    newFine
+  });
+  if (!ok) return false;
+  inizioEl.value = newInizio;
+  fineEl.value = newFine;
+  return true;
+}
+
+function ntBindTappaDate(uid) {
+  ['arrivo', 'partenza'].forEach(field => {
+    const el = document.getElementById(`nt-${uid}-${field}`);
+    if (!el || el.dataset.boundRange === '1') return;
+    el.dataset.boundRange = '1';
+    el.dataset.prev = el.value;
+    el.addEventListener('change', async () => {
+      const arrEl = document.getElementById(`nt-${uid}-arrivo`);
+      const partEl = document.getElementById(`nt-${uid}-partenza`);
+      const prevA = arrEl?.dataset.prev || '';
+      const prevP = partEl?.dataset.prev || '';
+      const arrivo = ntVal(`nt-${uid}-arrivo`);
+      const partenza = ntVal(`nt-${uid}-partenza`) || arrivo;
+      const d = ordinaCoppiaDate(arrivo, partenza);
+      if (arrEl && partEl && arrivo && partenza && (arrivo !== d.da || partenza !== d.a)) {
+        arrEl.value = d.da;
+        partEl.value = d.a;
+      }
+      if (!(await ntEnsureExtendRangeDaTappe())) {
+        if (arrEl) arrEl.value = prevA;
+        if (partEl) partEl.value = prevP;
+        return;
+      }
+      if (arrEl) arrEl.dataset.prev = arrEl.value;
+      if (partEl) partEl.dataset.prev = partEl.value;
+    });
+  });
 }
 
 function ntRemoveTappa(uid) {
@@ -2272,6 +2442,7 @@ function ntRemoveTappa(uid) {
   const first = document.querySelector('.nt-tappa-card');
   if (first) document.getElementById(`nt-inter-${first.id.replace('nt-tappa-','')}`)?.remove();
   ntRinumera();
+  ntSyncRangeDaTappe();
 }
 
 function ntRinumera() {
@@ -2354,7 +2525,7 @@ function ntValida() {
     const partenza = ntVal(`nt-${uid}-partenza`) || arrivo;
     if (arrivo && partenza && partenza < arrivo) return `Tappa ${i+1}: partenza prima dell'arrivo`;
     if (inizio && arrivo && arrivo < inizio) return `Tappa ${i+1}: arrivo prima dell'inizio trasferta`;
-    if (fine && partenza && partenza > fine) return `Tappa ${i+1}: partenza oltre la fine trasferta — allunga la fine oppure correggi le date`;
+    if (fine && partenza && partenza > fine) return `Tappa ${i+1}: partenza oltre la fine trasferta — estendi il periodo oppure correggi le date`;
     if (prevPartenza && arrivo && arrivo < prevPartenza) {
       return `Tappa ${i+1}: l'arrivo non può essere prima della partenza della tappa precedente (${prevPartenza})`;
     }

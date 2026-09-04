@@ -1061,7 +1061,9 @@ function apriDettaglioMacchina(id) {
             </div>
             <div class="tappa-row" style="margin-top:6px">
               <span>Cliente: <b>${esc(t.cliente_tappa || '—')}</b></span>
-              <span>Mezzo: <b>${esc(t.mezzo_raggiungimento || '—')}</b></span>
+              ${Number(t.tappa_numero) > 1
+                ? `<span>Mezzo di raggiungimento: <b>${esc(t.mezzo_raggiungimento || '—')}</b></span>`
+                : ''}
               <span>Stato: <b>${esc(t.stato_prenotazioni || '—')}</b></span>
             </div>
             ${t.note_tappa ? `<div class="tappa-note">${esc(t.note_tappa)}</div>` : ''}
@@ -1232,6 +1234,14 @@ function renderServiziHtml(raw) {
   return `<div class="tappe-box"><div class="tappe-title">Servizi</div><div class="svc-list">${cards.join('')}</div></div>`;
 }
 
+function mezzoRaggiungimentoDl(t) {
+  const n = Number(t.tappa_numero);
+  // Tappa 1: niente mezzo di arrivo — non mostrare la riga
+  if (!Number.isFinite(n) || n <= 1) return '';
+  const val = String(t.mezzo_raggiungimento || '').trim();
+  return `<dt>Mezzo di raggiungimento</dt><dd>${esc(val || '—')}</dd>`;
+}
+
 function renderOrganizzazioneTappaCard(t, isFocus) {
   const costi = [
     ['Hotel', t.costo_hotel],
@@ -1250,7 +1260,7 @@ function renderOrganizzazioneTappaCard(t, isFocus) {
       <dt>Cliente</dt><dd>${esc(t.cliente_tappa || '—')}</dd>
       <dt>Attività</dt><dd>${esc(t.tipo_attivita || '—')}</dd>
       <dt>Pernottamento</dt><dd>${esc(t.pernottamento || '—')}</dd>
-      <dt>Mezzo</dt><dd>${esc(t.mezzo_raggiungimento || '—')}</dd>
+      ${mezzoRaggiungimentoDl(t)}
       <dt>Prenotazioni</dt><dd>${esc(t.stato_prenotazioni || '—')}</dd>
       ${t.note_tappa ? `<dt>Note</dt><dd>${esc(t.note_tappa)}</dd>` : ''}
       ${costi.map(([lbl, v]) => `<dt>${lbl}</dt><dd>${esc(fmtEuro(v))}</dd>`).join('')}
