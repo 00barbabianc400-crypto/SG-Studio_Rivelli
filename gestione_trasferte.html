@@ -114,8 +114,12 @@
   .tappa-cliente-line { font-size: 13px; color: var(--gray-800); font-weight: 600; width: 100%; margin-top: 4px; }
   .tappa-block-meta { font-size: 12px; color: var(--gray-600); width: 100%; margin-top: 2px; }
   .tappa-edit {
-    padding: 14px 18px; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px;
+    padding: 14px 18px; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px 14px;
     border-bottom: 1px dashed var(--gray-200); background: var(--white);
+  }
+  @media (min-width: 960px) {
+    .tappa-edit { grid-template-columns: 1.4fr 1fr 1fr; }
+    .tappa-edit .pren-field:nth-child(4) { grid-column: 1 / -1; }
   }
   .tappa-edit .pren-field { min-width: 0; }
   .tappa-edit-note { grid-column: 1 / -1; }
@@ -1470,11 +1474,13 @@ function aggiungiTappa() {
   const it = sessionTrasferta.itinerario || [];
   const last = it[it.length - 1];
   const newNum = it.length + 1;
+  const base = last?.data_partenza || last?.data_arrivo || '';
+  const nextDay = base ? addDays(base, 1) : '';
   const newTappa = {
     tappa: newNum,
     citta: '',
-    data_arrivo: last?.data_partenza || last?.data_arrivo || '',
-    data_partenza: last?.data_partenza || last?.data_arrivo || '',
+    data_arrivo: nextDay,
+    data_partenza: nextDay,
     cliente_attivita: '',
     tipo_attivita: 'sopralluogo',
     pernottamento: false,
@@ -1485,7 +1491,53 @@ function aggiungiTappa() {
   };
   sessionTrasferta.itinerario = [...it, newTappa];
   renderTrasferta(sessionTrasferta, sessionTrasfertaId);
-  showToast('Tappa ' + newNum + ' aggiunta', 'success');
+  showToast('Tappa ' + newNum + ' aggiunta (date da giorno successivo)', 'success');
+}
+
+function aggiornaRiepilogoDateTrasferta() {
+  const ana = sessionTrasferta?.anagrafica || {};
+  const box = document.getElementById('riepilogo-anagrafica');
+  if (!box) return;
+  const items = box.querySelectorAll('.riepilogo-item');
+  items.forEach(item => {
+    const lbl = item.querySelector('.lbl')?.textContent?.trim();
+    const val = item.querySelector('.val');
+    if (!val || val.querySelector('input')) return;
+    if (lbl === 'Inizio') val.textContent = formatDateIt(ana.data_inizio);
+    if (lbl === 'Fine prevista') val.textContent = formatDateIt(ana.data_fine_prevista);
+  });
+}
+
+/** Se la tappa esce dal range trasferta, chiede conferma per estenderlo. Ritorna false se l'utente annulla. */
+function garantisciRangeTrasferta(arrivo, partenza) {
+  if (!sessionTrasferta) return true;
+  if (!sessionTrasferta.anagrafica) sessionTrasferta.anagrafica = {};
+  const ana = sessionTrasferta.anagrafica;
+  const d = ordinaCoppiaDate(arrivo, partenza);
+  const fineTappa = d.a || d.da;
+  let inizio = ana.data_inizio || '';
+  let fine = ana.data_fine_prevista || '';
+  if (!inizio && !fine) {
+    ana.data_inizio = d.da || '';
+    ana.data_fine_prevista = fineTappa || '';
+    aggiornaRiepilogoDateTrasferta();
+    return true;
+  }
+  const outLow = !!(d.da && inizio && d.da < inizio);
+  const outHigh = !!(fineTappa && fine && fineTappa > fine);
+  if (!outLow && !outHigh) return true;
+  const newInizio = outLow ? d.da : inizio;
+  const newFine = outHigh ? fineTappa : fine;
+  const ok = window.confirm(
+    'La tappa (' + formatDateIt(d.da) + ' → ' + formatDateIt(fineTappa)
+    + ') esce dal periodo della trasferta (' + formatDateIt(inizio) + ' → ' + formatDateIt(fine)
+    + ').\n\nVuoi estendere il periodo a ' + formatDateIt(newInizio) + ' → ' + formatDateIt(newFine) + '?'
+  );
+  if (!ok) return false;
+  ana.data_inizio = newInizio;
+  ana.data_fine_prevista = newFine;
+  aggiornaRiepilogoDateTrasferta();
+  return true;
 }
 
 function rimuoviTappa(tappaNum) {
@@ -1542,6 +1594,30 @@ function bindTappaEditFields(root) {
       const sync = () => { if (lbl) lbl.textContent = cb.checked ? 'Sì' : 'No'; };
       cb.addEventListener('change', () => { sync(); refreshPrenListTappa(n); });
       sync();
+    });
+    block.querySelectorAll('[data-tappa-field=data_arrivo],[data-tappa-field=data_partenza]').forEach(inp => {
+      inp.dataset.prev = inp.value;
+      inp.addEventListener('change', () => {
+        const arrivoEl = block.querySelector('[data-tappa-field=data_arrivo]');
+        const partenzaEl = block.querySelector('[data-tappa-field=data_partenza]');
+        const rawA = arrivoEl?.value || '';
+        const rawP = partenzaEl?.value || '';
+        const d = ordinaCoppiaDate(rawA, rawP || rawA);
+        if (arrivoEl && partenzaEl && rawA && rawP && (rawA !== d.da || rawP !== d.a)) {
+          arrivoEl.value = d.da;
+          partenzaEl.value = d.a;
+        }
+        if (!garantisciRangeTrasferta(d.da, d.a || d.da)) {
+          inp.value = inp.dataset.prev || '';
+          return;
+        }
+        inp.dataset.prev = inp.value;
+        if (arrivoEl) arrivoEl.dataset.prev = arrivoEl.value;
+        if (partenzaEl) partenzaEl.dataset.prev = partenzaEl.value;
+        const meta = block.querySelector('.tappa-block-meta');
+        if (meta) meta.textContent = formatDateIt(d.da) + ' → ' + formatDateIt(d.a || d.da);
+        syncSessionDaDom();
+      });
     });
   });
 }
@@ -2169,6 +2245,21 @@ function ntAddTappa() {
     </div>`;
   container.appendChild(card);
   ntRinumera();
+  if (!isFirst) {
+    const cards = [...container.querySelectorAll('.nt-tappa-card')];
+    const prev = cards[cards.length - 2];
+    if (prev) {
+      const prevUid = prev.id.replace('nt-tappa-', '');
+      const prevPart = ntVal(`nt-${prevUid}-partenza`) || ntVal(`nt-${prevUid}-arrivo`);
+      if (prevPart) {
+        const next = addDays(prevPart, 1);
+        const arr = document.getElementById(`nt-${uid}-arrivo`);
+        const part = document.getElementById(`nt-${uid}-partenza`);
+        if (arr) arr.value = next;
+        if (part) part.value = next;
+      }
+    }
+  }
 }
 
 function ntRemoveTappa(uid) {
@@ -2248,13 +2339,26 @@ function ntValida() {
   if (!Number.isFinite(nPart) || nPart < 1) return 'Inserisci il numero di partecipanti (≥ 1)';
   if (!ntVal('nt-data-inizio')) return 'Inserisci data inizio trasferta';
   if (!ntVal('nt-data-fine')) return 'Inserisci data fine trasferta';
+  const inizio = ntVal('nt-data-inizio');
+  const fine = ntVal('nt-data-fine');
+  if (inizio && fine && fine < inizio) return 'La data fine è precedente all\'inizio';
   const cards = document.querySelectorAll('.nt-tappa-card');
   if (!cards.length) return 'Aggiungi almeno una tappa';
+  let prevPartenza = null;
   for (let i = 0; i < cards.length; i++) {
     const uid = cards[i].id.replace('nt-tappa-', '');
     if (!ntVal(`nt-${uid}-citta`)) return `Tappa ${i+1}: inserisci la città`;
     if (!ntVal(`nt-${uid}-arrivo`)) return `Tappa ${i+1}: inserisci data arrivo`;
     if (!ntVal(`nt-${uid}-cliente`)) return `Tappa ${i+1}: inserisci cliente/attività`;
+    const arrivo = ntVal(`nt-${uid}-arrivo`);
+    const partenza = ntVal(`nt-${uid}-partenza`) || arrivo;
+    if (arrivo && partenza && partenza < arrivo) return `Tappa ${i+1}: partenza prima dell'arrivo`;
+    if (inizio && arrivo && arrivo < inizio) return `Tappa ${i+1}: arrivo prima dell'inizio trasferta`;
+    if (fine && partenza && partenza > fine) return `Tappa ${i+1}: partenza oltre la fine trasferta — allunga la fine oppure correggi le date`;
+    if (prevPartenza && arrivo && arrivo < prevPartenza) {
+      return `Tappa ${i+1}: l'arrivo non può essere prima della partenza della tappa precedente (${prevPartenza})`;
+    }
+    prevPartenza = partenza;
   }
   return null;
 }

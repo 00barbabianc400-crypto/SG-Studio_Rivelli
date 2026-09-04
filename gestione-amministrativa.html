@@ -255,6 +255,30 @@ body {
   max-height: min(88vh, 720px); overflow: auto;
 }
 .modal.modal-wide { width: min(1080px, calc(100vw - 24px)); max-height: min(92vh, 860px); }
+.modal.modal-org { width: min(920px, calc(100vw - 24px)); max-height: min(92vh, 860px); }
+.org-summary {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px; margin-bottom: 16px; padding: 12px 14px;
+  background: var(--accent-soft); border: 1px solid #dbeafe; border-radius: 12px;
+}
+.org-summary .lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.org-summary .val { font-size: 13px; font-weight: 600; color: var(--text); margin-top: 2px; word-break: break-word; }
+.org-board {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.org-card {
+  background: var(--hover); border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+}
+.org-card.is-focus { border-color: var(--accent); box-shadow: 0 0 0 2px #dbeafe; }
+.org-card-head { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.35; }
+.org-card-head small { display: block; font-weight: 500; color: var(--muted); margin-top: 2px; font-size: 11px; }
+.org-dl {
+  display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 0; font-size: 12px;
+}
+.org-dl dt { color: var(--muted); font-weight: 600; margin: 0; }
+.org-dl dd { margin: 0; color: var(--text); font-weight: 500; }
 .modal-head { padding: 18px 20px 12px; border-bottom: 1px solid var(--border); }
 .modal-head h2 { font-size: 16px; font-weight: 700; }
 .modal-body { padding: 16px 20px; }
@@ -725,10 +749,44 @@ function toCalEventTappa(t) {
   };
 }
 
+/** Una sola barra calendario per trasferta (min arrivo → max partenza), non una per tappa. */
+function toCalEventsTrasferte(tappe) {
+  const byTrf = new Map();
+  const orphans = [];
+  (tappe || []).forEach(t => {
+    const tid = String(t.trasferta_id || '').trim();
+    if (!tid) {
+      orphans.push(t);
+      return;
+    }
+    if (!byTrf.has(tid)) byTrf.set(tid, []);
+    byTrf.get(tid).push(t);
+  });
+  const grouped = [...byTrf.values()].map(group => {
+    const sorted = group.slice().sort((a, b) => Number(a.tappa_numero) - Number(b.tappa_numero));
+    const dates = sorted.flatMap(t => [t.data_arrivo, t.data_partenza].filter(Boolean)).sort();
+    const first = sorted[0];
+    const cities = sorted.map(t => t.citta).filter(Boolean);
+    return {
+      kind: 'trasferta',
+      uid: 'trf-' + first.trasferta_id,
+      id: first.id,
+      data_da: dates[0] || first.data_arrivo,
+      data_a: dates[dates.length - 1] || first.data_partenza || first.data_arrivo,
+      person: first.nome_persona,
+      label: cognomeOperatore(first.nome_persona),
+      raw: first,
+      tappeCount: sorted.length,
+      cities
+    };
+  });
+  return [...grouped, ...orphans.map(toCalEventTappa)];
+}
+
 function rebuildCalendarEvents() {
   calendarEvents = [
     ...filteredMacchina.map(toCalEventMacchina),
-    ...filteredTappe.map(toCalEventTappa)
+    ...toCalEventsTrasferte(filteredTappe)
   ];
 }
 
@@ -772,7 +830,9 @@ function applyFilters() {
   });
   rebuildCalendarEvents();
   const nm = filteredMacchina.length;
-  const nt = filteredTappe.length;
+  const nTrfIds = new Set(filteredTappe.map(t => String(t.trasferta_id || '').trim()).filter(Boolean));
+  const nOrphan = filteredTappe.filter(t => !String(t.trasferta_id || '').trim()).length;
+  const nt = nTrfIds.size + nOrphan;
   const bits = [];
   if (f.operatore) bits.push(f.operatore);
   if (f.dal || f.al) bits.push((f.dal || '…') + ' → ' + (f.al || '…'));
@@ -939,9 +999,16 @@ function renderMonthCalendar(month) {
       const col = colorPerson(ev.person);
       const rCls = (seg.roundL ? ' round-l' : '') + (seg.roundR ? ' round-r' : '');
       const ico = ev.kind === 'macchina' ? ICON_CAR : ICON_ROUTE;
-      const tip = ev.kind === 'macchina'
-        ? (ev.person + ' · ' + (pickCliente(ev.raw) || '—'))
-        : (ev.person + ' · ' + (ev.raw.citta || '—') + ' · ' + (ev.raw.cliente_tappa || '—'));
+      let tip;
+      if (ev.kind === 'macchina') {
+        tip = ev.person + ' · ' + (pickCliente(ev.raw) || '—');
+      } else if (ev.kind === 'trasferta') {
+        const n = ev.tappeCount || 1;
+        tip = ev.person + ' · ' + n + (n === 1 ? ' tappa' : ' tappe')
+          + (ev.cities && ev.cities.length ? ' · ' + ev.cities.join(' → ') : '');
+      } else {
+        tip = ev.person + ' · ' + (ev.raw.citta || '—') + ' · ' + (ev.raw.cliente_tappa || '—');
+      }
       barsHtml += `<button type="button" class="oc-bar${rCls}" data-kind="${ev.kind}" data-id="${esc(ev.id)}"
         style="left:calc(${left}% + 3px);width:calc(${width}% - 6px);top:${top}px;background:${col}"
         title="${esc(tip)}"><span class="oc-bar-inner">${ico}<span class="oc-bar-label">${esc(ev.label)}</span></span></button>`;
@@ -955,7 +1022,7 @@ function renderMonthCalendar(month) {
   wrap.querySelectorAll('.oc-bar').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
-      if (btn.dataset.kind === 'tappa') apriDettaglioTappa(btn.dataset.id);
+      if (btn.dataset.kind === 'tappa' || btn.dataset.kind === 'trasferta') apriDettaglioTappa(btn.dataset.id);
       else apriDettaglioMacchina(btn.dataset.id);
     });
   });
@@ -974,7 +1041,7 @@ function apriDettaglioMacchina(id) {
   const p = filteredMacchina.find(x => String(x.id) === String(id))
     || rawPrenotazioni.find(x => String(x.id) === String(id));
   if (!p) return;
-  document.getElementById('detail-modal').classList.remove('modal-wide');
+  document.getElementById('detail-modal').classList.remove('modal-wide', 'modal-org');
   document.getElementById('detail-title').textContent = 'Prenotazione auto';
   const col = colorPerson(p.operatore);
   const tagCls = p.tipo_utilizzo === 'Roma e dintorni' ? 'tag-roma' : 'tag-trasferta';
@@ -1165,7 +1232,7 @@ function renderServiziHtml(raw) {
   return `<div class="tappe-box"><div class="tappe-title">Servizi</div><div class="svc-list">${cards.join('')}</div></div>`;
 }
 
-function renderOrganizzazioneTappa(t) {
+function renderOrganizzazioneTappaCard(t, isFocus) {
   const costi = [
     ['Hotel', t.costo_hotel],
     ['Noleggio', t.costo_noleggio],
@@ -1175,19 +1242,46 @@ function renderOrganizzazioneTappa(t) {
     ['Auto aziendale', t.costo_auto_az],
     ['Totale tappa', t.costo_tappa_totale]
   ].filter(([, v]) => costoHaValore(v));
-  return `<dl>
-      <dt>ID trasferta</dt><dd>${esc(t.trasferta_id || '—')}</dd>
-      <dt>Tappa</dt><dd>${esc(t.tappa_numero || '—')} · ${esc(t.citta || '—')}</dd>
-      <dt>Periodo</dt><dd>${esc(fmtPeriodoIt(t.data_arrivo, t.data_partenza))}</dd>
+  return `<article class="org-card${isFocus ? ' is-focus' : ''}">
+    <div class="org-card-head">Tappa ${esc(t.tappa_numero || '—')} · ${esc(t.citta || '—')}
+      <small>${esc(fmtPeriodoIt(t.data_arrivo, t.data_partenza))}</small>
+    </div>
+    <dl class="org-dl">
       <dt>Cliente</dt><dd>${esc(t.cliente_tappa || '—')}</dd>
-      <dt>Tipo attività</dt><dd>${esc(t.tipo_attivita || '—')}</dd>
+      <dt>Attività</dt><dd>${esc(t.tipo_attivita || '—')}</dd>
       <dt>Pernottamento</dt><dd>${esc(t.pernottamento || '—')}</dd>
       <dt>Mezzo</dt><dd>${esc(t.mezzo_raggiungimento || '—')}</dd>
-      <dt>Stato prenotazioni</dt><dd>${esc(t.stato_prenotazioni || '—')}</dd>
-      ${t.note_tappa ? `<dt>Note tappa</dt><dd>${esc(t.note_tappa)}</dd>` : ''}
+      <dt>Prenotazioni</dt><dd>${esc(t.stato_prenotazioni || '—')}</dd>
+      ${t.note_tappa ? `<dt>Note</dt><dd>${esc(t.note_tappa)}</dd>` : ''}
       ${costi.map(([lbl, v]) => `<dt>${lbl}</dt><dd>${esc(fmtEuro(v))}</dd>`).join('')}
     </dl>
-    ${renderServiziHtml(t.servizi_json)}`;
+    ${renderServiziHtml(t.servizi_json)}
+  </article>`;
+}
+
+function renderOrganizzazioneTrasferta(siblings, focusTappa) {
+  const list = (siblings && siblings.length) ? siblings : [focusTappa];
+  const dates = list.flatMap(t => [t.data_arrivo, t.data_partenza].filter(Boolean)).sort();
+  const spanDa = dates[0] || focusTappa.data_arrivo;
+  const spanA = dates[dates.length - 1] || focusTappa.data_partenza || focusTappa.data_arrivo;
+  const first = list[0] || focusTappa;
+  const summary = `<div class="org-summary">
+    <div><div class="lbl">ID trasferta</div><div class="val">${esc(first.trasferta_id || '—')}</div></div>
+    <div><div class="lbl">Periodo</div><div class="val">${esc(fmtPeriodoIt(spanDa, spanA))}</div></div>
+    <div><div class="lbl">Tappe</div><div class="val">${list.length}</div></div>
+    <div><div class="lbl">Partecipanti</div><div class="val">${esc(
+      (Number.isFinite(Number(first.numero_partecipanti)) && Number(first.numero_partecipanti) >= 1)
+        ? String(Math.floor(Number(first.numero_partecipanti)))
+        : '—'
+    )}</div></div>
+  </div>`;
+  const focusId = focusTappa && focusTappa.id;
+  const cards = list.map(t => renderOrganizzazioneTappaCard(t, String(t.id) === String(focusId))).join('');
+  return summary + `<div class="org-board">${cards}</div>`;
+}
+
+function renderOrganizzazioneTappa(t) {
+  return renderOrganizzazioneTrasferta([t], t);
 }
 
 function fmtEuroNota(n) {
@@ -1274,7 +1368,9 @@ function apriDettaglioTappa(id) {
   const siblings = SRNotaSpese.tappeStessaTrasferta(rawTappe, t.trasferta_id);
   detailTappaCtx = { tappa: t, siblings, tab: 'organizzazione', flatNote: [] };
   document.getElementById('detail-title').textContent = 'Trasferta / tappa';
-  document.getElementById('detail-modal').classList.remove('modal-wide');
+  const modal = document.getElementById('detail-modal');
+  modal.classList.remove('modal-wide');
+  modal.classList.add('modal-org');
   renderDettaglioTappaBody();
   document.getElementById('detail-backdrop').classList.add('open');
 }
@@ -1287,6 +1383,7 @@ function renderDettaglioTappaBody() {
   const tab = ctx.tab || 'organizzazione';
   const modal = document.getElementById('detail-modal');
   modal.classList.toggle('modal-wide', tab === 'scontrini');
+  modal.classList.toggle('modal-org', tab === 'organizzazione');
 
   const tabs = `<div class="seg-tabs-wrap">
     <div class="seg-tabs" role="tablist">
@@ -1297,7 +1394,7 @@ function renderDettaglioTappaBody() {
 
   let panel = '';
   if (tab === 'organizzazione') {
-    panel = renderOrganizzazioneTappa(t);
+    panel = renderOrganizzazioneTrasferta(ctx.siblings.length ? ctx.siblings : [t], t);
     ctx.flatNote = [];
   } else {
     const board = renderScontriniTrasfertaBoard(ctx.siblings.length ? ctx.siblings : [t]);
@@ -1487,12 +1584,12 @@ document.getElementById('month-close').addEventListener('click', () => {
 });
 document.getElementById('detail-close').addEventListener('click', () => {
   document.getElementById('detail-backdrop').classList.remove('open');
-  document.getElementById('detail-modal').classList.remove('modal-wide');
+  document.getElementById('detail-modal').classList.remove('modal-wide', 'modal-org');
 });
 document.getElementById('detail-backdrop').addEventListener('click', e => {
   if (e.target.id === 'detail-backdrop') {
     e.currentTarget.classList.remove('open');
-    document.getElementById('detail-modal').classList.remove('modal-wide');
+    document.getElementById('detail-modal').classList.remove('modal-wide', 'modal-org');
   }
 });
 document.getElementById('sc-view-chiudi').addEventListener('click', () => {
