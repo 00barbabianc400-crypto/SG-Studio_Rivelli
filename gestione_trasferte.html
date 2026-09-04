@@ -279,10 +279,12 @@
   .tr-icon-btn.danger { color: var(--danger); }
   .tr-icon-btn.danger:hover { background: #fef2f2; border-color: #fecaca; }
   .tr-icon-btn svg { width: 18px; height: 18px; display: block; }
-  #fase-dettaglio.modal-overlay {
-    z-index: 1900; align-items: center; justify-content: center; padding: 16px;
+  #fase-dettaglio.modal-overlay,
+  #nt-panel.modal-overlay {
+    z-index: 1900; align-items: flex-start; justify-content: center; padding: 16px;
   }
-  #fase-dettaglio.modal-overlay.show { display: flex; }
+  #fase-dettaglio.modal-overlay.show,
+  #nt-panel.modal-overlay.show { display: flex; }
   .modal-edit-tr {
     background: var(--white); border-radius: var(--radius-lg);
     width: min(1100px, calc(100vw - 28px)); max-height: min(94vh, 980px);
@@ -309,7 +311,7 @@
   .toast {
     position: fixed; bottom: 24px; right: 24px; background: var(--blue-deep); color: white;
     padding: 12px 20px; border-radius: 10px; font-size: 14px; box-shadow: var(--shadow-md);
-    display: none; z-index: 1000; max-width: min(420px, calc(100vw - 32px));
+    display: none; z-index: 2100; max-width: min(420px, calc(100vw - 32px));
   }
   .toast.show { display: block; }
   .toast.success { background: var(--success); }
@@ -366,37 +368,6 @@
   }
   .nt-btn-icon.danger:hover { background: #fff0f0; border-color: var(--danger); color: var(--danger); }
   .nt-tappa-body { padding: 16px 18px; }
-  .nt-servizi-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
-    gap: 10px; margin-top: 10px;
-  }
-  .nt-srv-card {
-    border: 1.5px solid var(--gray-200); border-radius: var(--radius);
-    padding: 12px 14px; background: var(--white); cursor: pointer;
-    transition: all 0.18s; overflow: hidden;
-  }
-  .nt-srv-card:hover { border-color: var(--blue-bright); background: var(--blue-pale); }
-  .nt-srv-card.active { border-color: var(--blue-bright); background: var(--blue-light); }
-  .nt-srv-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .nt-srv-icon { font-size: 18px; flex-shrink: 0; }
-  .nt-srv-name { font-size: 12px; font-weight: 600; color: var(--gray-800); }
-  .nt-srv-check {
-    margin-left: auto; width: 18px; height: 18px;
-    border: 2px solid var(--gray-400); border-radius: 4px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 11px; transition: all 0.15s;
-  }
-  .nt-srv-card.active .nt-srv-check { background: var(--blue-main); border-color: var(--blue-main); color: white; }
-  .nt-srv-fields { display: none; }
-  .nt-srv-card.active .nt-srv-fields { display: block; }
-  .nt-f { margin-top: 8px; }
-  .nt-f label { font-size: 11px; font-weight: 500; color: var(--gray-600); text-transform: uppercase; display: block; margin-bottom: 4px; }
-  .nt-f input, .nt-f select {
-    display: block; width: 100%; font-family: inherit; font-size: 13px;
-    padding: 7px 10px; border: 1.5px solid var(--gray-200); border-radius: var(--radius);
-    color: var(--gray-800); background: var(--white); outline: none;
-  }
-  .nt-f input:focus, .nt-f select:focus { border-color: var(--blue-bright); box-shadow: 0 0 0 3px var(--accent-glow); }
   .nt-intertappa {
     display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap;
     margin: 0 0 10px; padding: 12px 16px;
@@ -431,54 +402,6 @@
     <button class="btn btn-outline" id="btn-nuova-trasferta" onclick="ntTogglePanel()">＋ Nuova trasferta</button>
   </div>
 
-  <!-- Pannello nuova trasferta -->
-  <div id="nt-panel" class="hidden">
-    <div class="section">
-      <div class="section-header">
-        <div class="section-icon">✈</div>
-        <span class="section-title">Nuova Trasferta</span>
-      </div>
-      <div class="section-body">
-        <div style="margin-bottom:20px">
-          <div style="font-size:12px;font-weight:600;color:var(--blue-mid);text-transform:uppercase;letter-spacing:.2px;margin-bottom:12px">👤 Anagrafica</div>
-          <div class="field-row">
-            <div class="field">
-              <label>Dipendente <span class="req">*</span></label>
-              <select id="nt-dipendente" required>
-                <option value="">Caricamento dipendenti…</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>N. partecipanti <span class="req">*</span></label>
-              <input type="number" id="nt-partecipanti" min="1" max="99" step="1" value="1" inputmode="numeric">
-            </div>
-            <div class="field">
-              <label>Data inizio <span class="req">*</span></label>
-              <input type="date" id="nt-data-inizio">
-            </div>
-            <div class="field">
-              <label>Data fine prevista <span class="req">*</span></label>
-              <input type="date" id="nt-data-fine">
-            </div>
-          </div>
-        </div>
-        <div style="margin-bottom:20px">
-          <div style="font-size:12px;font-weight:600;color:var(--blue-mid);text-transform:uppercase;letter-spacing:.2px;margin-bottom:12px">📍 Itinerario — Tappe</div>
-          <div id="nt-tappe-container"></div>
-          <button class="btn-add-tappa" onclick="ntAddTappa()">＋ Aggiungi tappa</button>
-        </div>
-        <div style="margin-bottom:20px">
-          <label style="font-size:12px;font-weight:500;color:var(--gray-600);text-transform:uppercase;display:block;margin-bottom:6px">📝 Note aggiuntive</label>
-          <textarea class="nt-note-ta" id="nt-note-generali" placeholder="Informazioni extra, richieste speciali..."></textarea>
-        </div>
-        <div style="display:flex;gap:12px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--gray-200)">
-          <button class="btn btn-secondary" onclick="ntReset()">🔄 Azzera</button>
-          <button class="btn btn-primary" id="nt-btn-invia" onclick="ntInviaDati()">📤 Invia trasferta</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Fase 1: elenco trasferte attive -->
   <div class="section" id="fase-ricerca">
     <div class="section-header">
@@ -496,11 +419,63 @@
     </div>
   </div>
 
-  </div>
-
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Modale nuova trasferta (overlay, non spinge l'elenco) -->
+<div class="modal-overlay" id="nt-panel" aria-hidden="true">
+  <div class="modal-edit-tr" role="dialog" aria-modal="true" aria-labelledby="nt-title">
+    <div class="modal-edit-tr-head">
+      <h2 id="nt-title">Nuova trasferta</h2>
+      <button type="button" class="tr-icon-btn" onclick="ntChiudiPanel()" title="Chiudi" aria-label="Chiudi">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4L4 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-edit-tr-body">
+      <div class="section">
+        <div class="section-body">
+          <div style="margin-bottom:20px">
+            <div style="font-size:12px;font-weight:600;color:var(--blue-mid);text-transform:uppercase;letter-spacing:.2px;margin-bottom:12px">👤 Anagrafica</div>
+            <div class="field-row">
+              <div class="field">
+                <label>Dipendente <span class="req">*</span></label>
+                <select id="nt-dipendente" required>
+                  <option value="">Caricamento dipendenti…</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>N. partecipanti <span class="req">*</span></label>
+                <input type="number" id="nt-partecipanti" min="1" max="99" step="1" value="1" inputmode="numeric">
+              </div>
+              <div class="field">
+                <label>Data inizio <span class="req">*</span></label>
+                <input type="date" id="nt-data-inizio">
+              </div>
+              <div class="field">
+                <label>Data fine prevista <span class="req">*</span></label>
+                <input type="date" id="nt-data-fine">
+              </div>
+            </div>
+          </div>
+          <div style="margin-bottom:20px">
+            <div style="font-size:12px;font-weight:600;color:var(--blue-mid);text-transform:uppercase;letter-spacing:.2px;margin-bottom:12px">📍 Itinerario — Tappe</div>
+            <div id="nt-tappe-container"></div>
+            <button class="btn-add-tappa" onclick="ntAddTappa()">＋ Aggiungi tappa</button>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:500;color:var(--gray-600);text-transform:uppercase;display:block;margin-bottom:6px">📝 Note aggiuntive</label>
+            <textarea class="nt-note-ta" id="nt-note-generali" placeholder="Informazioni extra, richieste speciali..."></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="action-bar modal-edit-tr-foot">
+      <button class="btn btn-secondary" onclick="ntReset()">🔄 Azzera</button>
+      <button class="btn btn-primary" id="nt-btn-invia" onclick="ntInviaDati()">📤 Invia trasferta</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modale modifica trasferta (overlay) -->
 <div class="modal-overlay" id="fase-dettaglio" aria-hidden="true">
@@ -564,7 +539,7 @@
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/dipendenti-list.js"></script>
-<script src="js/servizi-tappa.js?v=50"></script>
+<script src="js/servizi-tappa.js?v=52"></script>
 <script>
 // ========== Webhook da SR_CONFIG ==========
 const WEBHOOK_RECUPERO = SR_CONFIG.WEBHOOK_TR_RECUPERO;
@@ -1148,7 +1123,9 @@ function renderPrenotazioneCard(item) {
         ${isServizio && item.servizio_id ? `
         <button type="button" class="pren-card-remove" title="Rimuovi servizio"
           data-tappa="${item.tappa}" data-srv-id="${esc(item.servizio_id)}"
-          onclick="rimuoviServizioPrenotazioneDaBtn(this)" aria-label="Rimuovi servizio">×</button>
+          ${item.nt_uid != null ? `data-nt-uid="${item.nt_uid}"` : ''}
+          onclick="${item.nt_uid != null ? 'ntRimuoviServizioDaBtn(this)' : 'rimuoviServizioPrenotazioneDaBtn(this)'}"
+          aria-label="Rimuovi servizio">×</button>
         ` : ''}
       </div>
       <div class="pren-fields">
@@ -1841,6 +1818,60 @@ function estraiRigheN8n(data) {
   return [];
 }
 
+/** Distanza in giorni dello span trasferta rispetto a oggi (in corso = 0). */
+function isoGiornoOggi() {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return d.getFullYear() + '-' + m + '-' + day;
+}
+
+function giorniAssolutiIso(isoA, isoB) {
+  if (!isoA || !isoB) return Number.POSITIVE_INFINITY;
+  const t1 = new Date(isoA + 'T12:00:00').getTime();
+  const t2 = new Date(isoB + 'T12:00:00').getTime();
+  if (!Number.isFinite(t1) || !Number.isFinite(t2)) return Number.POSITIVE_INFINITY;
+  return Math.round(Math.abs(t2 - t1) / 86400000);
+}
+
+function spanDateTrasferta(trasferta) {
+  const ana = trasferta?.anagrafica || {};
+  let da = ana.data_inizio || '';
+  let a = ana.data_fine_prevista || da;
+  const dates = (trasferta?.itinerario || [])
+    .flatMap(t => [t.data_arrivo, t.data_partenza].filter(Boolean))
+    .sort();
+  if (dates.length) {
+    if (!da) da = dates[0];
+    if (!a) a = dates[dates.length - 1];
+  }
+  if (da && a && a < da) { const x = da; da = a; a = x; }
+  return { da, a };
+}
+
+/** 0 se oggi è nello span; altrimenti giorni fino al bordo più vicino. */
+function distanzaGiorniDaOggi(trasferta) {
+  const { da, a } = spanDateTrasferta(trasferta);
+  const oggi = isoGiornoOggi();
+  if (!da && !a) return Number.POSITIVE_INFINITY;
+  const start = da || a;
+  const end = a || da;
+  if (oggi >= start && oggi <= end) return 0;
+  if (oggi < start) return giorniAssolutiIso(oggi, start);
+  return giorniAssolutiIso(end, oggi);
+}
+
+function ordinaElencoTrasferte(list) {
+  return [...(list || [])].sort((x, y) => {
+    const dx = distanzaGiorniDaOggi(x.trasferta);
+    const dy = distanzaGiorniDaOggi(y.trasferta);
+    if (dx !== dy) return dx - dy;
+    const sx = spanDateTrasferta(x.trasferta).da;
+    const sy = spanDateTrasferta(y.trasferta).da;
+    return (sx || '').localeCompare(sy || '') || String(x.id).localeCompare(String(y.id));
+  });
+}
+
 /** Raggruppa le tappe per trasferta_id → elenco UI. */
 function raggruppaTrasferteDaRighe(righe) {
   const map = new Map();
@@ -1850,14 +1881,12 @@ function raggruppaTrasferteDaRighe(righe) {
     if (!map.has(id)) map.set(id, []);
     map.get(id).push(r);
   });
-  return [...map.entries()].map(([id, rows]) => {
-    const trasferta = normalizzaDaRigheN8n(rows);
-    return trasferta ? { id, trasferta, rows } : null;
-  }).filter(Boolean).sort((a, b) => {
-    const da = a.trasferta.anagrafica?.data_inizio || '';
-    const db = b.trasferta.anagrafica?.data_inizio || '';
-    return db.localeCompare(da) || String(a.id).localeCompare(String(b.id));
-  });
+  return ordinaElencoTrasferte(
+    [...map.entries()].map(([id, rows]) => {
+      const trasferta = normalizzaDaRigheN8n(rows);
+      return trasferta ? { id, trasferta, rows } : null;
+    }).filter(Boolean)
+  );
 }
 
 function riepilogoStatoTrasferta(trasferta) {
@@ -1871,7 +1900,7 @@ function riepilogoStatoTrasferta(trasferta) {
 function renderListaTrasferte(list) {
   const el = document.getElementById('lista-trasferte');
   if (!el) return;
-  const items = list || [];
+  const items = ordinaElencoTrasferte(list || []);
   if (!items.length) {
     el.innerHTML = '<p class="tr-empty">Nessuna trasferta attiva. Premi «Carica dati» oppure crea una nuova trasferta.</p>';
     return;
@@ -2052,7 +2081,7 @@ function showToast(msg, type, ms) {
 // ========== Raccolta payload invio ==========
 function raccogliPrenotazioniRuntime() {
   const out = [];
-  document.querySelectorAll('.prenotazione-card').forEach(card => {
+  document.querySelectorAll('[data-pren-list] .prenotazione-card').forEach(card => {
     let meta = {};
     try {
       meta = JSON.parse(card.getAttribute('data-meta').replace(/&quot;/g, '"'));
@@ -2100,7 +2129,7 @@ function raccogliPrenotazioniRuntime() {
 }
 
 function validaPrenotazioni() {
-  const cards = document.querySelectorAll('.prenotazione-card');
+  const cards = document.querySelectorAll('[data-pren-list] .prenotazione-card');
   for (const card of cards) {
     const meta = JSON.parse(card.getAttribute('data-meta').replace(/&quot;/g, '"'));
     const titolo = meta.titolo || 'Servizio';
@@ -2385,78 +2414,166 @@ async function inviaPrenotazioni() {
 
 // ========== Nuova Trasferta ==========
 let ntUid = 0;
+const NT_CHIP_MEZZI = MEZZI_CHIP_OPTIONS.concat([{ label: '🏢 Auto az.', value: 'Auto aziendale' }]);
 
-const NT_MEZZI = ['🚆 Treno','✈️ Aereo','🚗 Auto propria','🚘 Noleggio','🏢 Auto az.','🚌 Bus','🏍️ Moto'];
-const NT_STATO_PREN = [
-  { val: '', text: '— seleziona —' },
-  { val: 'da_prenotare', text: 'Da prenotare' },
-  { val: 'prenotato', text: 'Prenotato ✓' }
-];
-const NT_STATO_BIGT = [...NT_STATO_PREN, { val: 'acquistato', text: 'Acquistato ✓' }];
-const NT_STATO_AUTO = [
-  { val: '', text: '— seleziona —' },
-  { val: 'da_richiedere', text: 'Da richiedere' },
-  { val: 'confermato', text: 'Confermato ✓' }
-];
-const NT_CAMPO_COSTO = { id: 'costo', label: 'Costo', type: 'text', placeholder: 'es. 120,00 €' };
-const NT_SERVIZI = [
-  { key: 'hotel', icon: '🏨', name: 'Hotel', fields: [
-    { id: 'nome', label: 'Nome struttura', type: 'text', placeholder: 'es. Hotel Cortina' },
-    { id: 'notti', label: 'N° notti', type: 'number', placeholder: '1' },
-    { id: 'stato', label: 'Stato', type: 'select', options: NT_STATO_PREN }
-  ]},
-  { key: 'aereo', icon: '✈️', name: 'Aereo', fields: [
-    { id: 'tratta', label: 'Tratta', type: 'text', placeholder: 'es. FCO → LIN' },
-    { id: 'stato', label: 'Stato', type: 'select', options: NT_STATO_BIGT }
-  ]},
-  { key: 'treno', icon: '🚆', name: 'Treno', fields: [
-    { id: 'tratta', label: 'Tratta', type: 'text', placeholder: 'es. Roma → Bologna' },
-    { id: 'stato', label: 'Stato', type: 'select', options: NT_STATO_BIGT }
-  ]},
-  { key: 'noleggio', icon: '🚗', name: 'Noleggio', fields: [
-    { id: 'ritiro', label: 'Ritiro', type: 'text', placeholder: 'Luogo ritiro' },
-    { id: 'restituzione', label: 'Restituzione', type: 'text', placeholder: 'Luogo restituzione' },
-    { id: 'stato', label: 'Stato', type: 'select', options: NT_STATO_PREN }
-  ]},
-  { key: 'parcheggio', icon: '🅿️', name: 'Parcheggio', fields: [
-    { id: 'luogo', label: 'Luogo', type: 'text', placeholder: 'es. Aeroporto' },
-    { id: 'stato', label: 'Stato', type: 'select', options: NT_STATO_PREN }
-  ]},
-  { key: 'auto_az', icon: '🏢', name: 'Auto Az.', fields: [
-    { id: 'tratto', label: 'Tratto', type: 'text', placeholder: 'es. Roma → Cortina' },
-    { id: 'stato', label: 'Stato', type: 'select', options: NT_STATO_AUTO }
-  ]}
-];
+function ntCardMeta(card) {
+  try { return JSON.parse(card.getAttribute('data-meta').replace(/&quot;/g, '"')); } catch (_) { return {}; }
+}
 
-function ntRenderField(uid, srvKey, f) {
-  if (f.type === 'select') {
-    return `<div class="nt-f"><label>${f.label}</label>
-      <select id="nt-${uid}-${srvKey}-${f.id}" onclick="event.stopPropagation()">
-        ${f.options.map(o => `<option value="${o.val}">${o.text}</option>`).join('')}
-      </select></div>`;
-  }
-  return `<div class="nt-f"><label>${f.label}</label>
-    <input type="${f.type}" id="nt-${uid}-${srvKey}-${f.id}"
-      placeholder="${f.placeholder || ''}" onclick="event.stopPropagation()"></div>`;
+function ntPrenWrap(uid) {
+  return document.querySelector(`[data-nt-pren-list="${uid}"]`);
+}
+
+function ntPrenCards(uid) {
+  return [...(ntPrenWrap(uid)?.querySelectorAll('.prenotazione-card') || [])];
+}
+
+function ntCardsOfTipo(uid, key) {
+  return ntPrenCards(uid).filter(c => ntCardMeta(c).servizio_key === key);
+}
+
+function ntTappaIndex(uid) {
+  const cards = [...document.querySelectorAll('.nt-tappa-card')];
+  const i = cards.findIndex(c => c.id === `nt-tappa-${uid}`);
+  return i >= 0 ? i + 1 : 1;
+}
+
+function ntTappaStub(uid) {
+  return {
+    tappa: ntTappaIndex(uid),
+    citta: ntVal(`nt-${uid}-citta`),
+    cliente_attivita: ntVal(`nt-${uid}-cliente`),
+    data_arrivo: ntVal(`nt-${uid}-arrivo`),
+    data_partenza: ntVal(`nt-${uid}-partenza`) || ntVal(`nt-${uid}-arrivo`),
+    pernottamento: ntVal(`nt-${uid}-pernotto`) === 'si',
+    servizi: []
+  };
+}
+
+function ntAppendServizio(uid, key, extra) {
+  const wrap = ntPrenWrap(uid);
+  if (!wrap || !key) return null;
+  wrap.querySelector('.empty-pren')?.remove();
+  const dati = { stato: 'da_prenotare', ...(extra || {}), tipo: key };
+  if (!dati.id) dati.id = ST().uidSrv();
+  const item = buildItemServizio(ntTappaStub(uid), key, dati);
+  item.nt_uid = uid;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = renderPrenotazioneCard(item);
+  wrap.appendChild(tmp.firstElementChild);
+  bindPrenotazioneCards(wrap);
+  return dati.id;
 }
 
 function ntServiziHtml(uid) {
-  return NT_SERVIZI.map(s => `
-    <div class="nt-srv-card" id="nt-srv-${uid}-${s.key}" onclick="ntToggleSrv(${uid},'${s.key}',event)">
-      <div class="nt-srv-top">
-        <span class="nt-srv-icon">${s.icon}</span>
-        <span class="nt-srv-name">${s.name}</span>
-        <div class="nt-srv-check">✓</div>
-      </div>
-      <div class="nt-srv-fields">
-        ${[...s.fields, NT_CAMPO_COSTO].map(f => ntRenderField(uid, s.key, f)).join('')}
-      </div>
-    </div>`).join('');
+  const opts = Object.keys(SERVIZI_META).map(k =>
+    `<option value="${k}">${esc(SERVIZI_META[k].nome)}</option>`).join('');
+  return `
+    <div data-nt-pren-list="${uid}">
+      <p class="empty-pren">Nessun servizio — aggiungi sotto.</p>
+    </div>
+    <div class="pren-add-servizio">
+      <select id="nt-pren-add-sel-${uid}" class="btn btn-ghost" aria-label="Tipo servizio da aggiungere">
+        <option value="">Servizio da aggiungere…</option>
+        ${opts}
+      </select>
+      <button type="button" class="btn btn-ghost" onclick="ntAggiungiServizio(${uid})">+ Aggiungi</button>
+    </div>`;
 }
 
-function ntToggleSrv(uid, key, e) {
-  e.stopPropagation();
-  document.getElementById(`nt-srv-${uid}-${key}`)?.classList.toggle('active');
+function ntAggiungiServizio(uid) {
+  const sel = document.getElementById(`nt-pren-add-sel-${uid}`);
+  const key = sel?.value;
+  if (!key) return;
+  ntAppendServizio(uid, key);
+  sel.value = '';
+  showToast((SERVIZI_META[key]?.nome || key) + ' aggiunto', 'success');
+}
+
+function ntRimuoviServizioDaBtn(btn) {
+  if (!btn?.dataset) return;
+  const uid = Number(btn.dataset.ntUid);
+  const card = btn.closest('.prenotazione-card');
+  const key = ntCardMeta(card).servizio_key;
+  const same = ntCardsOfTipo(uid, key).length;
+  card?.remove();
+  if (key === 'hotel' && same <= 1) {
+    const sel = document.getElementById(`nt-${uid}-pernotto`);
+    if (sel) sel.value = 'no';
+  }
+  if (key && same <= 1) {
+    document.getElementById(`nt-chips-${uid}`)?.querySelectorAll('.chip-mezzo').forEach(chip => {
+      const m = chip.getAttribute('data-mezzo') || '';
+      const k = mezzoToServizioKey(m);
+      if (k === key || (!k && key === 'spostamento')) chip.classList.remove('selected');
+    });
+  }
+  const wrap = ntPrenWrap(uid);
+  if (wrap && !wrap.querySelector('.prenotazione-card')) {
+    wrap.innerHTML = '<p class="empty-pren">Nessun servizio — aggiungi sotto.</p>';
+  }
+  showToast((SERVIZI_META[key]?.nome || key || 'Servizio') + ' rimosso', 'success', 2200);
+}
+
+function ntBindPernotto(uid) {
+  document.getElementById(`nt-${uid}-pernotto`)?.addEventListener('change', () => {
+    if (ntVal(`nt-${uid}-pernotto`) !== 'si') return;
+    if (!ntCardsOfTipo(uid, 'hotel').length) ntAppendServizio(uid, 'hotel');
+  });
+}
+
+function ntToggleChipMezzo(el, uid) {
+  el.classList.toggle('selected');
+  const mezzo = el.getAttribute('data-mezzo') || '';
+  const key = mezzoToServizioKey(mezzo);
+  const chips = document.getElementById(`nt-chips-${uid}`);
+  if (el.classList.contains('selected')) {
+    if (key && !ntCardsOfTipo(uid, key).length) {
+      ntAppendServizio(uid, key, { mezzo_viaggio: mezzo });
+    } else if (!key && !isAutoAzMezzo(mezzo) && !ntCardsOfTipo(uid, 'spostamento').length) {
+      ntAppendServizio(uid, 'spostamento', { mezzo_viaggio: mezzo });
+    }
+    return;
+  }
+  const tipo = key || 'spostamento';
+  const ancoraOn = [...(chips?.querySelectorAll('.chip-mezzo.selected') || [])].some(c => {
+    const m = c.getAttribute('data-mezzo') || '';
+    const k = mezzoToServizioKey(m);
+    return key ? k === key : (!k && !isAutoAzMezzo(m));
+  });
+  if (!ancoraOn && ntCardsOfTipo(uid, tipo).length <= 1) {
+    ntCardsOfTipo(uid, tipo).forEach(c => c.remove());
+    const wrap = ntPrenWrap(uid);
+    if (wrap && !wrap.querySelector('.prenotazione-card')) {
+      wrap.innerHTML = '<p class="empty-pren">Nessun servizio — aggiungi sotto.</p>';
+    }
+  }
+}
+
+function ntLeggiServizi(uid) {
+  const list = [];
+  ntPrenCards(uid).forEach(card => {
+    const meta = ntCardMeta(card);
+    const key = meta.servizio_key;
+    if (!key) return;
+    const dati = leggiDatiServizioDaCard(card);
+    if (meta.mezzo && !dati.mezzo_viaggio) dati.mezzo_viaggio = meta.mezzo;
+    if (meta.dati_servizio?.mezzo_viaggio && !dati.mezzo_viaggio) {
+      dati.mezzo_viaggio = meta.dati_servizio.mezzo_viaggio;
+    }
+    if (meta.dati_origine?.mezzo_viaggio && !dati.mezzo_viaggio) {
+      dati.mezzo_viaggio = meta.dati_origine.mezzo_viaggio;
+    }
+    const metodo = card.querySelector('[data-field=metodo_pagamento]')?.value || '';
+    const item = { id: meta.servizio_id, tipo: key, ...dati };
+    if (metodo) item.metodo_pagamento = metodo;
+    if (metodo === 'voucher') {
+      item.valore_voucher = card.querySelector('[data-field=valore_voucher]')?.value?.trim() || '';
+      item.metodo_pagamento_differenza = card.querySelector('[data-field=metodo_pagamento_differenza]')?.value || '';
+    }
+    list.push(item);
+  });
+  return ST().normalizeServizi(list);
 }
 
 function ntAddTappa() {
@@ -2473,7 +2590,9 @@ function ntAddTappa() {
         <div class="mezzo-hint">Seleziona uno o più mezzi</div>
       </div>
       <div class="chips-group" id="nt-chips-${uid}">
-        ${NT_MEZZI.map(m => `<span class="chip-mezzo" onclick="this.classList.toggle('selected')">${m}</span>`).join('')}
+        ${NT_CHIP_MEZZI.map(m =>
+          `<span class="chip-mezzo" data-mezzo="${esc(m.value)}" onclick="ntToggleChipMezzo(this, ${uid})">${m.label}</span>`
+        ).join('')}
       </div>`;
     container.appendChild(inter);
   }
@@ -2536,7 +2655,7 @@ function ntAddTappa() {
       </div>
       <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--gray-200)">
         <div style="font-size:12px;font-weight:600;color:var(--blue-mid);text-transform:uppercase;margin-bottom:10px">🛎 Servizi in questa tappa</div>
-        <div class="nt-servizi-grid">${ntServiziHtml(uid)}</div>
+        ${ntServiziHtml(uid)}
       </div>
     </div>`;
   container.appendChild(card);
@@ -2557,6 +2676,7 @@ function ntAddTappa() {
     }
   }
   ntBindTappaDate(uid);
+  ntBindPernotto(uid);
   // Se le date auto (+1) estendono il periodo, chiedi confirm; se No, lascia le date tappa ma non tocca Inizio/Fine
   // (in pratica se rifiuta le date restano e la validazione all'invio segnala; meglio ripristinare a vuoto se appena auto-impostate)
   (async () => {
@@ -2696,18 +2816,11 @@ function ntBuildJSON() {
     const mezzi = [];
     document.getElementById(`nt-chips-${uid}`)
       ?.querySelectorAll('.chip-mezzo.selected')
-      .forEach(c => mezzi.push(c.textContent.replace(/^\S+\s/, '').trim()));
-    const servizi = [];
-    NT_SERVIZI.forEach(s => {
-      if (document.getElementById(`nt-srv-${uid}-${s.key}`)?.classList.contains('active')) {
-        const item = { tipo: s.key };
-        [...s.fields, NT_CAMPO_COSTO].forEach(f => {
-          const el = document.getElementById(`nt-${uid}-${s.key}-${f.id}`);
-          if (el) item[f.id] = el.value;
-        });
-        servizi.push(item);
-      }
-    });
+      .forEach(c => {
+        const v = (c.getAttribute('data-mezzo') || '').trim();
+        if (v) mezzi.push(v);
+      });
+    const servizi = ntLeggiServizi(uid);
     tappe.push({
       tappa: i + 1,
       citta: ntVal(`nt-${uid}-citta`),
@@ -2778,7 +2891,7 @@ async function ntInviaDati() {
     await apiPost(NT_WEBHOOK, ntBuildJSON());
     showToast('✅ Trasferta inviata con successo!', 'success', 4500);
     ntReset();
-    ntTogglePanel();
+    ntChiudiPanel();
   } catch (e) {
     showToast('Invio fallito: ' + (e.message || e), 'error');
   } finally {
@@ -2829,16 +2942,35 @@ async function ntCaricaDipendenti() {
   }
 }
 
-function ntTogglePanel() {
+function ntApriPanel() {
   const panel = document.getElementById('nt-panel');
   const btn = document.getElementById('btn-nuova-trasferta');
-  const isNowHidden = panel.classList.toggle('hidden');
-  btn.textContent = isNowHidden ? '＋ Nuova trasferta' : '✕ Chiudi';
-  if (!isNowHidden) {
-    if (!document.querySelector('.nt-tappa-card')) ntAddTappa();
-    ntCaricaDipendenti();
-  }
+  if (!panel) return;
+  panel.classList.add('show');
+  panel.setAttribute('aria-hidden', 'false');
+  if (btn) btn.textContent = '✕ Chiudi';
+  if (!document.querySelector('.nt-tappa-card')) ntAddTappa();
+  ntCaricaDipendenti();
 }
+
+function ntChiudiPanel() {
+  const panel = document.getElementById('nt-panel');
+  const btn = document.getElementById('btn-nuova-trasferta');
+  if (!panel) return;
+  panel.classList.remove('show');
+  panel.setAttribute('aria-hidden', 'true');
+  if (btn) btn.textContent = '＋ Nuova trasferta';
+}
+
+function ntTogglePanel() {
+  const panel = document.getElementById('nt-panel');
+  if (panel?.classList.contains('show')) ntChiudiPanel();
+  else ntApriPanel();
+}
+
+document.getElementById('nt-panel')?.addEventListener('click', e => {
+  if (e.target.id === 'nt-panel') ntChiudiPanel();
+});
 
 (async function boot() {
   try {
