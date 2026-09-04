@@ -566,7 +566,8 @@ body {
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/scontrini.js"></script>
-<script src="js/nota-spese.js"></script>
+  <script src="js/nota-spese.js"></script>
+  <script src="js/servizi-tappa.js?v=50"></script>
 <script>
 const WEBHOOK = SR_CONFIG.WEBHOOK_GESTIONE_AMMINISTRATIVA;
 const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
@@ -1193,9 +1194,17 @@ function valoreCampoServizio(key, val) {
 }
 
 function parseServizi(raw) {
-  if (!raw) return null;
-  if (typeof raw === 'object') return raw;
-  try { return JSON.parse(raw); } catch (_) { return null; }
+  const S = window.SRServiziTappa;
+  if (S) return S.normalizeServizi(raw);
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'object') return Object.entries(raw).map(([tipo, dati]) => ({ tipo, ...(dati || {}) }));
+  try {
+    const p = JSON.parse(raw);
+    if (Array.isArray(p)) return p;
+    if (p && typeof p === 'object') return Object.entries(p).map(([tipo, dati]) => ({ tipo, ...(dati || {}) }));
+  } catch (_) {}
+  return [];
 }
 
 function mezzoRaggiungimentoRow(t) {
@@ -1234,6 +1243,7 @@ function flattenServizio(dati) {
   if (!dati || typeof dati !== 'object') return rows;
   // Ridondanti rispetto a tag/card titolo/date tappa
   const skip = new Set([
+    'id', 'tipo',
     'stato', 'prenotato', 'giornate_da', 'giornate_a', 'mezzo_viaggio',
     'metodo_pagamento', 'valore_voucher', 'differenza_pagamento', 'metodo_pagamento_differenza'
   ]);
@@ -1274,19 +1284,20 @@ function flattenServizio(dati) {
 }
 
 function renderServiziHtml(raw) {
-  const sj = parseServizi(raw);
-  if (!sj || typeof sj !== 'object') return '';
-  const cards = Object.entries(sj).map(([key, dati]) => {
+  const list = parseServizi(raw);
+  if (!list.length) return '';
+  const cards = list.map(dati => {
+    const key = dati.tipo || '';
     const rows = flattenServizio(dati);
     const title = SERVIZI_LABEL[key] || key;
+    const extra = dati.nome ? ' · ' + dati.nome : '';
     let stato = '';
     if (dati && dati.stato) stato = labelStato(dati.stato);
     else if (dati?.prenotazione_operatrice?.prenotato) stato = 'Prenotato';
-    // Non mostrare di nuovo "Stato" nelle righe (già nel tag)
     const rest = rows.filter(r => r[0] !== 'Stato');
     if (!rest.length && !stato) return '';
     return `<div class="svc-card">
-      <h4>${esc(title)}${stato ? `<span class="tag tag-trasferta">${esc(stato)}</span>` : ''}</h4>
+      <h4>${esc(title + extra)}${stato ? `<span class="tag tag-trasferta">${esc(stato)}</span>` : ''}</h4>
       ${rest.length ? `<div class="svc-rows">${rest.map(([l, v]) =>
         `<div class="svc-row"><span>${esc(l)}</span><b>${esc(v)}</b></div>`).join('')}</div>` : ''}
     </div>`;

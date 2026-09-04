@@ -564,6 +564,7 @@
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/dipendenti-list.js"></script>
+<script src="js/servizi-tappa.js?v=50"></script>
 <script>
 // ========== Webhook da SR_CONFIG ==========
 const WEBHOOK_RECUPERO = SR_CONFIG.WEBHOOK_TR_RECUPERO;
@@ -813,44 +814,61 @@ function pernottamentoDaRiga(row) {
   return t === 'sì' || t === 'si' || t === 'yes' || t === 'true' || t === '1';
 }
 
-function serviziDaJsonRiga(row) {
-  const raw = row.servizi_json;
-  if (!raw || !String(raw).trim()) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : null;
-  } catch (_) {
-    return null;
+function ST() {
+  return window.SRServiziTappa;
+}
+
+function serviziList(tappa) {
+  return ST().normalizeServizi(tappa?.servizi);
+}
+
+function ensureServiziPerTappa(tappa) {
+  if (!tappa) return [];
+  const S = ST();
+  const list = S.normalizeServizi(tappa.servizi);
+  if (tappa.pernottamento && !list.some(x => x.tipo === 'hotel')) {
+    list.push({ id: S.uidSrv(), tipo: 'hotel', stato: 'da_prenotare' });
   }
+  (tappa.mezzo_per_raggiungere || []).forEach(mezzo => {
+    if (isAutoAzMezzo(mezzo)) return;
+    const k = mezzoToServizioKey(mezzo);
+    if (!k || list.some(x => x.tipo === k)) return;
+    list.push({ id: S.uidSrv(), tipo: k, stato: 'da_prenotare', mezzo_viaggio: mezzo });
+  });
+  tappa.servizi = list;
+  return list;
+}
+
+function serviziDaJsonRiga(row) {
+  const list = ST().normalizeServizi(row?.servizi_json);
+  return list.length ? list : null;
 }
 
 function serviziDaRiga(row) {
-  const fromJson = serviziDaJsonRiga(row);
-  const servizi = fromJson ? { ...fromJson } : {};
+  const S = ST();
+  let list = S.normalizeServizi(row.servizi_json);
   Object.entries(CAMPI_COSTO_SERVIZIO).forEach(([campo, key]) => {
     const val = row[campo];
     if (val != null && String(val).trim() !== '') {
-      servizi[key] = { ...(servizi[key] || {}), costo: String(val).trim() };
+      list = S.mergeCostoColonna(list, key, String(val).trim());
     }
   });
-  if (pernottamentoDaRiga(row) && !servizi.hotel) {
-    servizi.hotel = { ...(servizi.hotel || {}), stato: servizi.hotel?.stato || 'da_prenotare' };
+  if (pernottamentoDaRiga(row) && !list.some(x => x.tipo === 'hotel')) {
+    list.push({ id: S.uidSrv(), tipo: 'hotel', stato: 'da_prenotare' });
   }
   (parseMezziRaggiungimento(row.mezzo_raggiungimento) || []).forEach(mezzo => {
     const k = mezzoToServizioKey(mezzo);
     if (!k) return;
-    servizi[k] = {
-      ...(servizi[k] || {}),
-      stato: servizi[k]?.stato || 'da_prenotare',
-      mezzo_viaggio: mezzo
-    };
+    if (!list.some(x => x.tipo === k)) {
+      list.push({ id: S.uidSrv(), tipo: k, stato: 'da_prenotare', mezzo_viaggio: mezzo });
+    }
   });
-  return Object.keys(servizi).length ? servizi : null;
+  return list.length ? list : null;
 }
 
 function serviziJsonPerTappa(tappa) {
-  if (!tappa?.servizi || !Object.keys(tappa.servizi).length) return '';
-  return JSON.stringify(tappa.servizi);
+  const list = ST().normalizeServizi(tappa?.servizi);
+  return list.length ? ST().serializeServizi(list) : '';
 }
 
 function statoPrenotazioniPerTappa(tappaNum, prenotazioni) {
@@ -1038,6 +1056,8 @@ function costoServizioDaItem(item) {
 function buildItemServizio(tappa, key, datiRaw) {
   const dati = { ...(datiRaw || {}) };
   const po = dati.prenotazione_operatrice || {};
+  if (!dati.id) dati.id = ST().uidSrv();
+  dati.tipo = key;
   if (key === 'hotel' && !dati.notti && tappa.pernottamento) {
     dati.notti = String(nottiSuggeriteHotel(tappa));
   }
@@ -1053,15 +1073,17 @@ function buildItemServizio(tappa, key, datiRaw) {
     : suggerisciGiornate(tappa, 'servizio', key, dati);
   const costoSrv = po.costo_servizio || dati.costo || '';
   const prenDef = po.prenotato != null ? !!po.prenotato : prenotatoInizialeDaStato(dati.stato);
+  const extraNome = dati.nome ? ' · ' + dati.nome : '';
   return {
-    id: `t${n}-srv-${key}`,
+    id: `t${n}-srv-${dati.id}`,
+    servizio_id: dati.id,
     tipo: 'servizio',
     tappa: n,
     citta,
     cliente,
     servizio_key: key,
     icon: meta.icon,
-    titolo: meta.nome,
+    titolo: meta.nome + extraNome,
     sottotitolo: (cliente ? cliente + ' · ' : '') + citta + ' · Tappa ' + n,
     dettaglio_origine: servizioDettaglioTesto(key, dati),
     giornate_da: gg.da,
@@ -1123,9 +1145,9 @@ function renderPrenotazioneCard(item) {
           <div class="pren-card-title">${esc(item.icon)} ${esc(item.titolo)}</div>
           <div class="pren-card-sub">${esc(item.sottotitolo)}</div>
         </div>
-        ${isServizio && item.servizio_key ? `
+        ${isServizio && item.servizio_id ? `
         <button type="button" class="pren-card-remove" title="Rimuovi servizio"
-          data-tappa="${item.tappa}" data-srv-key="${esc(item.servizio_key)}"
+          data-tappa="${item.tappa}" data-srv-id="${esc(item.servizio_id)}"
           onclick="rimuoviServizioPrenotazioneDaBtn(this)" aria-label="Rimuovi servizio">×</button>
         ` : ''}
       </div>
@@ -1237,33 +1259,8 @@ function renderCostoTappa(tappa) {
   return s;
 }
 
-function serviziKeysPerTappa(tappa) {
-  const keys = new Set();
-  if (tappa.pernottamento) keys.add('hotel');
-  (tappa.mezzo_per_raggiungere || []).forEach(mezzo => {
-    if (isAutoAzMezzo(mezzo)) return;
-    const k = mezzoToServizioKey(mezzo);
-    if (k) keys.add(k);
-  });
-  // Source of truth: tutto ciò che è già in servizi_json (anche treno/aereo su tappa 1 senza chip mezzo)
-  if (tappa.servizi) {
-    Object.keys(tappa.servizi).forEach(key => keys.add(key));
-  }
-  return [...keys];
-}
-
-function datiServizioPerTappa(tappa, key) {
-  const dati = (tappa.servizi && tappa.servizi[key]) ? { ...tappa.servizi[key] } : {};
-  const mezzo = (tappa.mezzo_per_raggiungere || []).find(m => mezzoToServizioKey(m) === key);
-  if (mezzo && !dati.mezzo_viaggio) dati.mezzo_viaggio = mezzo;
-  if (!dati.stato && SERVIZI_META[key]) dati.stato = 'da_prenotare';
-  return dati;
-}
-
-function renderAggiungiServizioBar(tappaNum, keysPresenti) {
-  const mancanti = Object.keys(SERVIZI_META).filter(k => !keysPresenti.includes(k));
-  if (!mancanti.length) return '';
-  const opts = mancanti.map(k => `<option value="${k}">${esc(SERVIZI_META[k].nome)}</option>`).join('');
+function renderAggiungiServizioBar(tappaNum) {
+  const opts = Object.keys(SERVIZI_META).map(k => `<option value="${k}">${esc(SERVIZI_META[k].nome)}</option>`).join('');
   return `<div class="pren-add-servizio" data-pren-add-bar="${tappaNum}">
     <select id="pren-add-sel-${tappaNum}" class="btn btn-ghost" aria-label="Tipo servizio da aggiungere">
       <option value="">Servizio da aggiungere…</option>
@@ -1281,56 +1278,26 @@ function aggiungiServizioPrenotazione(tappaNum) {
   if (!tappa) return;
   const wrap = document.querySelector(`[data-pren-list="${tappaNum}"]`);
   if (!wrap) return;
-  if (wrap.querySelector(`[data-item-id="t${tappaNum}-srv-${key}"]`)) {
-    showToast('Servizio già presente in questa tappa', 'warn');
-    return;
-  }
   const empty = wrap.querySelector('.empty-pren');
   if (empty) empty.remove();
-  if (!tappa.servizi) tappa.servizi = {};
-  tappa.servizi[key] = { ...(tappa.servizi[key] || {}), stato: 'da_prenotare' };
-  const item = buildItemServizio(tappa, key, tappa.servizi[key]);
+  const list = ensureServiziPerTappa(tappa);
+  const nuovo = { id: ST().uidSrv(), tipo: key, stato: 'da_prenotare' };
+  list.push(nuovo);
+  tappa.servizi = list;
+  const item = buildItemServizio(tappa, key, nuovo);
   const tmp = document.createElement('div');
   tmp.innerHTML = renderPrenotazioneCard(item);
   wrap.appendChild(tmp.firstElementChild);
   bindPrenotazioneCards(wrap);
   sel.value = '';
   showToast(SERVIZI_META[key].nome + ' aggiunto', 'success');
-  refreshAggiungiServizioBar(tappaNum);
-}
-
-function serviziKeysPresentiInDom(tappaNum) {
-  const wrap = document.querySelector(`[data-pren-list="${tappaNum}"]`);
-  if (!wrap) return [];
-  const keys = [];
-  wrap.querySelectorAll('.prenotazione-card').forEach(card => {
-    try {
-      const m = JSON.parse(card.getAttribute('data-meta').replace(/&quot;/g, '"'));
-      if (m.tipo === 'servizio' && m.servizio_key) keys.push(m.servizio_key);
-    } catch (_) {}
-  });
-  return keys;
 }
 
 function refreshAggiungiServizioBar(tappaNum) {
   const bar = document.querySelector(`[data-pren-add-bar="${tappaNum}"]`);
   if (!bar) return;
-  const keys = serviziKeysPresentiInDom(tappaNum);
-  const mancanti = Object.keys(SERVIZI_META).filter(k => !keys.includes(k));
-  if (!mancanti.length) {
-    bar.innerHTML = '';
-    bar.classList.add('hidden');
-    return;
-  }
   bar.classList.remove('hidden');
-  const opts = mancanti.map(k => `<option value="${k}">${esc(SERVIZI_META[k].nome)}</option>`).join('');
-  bar.innerHTML = `
-    <select id="pren-add-sel-${tappaNum}" class="btn btn-ghost" aria-label="Tipo servizio da aggiungere">
-      <option value="">Servizio da aggiungere…</option>
-      ${opts}
-    </select>
-    <button type="button" class="btn btn-ghost" onclick="aggiungiServizioPrenotazione(${tappaNum})">+ Aggiungi</button>
-  `;
+  bar.outerHTML = renderAggiungiServizioBar(tappaNum);
 }
 
 /** Valori chip collegati a una chiave servizio inter-tappa */
@@ -1363,33 +1330,41 @@ function rimuoviMezziIntertappaPerServizio(tappa, key) {
 
 function rimuoviServizioPrenotazioneDaBtn(btn) {
   if (!btn?.dataset) return;
-  rimuoviServizioPrenotazione(Number(btn.dataset.tappa), btn.dataset.srvKey);
+  rimuoviServizioPrenotazione(Number(btn.dataset.tappa), btn.dataset.srvId);
 }
 
-function rimuoviServizioPrenotazione(tappaNum, key) {
-  if (!sessionTrasferta || !key) return;
+function rimuoviServizioPrenotazione(tappaNum, srvId) {
+  if (!sessionTrasferta || !srvId) return;
   const tappa = (sessionTrasferta.itinerario || []).find(t => t.tappa === tappaNum);
-  const nome = SERVIZI_META[key]?.nome || key;
+  const list = serviziList(tappa);
+  const hit = list.find(x => x.id === srvId);
+  const key = hit?.tipo;
+  const nome = SERVIZI_META[key]?.nome || key || 'Servizio';
+  const sameTipo = list.filter(x => x.tipo === key).length;
 
-  if (isServizioLegatoAMezzoIntertappa(key)) {
-    deselezionaChipsPerServizio(tappaNum, key);
-    document.querySelector(`[data-item-id="t${tappaNum}-srv-${key}"]`)?.remove();
-    rimuoviMezziIntertappaPerServizio(tappa, key);
-    if (tappa?.servizi) delete tappa.servizi[key];
-    refreshPrenListTappa(tappaNum);
-    showToast(nome + ' rimosso', 'success', 2200);
-    return;
+  if (key === 'hotel' && sameTipo <= 1 && tappa) {
+    tappa.pernottamento = false;
+    const block = document.querySelector(`.tappa-block[data-tappa="${tappaNum}"]`);
+    const cb = block?.querySelector('[data-tappa-field=pernottamento]');
+    if (cb) cb.checked = false;
+    const lbl = block?.querySelector('[data-tappa-pern-lbl]');
+    if (lbl) lbl.textContent = 'No';
   }
-
-  const card = document.querySelector(`[data-item-id="t${tappaNum}-srv-${key}"]`);
-  if (!card) return;
-  if (tappa?.servizi) delete tappa.servizi[key];
-  card.remove();
+  if (key && isServizioLegatoAMezzoIntertappa(key) && sameTipo <= 1) {
+    deselezionaChipsPerServizio(tappaNum, key);
+    rimuoviMezziIntertappaPerServizio(tappa, key);
+  }
+  if (tappa) tappa.servizi = list.filter(x => x.id !== srvId);
+  document.querySelector(`[data-item-id="t${tappaNum}-srv-${srvId}"]`)?.remove();
   const wrap = document.querySelector(`[data-pren-list="${tappaNum}"]`);
   if (wrap && !wrap.querySelector('.prenotazione-card')) {
     wrap.innerHTML = `<p class="empty-pren">${tappaNum > 1 ? 'Nessun servizio — seleziona un mezzo sopra o aggiungi sotto.' : 'Nessun servizio — aggiungi sotto.'}</p>`;
   }
-  refreshAggiungiServizioBar(tappaNum);
+  if (key && isServizioLegatoAMezzoIntertappa(key) && sameTipo <= 1) {
+    refreshPrenListTappa(tappaNum);
+  } else {
+    refreshAggiungiServizioBar(tappaNum);
+  }
   showToast(nome + ' rimosso', 'success', 2200);
 }
 
@@ -1402,17 +1377,17 @@ function raccogliItemPrenotabili(trasferta) {
     const n = tappa.tappa;
     const citta = tappa.citta || 'Tappa ' + n;
 
-    const keysFatte = new Set();
-    serviziKeysPerTappa(tappa).forEach(key => {
-      keysFatte.add(key);
-      items.push(buildItemServizio(tappa, key, datiServizioPerTappa(tappa, key)));
+    const list = ensureServiziPerTappa(tappa);
+    list.forEach(srv => {
+      items.push(buildItemServizio(tappa, srv.tipo, srv));
     });
 
     // Mezzi senza chiave (es. auto propria) → card spostamento generica
     (tappa.mezzo_per_raggiungere || []).forEach(mezzo => {
       if (isAutoAzMezzo(mezzo) || mezzoToServizioKey(mezzo)) return;
-      const dati = { mezzo_viaggio: mezzo, stato: 'da_prenotare', ...(tappa.servizi?.spostamento || {}) };
-      const item = buildItemServizio(tappa, 'spostamento', dati);
+      const dati = list.find(x => x.tipo === 'spostamento')
+        || { id: 'srv_spost_' + n, mezzo_viaggio: mezzo, stato: 'da_prenotare' };
+      const item = buildItemServizio(tappa, 'spostamento', { ...dati, mezzo_viaggio: mezzo });
       item.titolo = 'Spostamento: ' + mezzo;
       item.sottotitolo = (tappa.cliente_attivita ? tappa.cliente_attivita + ' · ' : '') + 'Verso ' + citta + ' (tappa ' + n + ')';
       items.push(item);
@@ -1451,7 +1426,11 @@ function toggleChipMezzo(el, tappaNum) {
       .some(c => targets.has(c.getAttribute('data-mezzo')));
     if (!ancoraOn) {
       const tappa = sessionTrasferta.itinerario.find(t => t.tappa === tappaNum);
-      if (tappa?.servizi?.[key]) delete tappa.servizi[key];
+      const list = serviziList(tappa);
+      const ofTipo = list.filter(x => x.tipo === key);
+      if (ofTipo.length <= 1 && tappa) {
+        tappa.servizi = list.filter(x => x.tipo !== key);
+      }
     }
   }
   refreshPrenListTappa(tappaNum);
@@ -1500,7 +1479,6 @@ function renderTappaEditForm(tappa) {
 }
 
 function renderTappaBlockHtml(tappa, prenItems) {
-  const srvKeys = prenItems.filter(p => p.tipo === 'servizio').map(p => p.servizio_key);
   const prenHtml = prenItems.length
     ? prenItems.map(renderPrenotazioneCard).join('')
     : `<p class="empty-pren">${tappa.tappa > 1 ? 'Nessun servizio — seleziona un mezzo sopra o aggiungi sotto.' : 'Nessun servizio — aggiungi sotto.'}</p>`;
@@ -1518,7 +1496,7 @@ function renderTappaBlockHtml(tappa, prenItems) {
       <div class="prenotazioni-wrap">
         <h4>✏️ Aggiorna prenotazioni</h4>
         <div data-pren-list="${tappa.tappa}">${prenHtml}</div>
-        ${renderAggiungiServizioBar(tappa.tappa, srvKeys)}
+        ${renderAggiungiServizioBar(tappa.tappa)}
       </div>
     </div>
   `;
@@ -1704,10 +1682,8 @@ function rimuoviTappa(tappaNum) {
 }
 
 function pruneServiziTappa(tappa) {
-  if (!tappa?.servizi) return;
-  const allowed = new Set(serviziKeysPerTappa(tappa));
-  Object.keys(tappa.servizi).forEach(k => { if (!allowed.has(k)) delete tappa.servizi[k]; });
-  if (!Object.keys(tappa.servizi).length) tappa.servizi = null;
+  if (!tappa) return;
+  ensureServiziPerTappa(tappa);
 }
 
 function refreshPrenListTappa(tappaNum) {
@@ -2153,10 +2129,7 @@ function validaPrenotazioni() {
 }
 
 function sommaCostiServiziTappa(tappa) {
-  if (!tappa?.servizi) return 0;
-  return Object.values(tappa.servizi).reduce((acc, srv) => {
-    return acc + parseCostoNum(srv?.costo);
-  }, 0);
+  return ST().sommaCosti(tappa?.servizi);
 }
 
 /** Una riga Data Table per ogni tappa runtime (nuove, modificate, esistenti) */
@@ -2193,32 +2166,32 @@ function buildRigheDbDaTrasferta(trasferta, prenotazioni) {
     const idDb = base.id != null ? base.id : tappa._db_id;
     if (idDb != null && idDb !== '') row.id = idDb;
     else row._nuova_riga = true;
+    const agg = ST().costiAggregati(tappa.servizi);
     Object.entries(CAMPI_COSTO_SERVIZIO).forEach(([campo, key]) => {
-      const c = tappa.servizi?.[key]?.costo;
-      row[campo] = c != null && String(c).trim() !== '' ? String(c).trim() : (base[campo] ?? '');
+      const c = agg[key];
+      row[campo] = c != null && String(c).trim() !== '' ? String(c).trim() : '';
     });
     const tot = sommaCostiServiziTappa(tappa);
-    row.costo_tappa_totale = tot > 0 ? String(tot) : (base.costo_tappa_totale ?? '0');
+    row.costo_tappa_totale = tot > 0 ? String(tot) : '0';
     return row;
   });
 }
 
 function applicaPrenotazioniATrasferta(trasferta, prenotazioni) {
   const t = clonaTrasfertaPerInvioFrom(trasferta);
+  const S = ST();
   t.itinerario.forEach(tappa => {
-    if (!tappa.servizi) tappa.servizi = {};
-    serviziKeysPerTappa(tappa).forEach(key => {
-      if (!tappa.servizi[key]) {
-        tappa.servizi[key] = datiServizioPerTappa(tappa, key);
-      }
-    });
+    tappa.servizi = S.normalizeServizi(tappa.servizi);
   });
   prenotazioni.forEach(p => {
     const key = p.servizio_key || (p.tipo === 'tratta' ? mezzoToServizioKey(p.mezzo) : null);
     if (!key) return;
     const tappa = t.itinerario.find(x => x.tappa === p.tappa);
     if (!tappa) return;
-    if (!tappa.servizi) tappa.servizi = {};
+    const list = ensureServiziPerTappa(tappa);
+    const sid = p.servizio_id || p.dati_servizio?.id;
+    let hit = sid ? list.find(x => x.id === sid) : null;
+    if (!hit) hit = list.find(x => x.tipo === key);
     const dati = { ...(p.dati_servizio || {}) };
     if (p.mezzo && !dati.mezzo_viaggio) dati.mezzo_viaggio = p.mezzo;
     if (p.costo_servizio) dati.costo = p.costo_servizio;
@@ -2234,7 +2207,14 @@ function applicaPrenotazioniATrasferta(trasferta, prenotazioni) {
       giornate_da: p.giornate_da || '',
       giornate_a: p.giornate_a || ''
     };
-    tappa.servizi[key] = { ...(tappa.servizi[key] || {}), ...dati };
+    delete dati.tipo;
+    if (hit) {
+      const id = hit.id;
+      Object.assign(hit, dati, { id, tipo: key });
+    } else {
+      list.push({ id: sid || S.uidSrv(), tipo: key, ...dati });
+    }
+    tappa.servizi = list;
   });
   return t;
 }
@@ -2717,14 +2697,15 @@ function ntBuildJSON() {
     document.getElementById(`nt-chips-${uid}`)
       ?.querySelectorAll('.chip-mezzo.selected')
       .forEach(c => mezzi.push(c.textContent.replace(/^\S+\s/, '').trim()));
-    const servizi = {};
+    const servizi = [];
     NT_SERVIZI.forEach(s => {
       if (document.getElementById(`nt-srv-${uid}-${s.key}`)?.classList.contains('active')) {
-        servizi[s.key] = {};
+        const item = { tipo: s.key };
         [...s.fields, NT_CAMPO_COSTO].forEach(f => {
           const el = document.getElementById(`nt-${uid}-${s.key}-${f.id}`);
-          if (el) servizi[s.key][f.id] = el.value;
+          if (el) item[f.id] = el.value;
         });
+        servizi.push(item);
       }
     });
     tappe.push({
@@ -2736,7 +2717,7 @@ function ntBuildJSON() {
       tipo_attivita: ntVal(`nt-${uid}-tipo`),
       pernottamento: ntVal(`nt-${uid}-pernotto`) === 'si',
       mezzo_per_raggiungere: mezzi.length ? mezzi : null,
-      servizi: Object.keys(servizi).length ? servizi : null,
+      servizi: servizi.length ? ST().normalizeServizi(servizi) : null,
       note: ntVal(`nt-${uid}-note`)
     });
   });
