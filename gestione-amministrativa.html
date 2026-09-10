@@ -572,8 +572,9 @@ body {
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/scontrini.js"></script>
-  <script src="js/nota-spese.js?v=54"></script>
-  <script src="js/nota-spese-export.js?v=54"></script>
+  <script src="js/nota-spese.js?v=55"></script>
+  <script src="assets/vendor/exceljs.min.js"></script>
+  <script src="js/nota-spese-export.js?v=55"></script>
   <script src="js/servizi-tappa.js?v=50"></script>
 <script>
 const WEBHOOK = SR_CONFIG.WEBHOOK_GESTIONE_AMMINISTRATIVA;
@@ -1483,10 +1484,19 @@ function renderDettaglioTappaBody() {
       renderDettaglioTappaBody();
     });
   });
-  document.getElementById('btn-export-ns')?.addEventListener('click', () => {
+  document.getElementById('btn-export-ns')?.addEventListener('click', async () => {
     if (!detailTappaCtx || typeof SRNotaSpeseExport === 'undefined') return;
-    const rows = detailTappaCtx.siblings.length ? detailTappaCtx.siblings : [detailTappaCtx.tappa];
-    SRNotaSpeseExport.downloadTransazioniExcel(rows);
+    const btn = document.getElementById('btn-export-ns');
+    if (btn) btn.disabled = true;
+    try {
+      const rows = detailTappaCtx.siblings.length ? detailTappaCtx.siblings : [detailTappaCtx.tappa];
+      await SRNotaSpeseExport.downloadTransazioniExcel(rows);
+    } catch (e) {
+      console.error('export transazioni:', e);
+      alert('Export Excel non riuscito: ' + (e.message || e));
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   });
   document.querySelectorAll('[data-ns-idx]').forEach(btn => {
     btn.addEventListener('click', () => {
