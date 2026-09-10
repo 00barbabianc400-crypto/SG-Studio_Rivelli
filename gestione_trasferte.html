@@ -530,8 +530,8 @@
     <h3 id="modal-estendi-title">Estendere il periodo?</h3>
     <p id="modal-estendi-testo"></p>
     <div class="modal-actions">
-      <button type="button" class="btn btn-secondary" id="modal-estendi-no">No, ripristina data</button>
-      <button type="button" class="btn btn-primary" id="modal-estendi-si">Sì, estendi</button>
+      <button type="button" class="btn btn-secondary" id="modal-estendi-no">Annulla</button>
+      <button type="button" class="btn btn-primary" id="modal-estendi-si">Sì, estendi e continua</button>
     </div>
   </div>
 </div>
@@ -539,7 +539,8 @@
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/dipendenti-list.js"></script>
-<script src="js/servizi-tappa.js?v=52"></script>
+<script src="js/range-trasferta.js?v=53"></script>
+<script src="js/servizi-tappa.js?v=53"></script>
 <script>
 // ========== Webhook da SR_CONFIG ==========
 const WEBHOOK_RECUPERO = SR_CONFIG.WEBHOOK_TR_RECUPERO;
@@ -1562,9 +1563,9 @@ function chiediEstendiRange({ tappaDa, tappaA, oldInizio, oldFine, newInizio, ne
   const testo = document.getElementById('modal-estendi-testo');
   if (!overlay || !testo) return Promise.resolve(false);
   testo.innerHTML =
-    'La tappa (<strong>' + formatDateIt(tappaDa) + ' → ' + formatDateIt(tappaA) + '</strong>) '
-    + 'esce dal periodo della trasferta (<strong>' + formatDateIt(oldInizio) + ' → ' + formatDateIt(oldFine) + '</strong>).'
-    + '<br><br>Vuoi estendere il periodo a <strong>' + formatDateIt(newInizio) + ' → ' + formatDateIt(newFine) + '</strong>?';
+    'Le date delle tappe (<strong>' + formatDateIt(tappaDa) + ' → ' + formatDateIt(tappaA) + '</strong>) '
+    + 'estendono il periodo originale (<strong>' + formatDateIt(oldInizio) + ' → ' + formatDateIt(oldFine) + '</strong>).'
+    + '<br><br>Vuoi confermare il periodo <strong>' + formatDateIt(newInizio) + ' → ' + formatDateIt(newFine) + '</strong>?';
   overlay.classList.add('show');
   overlay.setAttribute('aria-hidden', 'false');
   return new Promise(resolve => { _estendiRangeResolve = resolve; });
@@ -1587,39 +1588,40 @@ document.getElementById('modal-estendi-range')?.addEventListener('click', e => {
   if (e.target.id === 'modal-estendi-range') rispondiEstendiRange(false);
 });
 
-/** Se la tappa esce dal range, chiede conferma CSS per estenderlo. */
-async function garantisciRangeTrasferta(arrivo, partenza) {
-  if (!sessionTrasferta) return true;
-  if (!sessionTrasferta.anagrafica) sessionTrasferta.anagrafica = {};
-  const ana = sessionTrasferta.anagrafica;
-  const d = ordinaCoppiaDate(arrivo, partenza);
-  const fineTappa = d.a || d.da;
-  let inizio = ana.data_inizio || '';
-  let fine = ana.data_fine_prevista || '';
-  if (!inizio && !fine) {
-    ana.data_inizio = d.da || '';
-    ana.data_fine_prevista = fineTappa || '';
-    aggiornaRiepilogoDateTrasferta();
-    return true;
-  }
-  const outLow = !!(d.da && inizio && d.da < inizio);
-  const outHigh = !!(fineTappa && fine && fineTappa > fine);
-  if (!outLow && !outHigh) return true;
-  const newInizio = outLow ? d.da : inizio;
-  const newFine = outHigh ? fineTappa : fine;
-  const ok = await chiediEstendiRange({
-    tappaDa: d.da,
-    tappaA: fineTappa,
-    oldInizio: inizio,
-    oldFine: fine,
-    newInizio,
-    newFine
-  });
-  if (!ok) return false;
-  ana.data_inizio = newInizio;
-  ana.data_fine_prevista = newFine;
+function assicuraSnapshotRangeEdit() {
+  if (!sessionTrasferta) return;
+  if (sessionTrasferta._range_caricato) return;
+  const ana = sessionTrasferta.anagrafica || {};
+  sessionTrasferta._range_caricato = SRRangeTrasferta.snapshotRange(ana.data_inizio, ana.data_fine_prevista);
+}
+
+function memorizzaSnapshotRangeEdit() {
+  if (!sessionTrasferta) return;
+  const ana = sessionTrasferta.anagrafica || {};
+  sessionTrasferta._range_caricato = SRRangeTrasferta.snapshotRange(ana.data_inizio, ana.data_fine_prevista);
+}
+
+function applicaRangeDaItinerarioLive() {
+  ricalcolaAnagraficaDaItinerario();
   aggiornaRiepilogoDateTrasferta();
-  return true;
+}
+
+async function confermaEstendiRangeAlCommit() {
+  if (!sessionTrasferta) return true;
+  syncSessionDaDom();
+  applicaRangeDaItinerarioLive();
+  const snap = sessionTrasferta._range_caricato || { inizio: '', fine: '' };
+  const ana = sessionTrasferta.anagrafica || {};
+  const live = { inizio: ana.data_inizio || '', fine: ana.data_fine_prevista || '' };
+  if (!SRRangeTrasferta.rangeNeedsExtendConfirm(snap, live)) return true;
+  return chiediEstendiRange({
+    tappaDa: live.inizio,
+    tappaA: live.fine,
+    oldInizio: snap.inizio,
+    oldFine: snap.fine,
+    newInizio: live.inizio,
+    newFine: live.fine
+  });
 }
 
 /** Ricalcola Inizio/Fine anagrafica dallo span reale delle tappe residue. */
@@ -1691,11 +1693,9 @@ function bindTappaEditFields(root) {
     });
     block.querySelectorAll('[data-tappa-field=data_arrivo],[data-tappa-field=data_partenza]').forEach(inp => {
       inp.dataset.prev = inp.value;
-      inp.addEventListener('change', async () => {
+      inp.addEventListener('change', () => {
         const arrivoEl = block.querySelector('[data-tappa-field=data_arrivo]');
         const partenzaEl = block.querySelector('[data-tappa-field=data_partenza]');
-        const prevA = arrivoEl?.dataset.prev || '';
-        const prevP = partenzaEl?.dataset.prev || '';
         const rawA = arrivoEl?.value || '';
         const rawP = partenzaEl?.value || '';
         const d = ordinaCoppiaDate(rawA, rawP || rawA);
@@ -1703,16 +1703,12 @@ function bindTappaEditFields(root) {
           arrivoEl.value = d.da;
           partenzaEl.value = d.a;
         }
-        if (!(await garantisciRangeTrasferta(d.da, d.a || d.da))) {
-          if (arrivoEl) arrivoEl.value = prevA;
-          if (partenzaEl) partenzaEl.value = prevP;
-          return;
-        }
         if (arrivoEl) arrivoEl.dataset.prev = arrivoEl.value;
         if (partenzaEl) partenzaEl.dataset.prev = partenzaEl.value;
         const meta = block.querySelector('.tappa-block-meta');
         if (meta) meta.textContent = formatDateIt(d.da) + ' → ' + formatDateIt(d.a || d.da);
         syncSessionDaDom();
+        applicaRangeDaItinerarioLive();
       });
     });
   });
@@ -1732,6 +1728,8 @@ function renderTrasferta(trasferta, trasfertaId) {
     );
     trasferta.anagrafica = ana;
   }
+  assicuraSnapshotRangeEdit();
+  ricalcolaAnagraficaDaItinerario();
   document.getElementById('riepilogo-anagrafica').innerHTML = `
     <div class="riepilogo-item"><div class="lbl">Nome</div><div class="val">${esc(ana.nome_cognome)}</div></div>
     <div class="riepilogo-item"><div class="lbl">Partecipanti</div><div class="val">
@@ -2333,6 +2331,11 @@ async function salvaProgresso() {
     sessionTrasferta.anagrafica.numero_partecipanti = parseNumeroPartecipanti(editPart.value);
   }
 
+  if (!(await confermaEstendiRangeAlCommit())) {
+    showToast('Salvataggio annullato: periodo non confermato', 'warn');
+    return;
+  }
+
   const btn = document.getElementById('btn-salva');
   btn.disabled = true;
   try {
@@ -2354,6 +2357,7 @@ async function salvaProgresso() {
       if (payload.trasferta.anagrafica) sessionTrasferta.anagrafica = payload.trasferta.anagrafica;
     }
     showToast('Progresso salvato', 'success');
+    memorizzaSnapshotRangeEdit();
     chiudiDettaglioTrasferta({ sync: true });
   } catch (e) {
     showToast('Salvataggio fallito: ' + (e.message || e), 'error');
@@ -2375,6 +2379,11 @@ async function inviaPrenotazioni() {
     return;
   }
 
+  if (!(await confermaEstendiRangeAlCommit())) {
+    showToast('Invio annullato: periodo non confermato', 'warn');
+    return;
+  }
+
   const btn = document.getElementById('btn-invia');
   btn.disabled = true;
   try {
@@ -2393,6 +2402,7 @@ async function inviaPrenotazioni() {
       if (payload.trasferta.anagrafica) sessionTrasferta.anagrafica = payload.trasferta.anagrafica;
     }
     showToast('Prenotazioni inviate con successo', 'success', 3000);
+    memorizzaSnapshotRangeEdit();
     const idInvio = sessionTrasfertaId;
     chiudiDettaglioTrasferta({ sync: true });
     // Chiede se eliminare (sopra l'elenco, senza altra GET)
@@ -2414,6 +2424,9 @@ async function inviaPrenotazioni() {
 
 // ========== Nuova Trasferta ==========
 let ntUid = 0;
+let ntRangeSnapshot = { inizio: '', fine: '' };
+let ntRangeSnapshotFromUser = false;
+let ntSyncingRange = false;
 const NT_CHIP_MEZZI = MEZZI_CHIP_OPTIONS.concat([{ label: '🏢 Auto az.', value: 'Auto aziendale' }]);
 
 function ntCardMeta(card) {
@@ -2677,21 +2690,7 @@ function ntAddTappa() {
   }
   ntBindTappaDate(uid);
   ntBindPernotto(uid);
-  // Se le date auto (+1) estendono il periodo, chiedi confirm; se No, lascia le date tappa ma non tocca Inizio/Fine
-  // (in pratica se rifiuta le date restano e la validazione all'invio segnala; meglio ripristinare a vuoto se appena auto-impostate)
-  (async () => {
-    const arr = document.getElementById(`nt-${uid}-arrivo`);
-    const part = document.getElementById(`nt-${uid}-partenza`);
-    const autoFilled = !!(arr && arr.value);
-    if (!(await ntEnsureExtendRangeDaTappe()) && autoFilled && !isFirst) {
-      if (arr) { arr.value = ''; arr.dataset.prev = ''; }
-      if (part) { part.value = ''; part.dataset.prev = ''; }
-      showToast('Date tappa annullate: periodo non esteso', 'warn');
-    } else {
-      if (arr) arr.dataset.prev = arr.value;
-      if (part) part.dataset.prev = part.value;
-    }
-  })();
+  ntSyncRangeDaTappe();
 }
 
 /** Span date di tutte le tappe del form Nuova trasferta. */
@@ -2709,51 +2708,45 @@ function ntSpanTappe() {
   return ordinaCoppiaDate(date[0], date[date.length - 1]);
 }
 
-/** Ricalcola Inizio/Fine dallo span tappe (usato al delete — senza confirm). */
+/** Ricalcola Inizio/Fine dallo span tappe (live, senza confirm). */
 function ntSyncRangeDaTappe() {
   const inizioEl = document.getElementById('nt-data-inizio');
   const fineEl = document.getElementById('nt-data-fine');
   if (!inizioEl || !fineEl) return;
   const span = ntSpanTappe();
   if (!span) return;
+  ntSyncingRange = true;
   inizioEl.value = span.da;
   fineEl.value = span.a;
+  ntSyncingRange = false;
 }
 
-/**
- * Se lo span tappe esce da Inizio/Fine, chiede confirm CSS per estendere.
- * Ritorna false se l'utente rifiuta (chiamante ripristina le date).
- */
-async function ntEnsureExtendRangeDaTappe() {
-  const inizioEl = document.getElementById('nt-data-inizio');
-  const fineEl = document.getElementById('nt-data-fine');
-  if (!inizioEl || !fineEl) return true;
-  const span = ntSpanTappe();
-  if (!span) return true;
-  const inizio = inizioEl.value || '';
-  const fine = fineEl.value || '';
-  if (!inizio && !fine) {
-    inizioEl.value = span.da;
-    fineEl.value = span.a;
-    return true;
-  }
-  const outLow = !!(span.da && inizio && span.da < inizio);
-  const outHigh = !!(span.a && fine && span.a > fine);
-  if (!outLow && !outHigh) return true;
-  const newInizio = outLow ? span.da : inizio;
-  const newFine = outHigh ? span.a : fine;
-  const ok = await chiediEstendiRange({
-    tappaDa: span.da,
-    tappaA: span.a,
-    oldInizio: inizio,
-    oldFine: fine,
-    newInizio,
-    newFine
+function ntBindAnagraficaSnapshot() {
+  ['nt-data-inizio', 'nt-data-fine'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.boundSnap === '1') return;
+    el.dataset.boundSnap = '1';
+    el.addEventListener('change', () => {
+      if (ntSyncingRange) return;
+      ntRangeSnapshotFromUser = true;
+      ntRangeSnapshot = SRRangeTrasferta.snapshotRange(ntVal('nt-data-inizio'), ntVal('nt-data-fine'));
+    });
   });
-  if (!ok) return false;
-  inizioEl.value = newInizio;
-  fineEl.value = newFine;
-  return true;
+}
+
+async function ntConfermaEstendiRangeAlInvio() {
+  ntSyncRangeDaTappe();
+  const live = { inizio: ntVal('nt-data-inizio'), fine: ntVal('nt-data-fine') };
+  const snap = ntRangeSnapshotFromUser ? ntRangeSnapshot : { inizio: '', fine: '' };
+  if (!SRRangeTrasferta.rangeNeedsExtendConfirm(snap, live)) return true;
+  return chiediEstendiRange({
+    tappaDa: live.inizio,
+    tappaA: live.fine,
+    oldInizio: snap.inizio,
+    oldFine: snap.fine,
+    newInizio: live.inizio,
+    newFine: live.fine
+  });
 }
 
 function ntBindTappaDate(uid) {
@@ -2762,11 +2755,9 @@ function ntBindTappaDate(uid) {
     if (!el || el.dataset.boundRange === '1') return;
     el.dataset.boundRange = '1';
     el.dataset.prev = el.value;
-    el.addEventListener('change', async () => {
+    el.addEventListener('change', () => {
       const arrEl = document.getElementById(`nt-${uid}-arrivo`);
       const partEl = document.getElementById(`nt-${uid}-partenza`);
-      const prevA = arrEl?.dataset.prev || '';
-      const prevP = partEl?.dataset.prev || '';
       const arrivo = ntVal(`nt-${uid}-arrivo`);
       const partenza = ntVal(`nt-${uid}-partenza`) || arrivo;
       const d = ordinaCoppiaDate(arrivo, partenza);
@@ -2774,13 +2765,9 @@ function ntBindTappaDate(uid) {
         arrEl.value = d.da;
         partEl.value = d.a;
       }
-      if (!(await ntEnsureExtendRangeDaTappe())) {
-        if (arrEl) arrEl.value = prevA;
-        if (partEl) partEl.value = prevP;
-        return;
-      }
       if (arrEl) arrEl.dataset.prev = arrEl.value;
       if (partEl) partEl.dataset.prev = partEl.value;
+      ntSyncRangeDaTappe();
     });
   });
 }
@@ -2882,6 +2869,10 @@ function ntValida() {
 }
 
 async function ntInviaDati() {
+  if (!(await ntConfermaEstendiRangeAlInvio())) {
+    showToast('Invio annullato: periodo non confermato', 'warn');
+    return;
+  }
   const err = ntValida();
   if (err) { showToast('⚠️ ' + err, 'warn'); return; }
   const btn = document.getElementById('nt-btn-invia');
@@ -2901,6 +2892,8 @@ async function ntInviaDati() {
 
 function ntReset() {
   ntUid = 0;
+  ntRangeSnapshot = { inizio: '', fine: '' };
+  ntRangeSnapshotFromUser = false;
   const dipSel = document.getElementById('nt-dipendente');
   if (dipSel) dipSel.value = '';
   document.getElementById('nt-partecipanti').value = '1';
@@ -2950,6 +2943,7 @@ function ntApriPanel() {
   panel.setAttribute('aria-hidden', 'false');
   if (btn) btn.textContent = '✕ Chiudi';
   if (!document.querySelector('.nt-tappa-card')) ntAddTappa();
+  ntBindAnagraficaSnapshot();
   ntCaricaDipendenti();
 }
 
