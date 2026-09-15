@@ -171,6 +171,39 @@ body {
   font-weight: 800; font-size: 16px; line-height: 28px; text-align: center;
   box-shadow: 0 2px 6px rgba(245, 197, 24, .45);
 }
+
+.ns-alert-overlay {
+  position: fixed; inset: 0; z-index: 4000;
+  background: rgba(10, 22, 40, .55);
+  display: none; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.ns-alert-overlay.is-open { display: flex; }
+.ns-alert-modal {
+  width: min(440px, 100%); background: #fff; border-radius: 14px;
+  border: 1px solid #fecaca; box-shadow: 0 16px 48px rgba(10,22,40,.25);
+  padding: 28px 24px 22px; text-align: center;
+}
+.ns-alert-x {
+  width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%;
+  background: #fef2f2; border: 2px solid #f87171;
+  display: flex; align-items: center; justify-content: center;
+  color: #dc2626; font-size: 36px; font-weight: 800; line-height: 1;
+}
+.ns-alert-title {
+  font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700;
+  color: #7f1d1d; margin-bottom: 10px;
+}
+.ns-alert-body {
+  font-size: 14px; color: var(--text-2); line-height: 1.5; margin-bottom: 20px; text-align: left;
+}
+.ns-alert-body strong { color: var(--text); }
+.ns-alert-btn {
+  width: 100%; padding: 12px 16px; border-radius: 8px; border: none;
+  background: #dc2626; color: #fff; font-family: inherit; font-size: 15px;
+  font-weight: 600; cursor: pointer;
+}
+.ns-alert-btn:hover { background: #b91c1c; }
 </style>
 </head>
 <body>
@@ -294,9 +327,18 @@ body {
   </main>
 </div>
 
+<div class="ns-alert-overlay" id="ns-alert-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="ns-alert-title">
+  <div class="ns-alert-modal">
+    <div class="ns-alert-x" aria-hidden="true">✕</div>
+    <h2 class="ns-alert-title" id="ns-alert-title">Nota spese mancante</h2>
+    <div class="ns-alert-body" id="ns-alert-body"></div>
+    <button type="button" class="ns-alert-btn" id="ns-alert-chiudi">Chiudi</button>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js"></script>
-<script src="js/nota-spese.js?v=53"></script>
+<script src="js/nota-spese.js?v=57"></script>
 <script src="js/auth.js"></script>
 <script src="js/push.js"></script>
 <script>
@@ -330,6 +372,43 @@ function showHub() {
     el.textContent = '';
   }
   applyHubRoles();
+  maybeShowNotaSpeseAlert();
+}
+
+function daysLeftLabel(n) {
+  const d = Number(n);
+  if (!Number.isFinite(d) || d <= 0) return 'oggi (ultimo giorno disponibile)';
+  if (d === 1) return '1 giorno';
+  return d + ' giorni';
+}
+
+function maybeShowNotaSpeseAlert() {
+  if (!window.SRNotaSpese || !SRAuth.hasN8nToken()) return;
+  if (!SRAuth.canAccessHubApp('nota_spese')) return;
+  const tappe = SRAuth.getTrasferteTappe();
+  const alert = SRNotaSpese.alertNotaSpeseMancanti(tappe);
+  if (!alert) return;
+  const body = document.getElementById('ns-alert-body');
+  const overlay = document.getElementById('ns-alert-overlay');
+  if (!body || !overlay) return;
+  const tid = alert.trasferta_id || '—';
+  body.innerHTML =
+    'Rispetto alla trasferta <strong>' + tid.replace(/[<>&]/g, '') + '</strong> '
+    + 'non risultano scontrini / giustificativi associati in Nota spese.'
+    + '<br><br>Questo avviso e la possibilità di salvarli spariranno tra <strong>'
+    + daysLeftLabel(alert.daysLeft) + '</strong>.'
+    + '<br><br>La mancata registrazione dei giustificativi costituisce una '
+    + '<strong>violazione della procedura attuale</strong>. '
+    + 'Usa la sezione Nota spese in home per caricarli ora.';
+  overlay.classList.add('is-open');
+  overlay.setAttribute('aria-hidden', 'false');
+}
+
+function chiudiNotaSpeseAlert() {
+  const overlay = document.getElementById('ns-alert-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('is-open');
+  overlay.setAttribute('aria-hidden', 'true');
 }
 
 function showGate(message) {
@@ -377,6 +456,7 @@ async function refreshTappeQuietlyIfNeeded() {
     await SRAuth.ensureN8nSession({ force: true });
     sessionStorage.setItem(flag, '1');
     applyHubRoles();
+    maybeShowNotaSpeseAlert();
   } catch (ex) {
     console.warn('refreshTappeQuietlyIfNeeded:', ex);
   }
@@ -468,6 +548,8 @@ document.getElementById('btn-ms-login').addEventListener('click', async () => {
 });
 
 document.getElementById('btn-logout').addEventListener('click', () => SRAuth.logout());
+
+document.getElementById('ns-alert-chiudi')?.addEventListener('click', chiudiNotaSpeseAlert);
 
 document.getElementById('btn-back-login').addEventListener('click', () => {
   history.replaceState(null, '', location.pathname);

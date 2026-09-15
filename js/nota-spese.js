@@ -32,6 +32,83 @@
     return day >= da && day <= a;
   }
 
+  const GRACE_DAYS_AFTER_END = 3;
+
+  function addDaysYmd(ymd, days) {
+    const s = toYmd(ymd);
+    if (!s) return '';
+    const d = new Date(s + 'T12:00:00');
+    if (Number.isNaN(d.getTime())) return '';
+    d.setDate(d.getDate() + Number(days || 0));
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
+  }
+
+  function diffDaysYmd(fromIso, toIso) {
+    const a = toYmd(fromIso);
+    const b = toYmd(toIso);
+    if (!a || !b) return 0;
+    const t0 = new Date(a + 'T12:00:00').getTime();
+    const t1 = new Date(b + 'T12:00:00').getTime();
+    if (Number.isNaN(t0) || Number.isNaN(t1)) return 0;
+    return Math.round((t1 - t0) / 86400000);
+  }
+
+  function inizioTrasfertaYmd(tappe) {
+    let min = '';
+    (tappe || []).forEach(t => {
+      const da = toYmd(t && t.data_arrivo);
+      if (da && (!min || da < min)) min = da;
+    });
+    return min;
+  }
+
+  function fineTrasfertaYmd(tappe) {
+    let max = '';
+    (tappe || []).forEach(t => {
+      const a = toYmd(t && t.data_partenza) || toYmd(t && t.data_arrivo);
+      if (a && (!max || a > max)) max = a;
+    });
+    return max;
+  }
+
+  function deadlineNotaSpeseYmd(tappe, graceDays) {
+    const fine = fineTrasfertaYmd(tappe);
+    if (!fine) return '';
+    const g = graceDays == null ? GRACE_DAYS_AFTER_END : Number(graceDays);
+    return addDaysYmd(fine, g);
+  }
+
+  /** Visibile da inizio trasferta fino a fine + 3 giorni (Europe/Rome). */
+  function isTrasfertaNotaAccessibile(tappe, ymd, graceDays) {
+    const day = ymd || todayYmdRome();
+    const inizio = inizioTrasfertaYmd(tappe);
+    const deadline = deadlineNotaSpeseYmd(tappe, graceDays);
+    if (!inizio || !deadline || !day) return false;
+    return day >= inizio && day <= deadline;
+  }
+
+  function giorniResiduiNotaSpese(tappe, ymd, graceDays) {
+    const day = ymd || todayYmdRome();
+    const deadline = deadlineNotaSpeseYmd(tappe, graceDays);
+    if (!deadline || !day) return 0;
+    return Math.max(0, diffDaysYmd(day, deadline));
+  }
+
+  function trasfertaIds(rows) {
+    const ids = [];
+    const seen = Object.create(null);
+    (rows || []).forEach(r => {
+      const tid = String(r && r.trasferta_id || '').trim();
+      if (!tid || seen[tid]) return;
+      seen[tid] = true;
+      ids.push(tid);
+    });
+    return ids;
+  }
+
   function sortTappe(rows) {
     return (rows || []).slice().sort((a, b) => {
       const tid = String(a.trasferta_id || '').localeCompare(String(b.trasferta_id || ''));
@@ -45,13 +122,44 @@
     return sortTappe(rows).filter(r => isTappaInCorso(r, day));
   }
 
+  /** Chip hub / accesso nota spese: trasferta aperta fino a fine+3gg. */
   function hasTrasfertaInCorso(rows, ymd) {
-    return tappeAttiveOggi(rows, ymd).length > 0;
+    const day = ymd || todayYmdRome();
+    return trasfertaIds(rows).some(tid => {
+      const tappe = (rows || []).filter(r => String(r.trasferta_id || '').trim() === tid);
+      return isTrasfertaNotaAccessibile(tappe, day);
+    });
   }
 
   function tappaAttuale(rows, ymd) {
-    const list = tappeAttiveOggi(rows, ymd);
-    return list[0] || null;
+    const day = ymd || todayYmdRome();
+    const inCorso = tappeAttiveOggi(rows, day);
+    if (inCorso.length) return inCorso[0];
+    for (let i = 0; i < trasfertaIds(rows).length; i++) {
+      const tid = trasfertaIds(rows)[i];
+      const tappe = sortTappe((rows || []).filter(r => String(r.trasferta_id || '').trim() === tid));
+      if (!isTrasfertaNotaAccessibile(tappe, day)) continue;
+      if (tappe.length) return tappe[tappe.length - 1];
+    }
+    return null;
+  }
+
+  function alertNotaSpeseMancanti(rows, ymd) {
+    const day = ymd || todayYmdRome();
+    let best = null;
+    trasfertaIds(rows).forEach(tid => {
+      const tappe = (rows || []).filter(r => String(r.trasferta_id || '').trim() === tid);
+      if (!isTrasfertaNotaAccessibile(tappe, day)) return;
+      const notes = [];
+      tappe.forEach(t => { notes.push.apply(notes, parseNotaSpeseJson(t && t.nota_spese_json)); });
+      if (notes.length) return;
+      const fine = fineTrasfertaYmd(tappe);
+      const deadline = deadlineNotaSpeseYmd(tappe);
+      const daysLeft = giorniResiduiNotaSpese(tappe, day);
+      const cand = { trasferta_id: tid, fine: fine, deadline: deadline, daysLeft: daysLeft };
+      if (!best || daysLeft < best.daysLeft) best = cand;
+    });
+    return best;
   }
 
   function fmtDateIt(ymd) {
@@ -288,6 +396,14 @@
     labelVoce,
     tappeStessaTrasferta,
     aggregateTrasferta,
+    addDaysYmd,
+    fineTrasfertaYmd,
+    inizioTrasfertaYmd,
+    deadlineNotaSpeseYmd,
+    isTrasfertaNotaAccessibile,
+    giorniResiduiNotaSpese,
+    alertNotaSpeseMancanti,
+    GRACE_DAYS_AFTER_END,
     uid,
     CATEGORIE,
     PASTI,
