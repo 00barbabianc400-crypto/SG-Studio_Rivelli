@@ -70,6 +70,15 @@
     padding: 9px 12px; font-family: inherit; font-size: 14px; outline: none;
   }
   .field input:focus, .field select:focus { border-color: var(--blue-bright); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .field input.date-invalid, .pren-field input.date-invalid {
+    border-color: var(--danger) !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.18);
+    background: #fef2f2;
+  }
+  .date-order-hint {
+    display: none; margin-top: 6px; font-size: 12px; font-weight: 600; color: var(--danger);
+  }
+  .date-order-hint.is-on { display: block; }
   .btn {
     padding: 11px 22px; border-radius: var(--radius); font-family: inherit; font-size: 14px;
     font-weight: 500; cursor: pointer; border: none; transition: all 0.18s;
@@ -457,6 +466,7 @@
                 <input type="date" id="nt-data-fine">
               </div>
             </div>
+            <div class="date-order-hint" id="nt-anagrafica-date-hint"></div>
           </div>
           <div style="margin-bottom:20px">
             <div style="font-size:12px;font-weight:600;color:var(--blue-mid);text-transform:uppercase;letter-spacing:.2px;margin-bottom:12px">📍 Itinerario — Tappe</div>
@@ -539,8 +549,8 @@
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/dipendenti-list.js"></script>
-<script src="js/range-trasferta.js?v=53"></script>
-<script src="js/servizi-tappa.js?v=53"></script>
+<script src="js/range-trasferta.js?v=56"></script>
+<script src="js/servizi-tappa.js?v=56"></script>
 <script>
 // ========== Webhook da SR_CONFIG ==========
 const WEBHOOK_RECUPERO = SR_CONFIG.WEBHOOK_TR_RECUPERO;
@@ -691,9 +701,14 @@ function formatDateIt(d) {
 }
 
 function addDays(iso, n) {
-  const d = new Date(iso + 'T12:00:00');
+  const raw = String(iso || '').trim().slice(0, 10);
+  const d = new Date(raw + 'T12:00:00');
+  if (isNaN(d.getTime())) return '';
   d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
 }
 
 function isAutoAzMezzo(nome) {
@@ -918,14 +933,15 @@ function normalizzaDaRigheN8n(righe) {
   if (!rows.length) return null;
 
   const itinerario = rows.map(row => {
-    const date = ordinaCoppiaDate(row.data_arrivo, row.data_partenza);
+    const da = String(row.data_arrivo || '').trim().slice(0, 10);
+    const a = String(row.data_partenza || '').trim().slice(0, 10);
     const calc = sommaCostiRiga(row);
     const dbTot = parseCostoNum(row.costo_tappa_totale);
     return {
       tappa: parseInt(row.tappa_numero, 10) || 1,
       citta: row.citta || '',
-      data_arrivo: date.da,
-      data_partenza: date.a,
+      data_arrivo: da,
+      data_partenza: a || da,
       cliente_attivita: row.cliente_tappa || '',
       tipo_attivita: row.tipo_attivita || '',
       pernottamento: pernottamentoDaRiga(row),
@@ -1438,8 +1454,9 @@ function renderTappaEditForm(tappa) {
   return `
     <div class="tappa-edit">
       <div class="pren-field"><label>Città</label><input type="text" data-tappa-field="citta" value="${esc(tappa.citta || '')}"></div>
-      <div class="pren-field"><label>Data arrivo</label><input type="date" data-tappa-field="data_arrivo" value="${esc(tappa.data_arrivo || '')}"></div>
-      <div class="pren-field"><label>Data partenza</label><input type="date" data-tappa-field="data_partenza" value="${esc(tappa.data_partenza || '')}"></div>
+      <div class="pren-field"><label>Data arrivo</label><input type="date" data-tappa-field="data_arrivo" value="${esc(String(tappa.data_arrivo || '').slice(0, 10))}"></div>
+      <div class="pren-field"><label>Data partenza</label><input type="date" data-tappa-field="data_partenza" value="${esc(String(tappa.data_partenza || '').slice(0, 10))}"></div>
+      <div class="date-order-hint" data-date-hint style="grid-column:1/-1"></div>
       <div class="pren-field" style="grid-column:1/-1"><label>Cliente / attività</label><input type="text" data-tappa-field="cliente_attivita" value="${esc(tappa.cliente_attivita || '')}"></div>
       <div class="pren-field"><label>Tipo attività</label><select data-tappa-field="tipo_attivita">${tipoOpts}</select></div>
       <div class="pren-field">
@@ -1588,6 +1605,43 @@ document.getElementById('modal-estendi-range')?.addEventListener('click', e => {
   if (e.target.id === 'modal-estendi-range') rispondiEstendiRange(false);
 });
 
+function setDatePairInvalid(elA, elB, hintEl, invalid, msg) {
+  [elA, elB].forEach(el => {
+    if (!el) return;
+    el.classList.toggle('date-invalid', !!invalid);
+  });
+  if (hintEl) {
+    hintEl.textContent = invalid ? (msg || 'Date non valide') : '';
+    hintEl.classList.toggle('is-on', !!invalid);
+  }
+}
+
+function spanDateFromItinerario(itinerario) {
+  const date = (itinerario || [])
+    .flatMap(t => [t.data_arrivo, t.data_partenza].filter(Boolean))
+    .map(s => String(s).trim().slice(0, 10))
+    .filter(Boolean)
+    .sort();
+  if (!date.length) return null;
+  return { inizio: date[0], fine: date[date.length - 1] };
+}
+
+function validaOrdineDateTrasfertaEdit() {
+  const it = sessionTrasferta?.itinerario || [];
+  for (const t of it) {
+    const da = String(t.data_arrivo || '').trim();
+    const a = String(t.data_partenza || da).trim();
+    if (da && a && !SRRangeTrasferta.isDateOrderOk(da, a)) {
+      return 'Tappa ' + (t.tappa || '?') + ': la partenza non può essere prima dell\'arrivo';
+    }
+  }
+  const ana = sessionTrasferta?.anagrafica || {};
+  if (!SRRangeTrasferta.isDateOrderOk(ana.data_inizio, ana.data_fine_prevista)) {
+    return 'La data fine prevista non può essere prima dell\'inizio';
+  }
+  return null;
+}
+
 function assicuraSnapshotRangeEdit() {
   if (!sessionTrasferta) return;
   if (sessionTrasferta._range_caricato) return;
@@ -1601,40 +1655,46 @@ function memorizzaSnapshotRangeEdit() {
   sessionTrasferta._range_caricato = SRRangeTrasferta.snapshotRange(ana.data_inizio, ana.data_fine_prevista);
 }
 
-function applicaRangeDaItinerarioLive() {
-  ricalcolaAnagraficaDaItinerario();
+/** Applica Inizio/Fine solo dopo conferma esplicita (nessuno sync live). */
+function applicaAnagraficaRange(range) {
+  if (!sessionTrasferta) return;
+  if (!sessionTrasferta.anagrafica) sessionTrasferta.anagrafica = {};
+  sessionTrasferta.anagrafica.data_inizio = range.inizio || '';
+  sessionTrasferta.anagrafica.data_fine_prevista = range.fine || '';
   aggiornaRiepilogoDateTrasferta();
 }
 
 async function confermaEstendiRangeAlCommit() {
   if (!sessionTrasferta) return true;
   syncSessionDaDom();
-  applicaRangeDaItinerarioLive();
-  const snap = sessionTrasferta._range_caricato || { inizio: '', fine: '' };
   const ana = sessionTrasferta.anagrafica || {};
-  const live = { inizio: ana.data_inizio || '', fine: ana.data_fine_prevista || '' };
-  if (!SRRangeTrasferta.rangeNeedsExtendConfirm(snap, live)) return true;
-  return chiediEstendiRange({
-    tappaDa: live.inizio,
-    tappaA: live.fine,
-    oldInizio: snap.inizio,
-    oldFine: snap.fine,
-    newInizio: live.inizio,
-    newFine: live.fine
+  const current = SRRangeTrasferta.snapshotRange(ana.data_inizio, ana.data_fine_prevista);
+  const span = spanDateFromItinerario(sessionTrasferta.itinerario);
+  if (!span) return true;
+  if (!current.inizio && !current.fine) {
+    applicaAnagraficaRange(span);
+    return true;
+  }
+  if (!SRRangeTrasferta.rangeNeedsExtendConfirm(current, span)) return true;
+  const next = SRRangeTrasferta.extendedRange(current, span);
+  const ok = await chiediEstendiRange({
+    tappaDa: span.inizio,
+    tappaA: span.fine,
+    oldInizio: current.inizio,
+    oldFine: current.fine,
+    newInizio: next.inizio,
+    newFine: next.fine
   });
+  if (!ok) return false;
+  applicaAnagraficaRange(next);
+  return true;
 }
 
-/** Ricalcola Inizio/Fine anagrafica dallo span reale delle tappe residue. */
+/** Ricalcola Inizio/Fine anagrafica dallo span reale delle tappe (solo su conferma commit). */
 function ricalcolaAnagraficaDaItinerario() {
-  if (!sessionTrasferta) return;
-  if (!sessionTrasferta.anagrafica) sessionTrasferta.anagrafica = {};
-  const date = (sessionTrasferta.itinerario || [])
-    .flatMap(t => [t.data_arrivo, t.data_partenza].filter(Boolean))
-    .sort();
-  if (!date.length) return;
-  const span = ordinaCoppiaDate(date[0], date[date.length - 1]);
-  sessionTrasferta.anagrafica.data_inizio = span.da;
-  sessionTrasferta.anagrafica.data_fine_prevista = span.a;
+  const span = spanDateFromItinerario(sessionTrasferta?.itinerario);
+  if (!span) return;
+  applicaAnagraficaRange(span);
 }
 
 function rimuoviTappa(tappaNum) {
@@ -1655,7 +1715,6 @@ function rimuoviTappa(tappaNum) {
   let nuovo = sessionTrasferta.itinerario.filter(t => t.tappa !== tappaNum);
   nuovo.forEach((t, i) => { t.tappa = i + 1; });
   sessionTrasferta.itinerario = nuovo;
-  ricalcolaAnagraficaDaItinerario();
   renderTrasferta(sessionTrasferta, sessionTrasfertaId);
   showToast('Tappa rimossa', 'success', 2200);
 }
@@ -1692,25 +1751,34 @@ function bindTappaEditFields(root) {
       sync();
     });
     block.querySelectorAll('[data-tappa-field=data_arrivo],[data-tappa-field=data_partenza]').forEach(inp => {
-      inp.dataset.prev = inp.value;
       inp.addEventListener('change', () => {
         const arrivoEl = block.querySelector('[data-tappa-field=data_arrivo]');
         const partenzaEl = block.querySelector('[data-tappa-field=data_partenza]');
+        const hint = block.querySelector('[data-date-hint]');
         const rawA = arrivoEl?.value || '';
         const rawP = partenzaEl?.value || '';
-        const d = ordinaCoppiaDate(rawA, rawP || rawA);
-        if (arrivoEl && partenzaEl && rawA && rawP && (rawA !== d.da || rawP !== d.a)) {
-          arrivoEl.value = d.da;
-          partenzaEl.value = d.a;
-        }
-        if (arrivoEl) arrivoEl.dataset.prev = arrivoEl.value;
-        if (partenzaEl) partenzaEl.dataset.prev = partenzaEl.value;
+        const invalid = !!(rawA && rawP && !SRRangeTrasferta.isDateOrderOk(rawA, rawP));
+        setDatePairInvalid(
+          arrivoEl,
+          partenzaEl,
+          hint,
+          invalid,
+          'Partenza prima dell\'arrivo — correggi le date (invio bloccato)'
+        );
         const meta = block.querySelector('.tappa-block-meta');
-        if (meta) meta.textContent = formatDateIt(d.da) + ' → ' + formatDateIt(d.a || d.da);
+        if (meta) meta.textContent = formatDateIt(rawA) + ' → ' + formatDateIt(rawP || rawA);
         syncSessionDaDom();
-        applicaRangeDaItinerarioLive();
       });
     });
+    const arrivoEl0 = block.querySelector('[data-tappa-field=data_arrivo]');
+    const partenzaEl0 = block.querySelector('[data-tappa-field=data_partenza]');
+    if (arrivoEl0 && partenzaEl0) {
+      const rawA = arrivoEl0.value || '';
+      const rawP = partenzaEl0.value || '';
+      const hint = block.querySelector('[data-date-hint]');
+      const invalid = !!(rawA && rawP && !SRRangeTrasferta.isDateOrderOk(rawA, rawP));
+      setDatePairInvalid(arrivoEl0, partenzaEl0, hint, invalid, 'Partenza prima dell\'arrivo — correggi le date (invio bloccato)');
+    }
   });
 }
 
@@ -1729,7 +1797,6 @@ function renderTrasferta(trasferta, trasfertaId) {
     trasferta.anagrafica = ana;
   }
   assicuraSnapshotRangeEdit();
-  ricalcolaAnagraficaDaItinerario();
   document.getElementById('riepilogo-anagrafica').innerHTML = `
     <div class="riepilogo-item"><div class="lbl">Nome</div><div class="val">${esc(ana.nome_cognome)}</div></div>
     <div class="riepilogo-item"><div class="lbl">Partecipanti</div><div class="val">
@@ -2260,19 +2327,7 @@ function trasfertaCanonicaPerInvio(trasferta, prenotazioni) {
 }
 
 function clonaTrasfertaPerInvioFrom(src) {
-  const t = JSON.parse(JSON.stringify(src));
-  if (!t.itinerario) return t;
-  t.itinerario = t.itinerario.map(tappa => {
-    const d = ordinaCoppiaDate(tappa.data_arrivo, tappa.data_partenza);
-    return { ...tappa, data_arrivo: d.da, data_partenza: d.a };
-  });
-  const date = t.itinerario.flatMap(x => [x.data_arrivo, x.data_partenza].filter(Boolean)).sort();
-  if (t.anagrafica && date.length) {
-    const span = ordinaCoppiaDate(date[0], date[date.length - 1]);
-    t.anagrafica.data_inizio = span.da;
-    t.anagrafica.data_fine_prevista = span.a;
-  }
-  return t;
+  return JSON.parse(JSON.stringify(src));
 }
 
 function buildPayloadBase() {
@@ -2331,6 +2386,13 @@ async function salvaProgresso() {
     sessionTrasferta.anagrafica.numero_partecipanti = parseNumeroPartecipanti(editPart.value);
   }
 
+  syncSessionDaDom();
+  const errDate = validaOrdineDateTrasfertaEdit();
+  if (errDate) {
+    showToast('⚠️ ' + errDate, 'warn');
+    return;
+  }
+
   if (!(await confermaEstendiRangeAlCommit())) {
     showToast('Salvataggio annullato: periodo non confermato', 'warn');
     return;
@@ -2376,6 +2438,13 @@ async function inviaPrenotazioni() {
   const errPren = validaPrenotazioni();
   if (errPren) {
     showToast('⚠️ ' + errPren, 'warn');
+    return;
+  }
+
+  syncSessionDaDom();
+  const errDate = validaOrdineDateTrasfertaEdit();
+  if (errDate) {
+    showToast('⚠️ ' + errDate, 'warn');
     return;
   }
 
@@ -2426,7 +2495,6 @@ async function inviaPrenotazioni() {
 let ntUid = 0;
 let ntRangeSnapshot = { inizio: '', fine: '' };
 let ntRangeSnapshotFromUser = false;
-let ntSyncingRange = false;
 const NT_CHIP_MEZZI = MEZZI_CHIP_OPTIONS.concat([{ label: '🏢 Auto az.', value: 'Auto aziendale' }]);
 
 function ntCardMeta(card) {
@@ -2637,6 +2705,7 @@ function ntAddTappa() {
           <input type="date" id="nt-${uid}-partenza">
         </div>
       </div>
+      <div class="date-order-hint" id="nt-${uid}-date-hint"></div>
       <div class="field-row">
         <div class="field">
           <label>Cliente / Attività <span class="req">*</span></label>
@@ -2690,10 +2759,9 @@ function ntAddTappa() {
   }
   ntBindTappaDate(uid);
   ntBindPernotto(uid);
-  ntSyncRangeDaTappe();
 }
 
-/** Span date di tutte le tappe del form Nuova trasferta. */
+/** Span date di tutte le tappe (solo lettura — non modifica Inizio/Fine). */
 function ntSpanTappe() {
   const date = [];
   document.querySelectorAll('.nt-tappa-card').forEach(card => {
@@ -2705,20 +2773,39 @@ function ntSpanTappe() {
   });
   if (!date.length) return null;
   date.sort();
-  return ordinaCoppiaDate(date[0], date[date.length - 1]);
+  return { inizio: date[0], fine: date[date.length - 1] };
 }
 
-/** Ricalcola Inizio/Fine dallo span tappe (live, senza confirm). */
-function ntSyncRangeDaTappe() {
+function ntRefreshAnagraficaDateUi() {
   const inizioEl = document.getElementById('nt-data-inizio');
   const fineEl = document.getElementById('nt-data-fine');
-  if (!inizioEl || !fineEl) return;
-  const span = ntSpanTappe();
-  if (!span) return;
-  ntSyncingRange = true;
-  inizioEl.value = span.da;
-  fineEl.value = span.a;
-  ntSyncingRange = false;
+  const hint = document.getElementById('nt-anagrafica-date-hint');
+  const inizio = inizioEl?.value || '';
+  const fine = fineEl?.value || '';
+  const invalid = !!(inizio && fine && !SRRangeTrasferta.isDateOrderOk(inizio, fine));
+  setDatePairInvalid(
+    inizioEl,
+    fineEl,
+    hint,
+    invalid,
+    'Fine prevista prima dell\'inizio — correggi le date (invio bloccato)'
+  );
+}
+
+function ntRefreshTappaDateUi(uid) {
+  const arrEl = document.getElementById(`nt-${uid}-arrivo`);
+  const partEl = document.getElementById(`nt-${uid}-partenza`);
+  const hint = document.getElementById(`nt-${uid}-date-hint`);
+  const arrivo = arrEl?.value || '';
+  const partenza = partEl?.value || '';
+  const invalid = !!(arrivo && partenza && !SRRangeTrasferta.isDateOrderOk(arrivo, partenza));
+  setDatePairInvalid(
+    arrEl,
+    partEl,
+    hint,
+    invalid,
+    'Partenza prima dell\'arrivo — correggi le date (invio bloccato)'
+  );
 }
 
 function ntBindAnagraficaSnapshot() {
@@ -2727,26 +2814,43 @@ function ntBindAnagraficaSnapshot() {
     if (!el || el.dataset.boundSnap === '1') return;
     el.dataset.boundSnap = '1';
     el.addEventListener('change', () => {
-      if (ntSyncingRange) return;
       ntRangeSnapshotFromUser = true;
       ntRangeSnapshot = SRRangeTrasferta.snapshotRange(ntVal('nt-data-inizio'), ntVal('nt-data-fine'));
+      ntRefreshAnagraficaDateUi();
     });
   });
 }
 
 async function ntConfermaEstendiRangeAlInvio() {
-  ntSyncRangeDaTappe();
-  const live = { inizio: ntVal('nt-data-inizio'), fine: ntVal('nt-data-fine') };
-  const snap = ntRangeSnapshotFromUser ? ntRangeSnapshot : { inizio: '', fine: '' };
-  if (!SRRangeTrasferta.rangeNeedsExtendConfirm(snap, live)) return true;
-  return chiediEstendiRange({
-    tappaDa: live.inizio,
-    tappaA: live.fine,
-    oldInizio: snap.inizio,
-    oldFine: snap.fine,
-    newInizio: live.inizio,
-    newFine: live.fine
+  const current = SRRangeTrasferta.snapshotRange(ntVal('nt-data-inizio'), ntVal('nt-data-fine'));
+  const span = ntSpanTappe();
+  if (!span) return true;
+  if (!current.inizio && !current.fine) {
+    const inizioEl = document.getElementById('nt-data-inizio');
+    const fineEl = document.getElementById('nt-data-fine');
+    if (inizioEl) inizioEl.value = span.inizio;
+    if (fineEl) fineEl.value = span.fine;
+    ntRangeSnapshot = span;
+    return true;
+  }
+  if (!SRRangeTrasferta.rangeNeedsExtendConfirm(current, span)) return true;
+  const next = SRRangeTrasferta.extendedRange(current, span);
+  const ok = await chiediEstendiRange({
+    tappaDa: span.inizio,
+    tappaA: span.fine,
+    oldInizio: current.inizio,
+    oldFine: current.fine,
+    newInizio: next.inizio,
+    newFine: next.fine
   });
+  if (!ok) return false;
+  const inizioEl = document.getElementById('nt-data-inizio');
+  const fineEl = document.getElementById('nt-data-fine');
+  if (inizioEl) inizioEl.value = next.inizio;
+  if (fineEl) fineEl.value = next.fine;
+  ntRangeSnapshot = next;
+  ntRangeSnapshotFromUser = true;
+  return true;
 }
 
 function ntBindTappaDate(uid) {
@@ -2754,22 +2858,9 @@ function ntBindTappaDate(uid) {
     const el = document.getElementById(`nt-${uid}-${field}`);
     if (!el || el.dataset.boundRange === '1') return;
     el.dataset.boundRange = '1';
-    el.dataset.prev = el.value;
-    el.addEventListener('change', () => {
-      const arrEl = document.getElementById(`nt-${uid}-arrivo`);
-      const partEl = document.getElementById(`nt-${uid}-partenza`);
-      const arrivo = ntVal(`nt-${uid}-arrivo`);
-      const partenza = ntVal(`nt-${uid}-partenza`) || arrivo;
-      const d = ordinaCoppiaDate(arrivo, partenza);
-      if (arrEl && partEl && arrivo && partenza && (arrivo !== d.da || partenza !== d.a)) {
-        arrEl.value = d.da;
-        partEl.value = d.a;
-      }
-      if (arrEl) arrEl.dataset.prev = arrEl.value;
-      if (partEl) partEl.dataset.prev = partEl.value;
-      ntSyncRangeDaTappe();
-    });
+    el.addEventListener('change', () => ntRefreshTappaDateUi(uid));
   });
+  ntRefreshTappaDateUi(uid);
 }
 
 function ntRemoveTappa(uid) {
@@ -2778,11 +2869,9 @@ function ntRemoveTappa(uid) {
   }
   document.getElementById(`nt-tappa-${uid}`)?.remove();
   document.getElementById(`nt-inter-${uid}`)?.remove();
-  // assicura che la prima tappa non abbia la barra mezzo
   const first = document.querySelector('.nt-tappa-card');
   if (first) document.getElementById(`nt-inter-${first.id.replace('nt-tappa-','')}`)?.remove();
   ntRinumera();
-  ntSyncRangeDaTappe();
 }
 
 function ntRinumera() {
@@ -2846,7 +2935,7 @@ function ntValida() {
   if (!ntVal('nt-data-fine')) return 'Inserisci data fine trasferta';
   const inizio = ntVal('nt-data-inizio');
   const fine = ntVal('nt-data-fine');
-  if (inizio && fine && fine < inizio) return 'La data fine è precedente all\'inizio';
+  if (inizio && fine && fine < inizio) return 'La data fine è precedente all\'inizio — correggi le date (invio bloccato)';
   const cards = document.querySelectorAll('.nt-tappa-card');
   if (!cards.length) return 'Aggiungi almeno una tappa';
   let prevPartenza = null;
@@ -2857,7 +2946,9 @@ function ntValida() {
     if (!ntVal(`nt-${uid}-cliente`)) return `Tappa ${i+1}: inserisci cliente/attività`;
     const arrivo = ntVal(`nt-${uid}-arrivo`);
     const partenza = ntVal(`nt-${uid}-partenza`) || arrivo;
-    if (arrivo && partenza && partenza < arrivo) return `Tappa ${i+1}: partenza prima dell'arrivo`;
+    if (arrivo && partenza && partenza < arrivo) {
+      return `Tappa ${i+1}: partenza prima dell'arrivo — correggi le date (invio bloccato)`;
+    }
     if (inizio && arrivo && arrivo < inizio) return `Tappa ${i+1}: arrivo prima dell'inizio trasferta`;
     if (fine && partenza && partenza > fine) return `Tappa ${i+1}: partenza oltre la fine trasferta — estendi il periodo oppure correggi le date`;
     if (prevPartenza && arrivo && arrivo < prevPartenza) {
@@ -2869,6 +2960,24 @@ function ntValida() {
 }
 
 async function ntInviaDati() {
+  ntRefreshAnagraficaDateUi();
+  document.querySelectorAll('.nt-tappa-card').forEach(card => {
+    ntRefreshTappaDateUi(card.id.replace('nt-tappa-', ''));
+  });
+  // Blocco ordine date prima del modale estensione
+  if (ntVal('nt-data-inizio') && ntVal('nt-data-fine') && ntVal('nt-data-fine') < ntVal('nt-data-inizio')) {
+    showToast('⚠️ La data fine è precedente all\'inizio — correggi le date (invio bloccato)', 'warn');
+    return;
+  }
+  for (const card of document.querySelectorAll('.nt-tappa-card')) {
+    const uid = card.id.replace('nt-tappa-', '');
+    const arrivo = ntVal(`nt-${uid}-arrivo`);
+    const partenza = ntVal(`nt-${uid}-partenza`);
+    if (arrivo && partenza && partenza < arrivo) {
+      showToast('⚠️ Tappa: partenza prima dell\'arrivo — correggi le date (invio bloccato)', 'warn');
+      return;
+    }
+  }
   if (!(await ntConfermaEstendiRangeAlInvio())) {
     showToast('Invio annullato: periodo non confermato', 'warn');
     return;
