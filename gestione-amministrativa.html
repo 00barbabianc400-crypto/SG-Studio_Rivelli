@@ -434,14 +434,24 @@ body {
   padding: 6px 8px; margin-bottom: 6px;
   background: #fff; border: 1px solid var(--border); border-radius: 10px;
 }
+.svc-all-doc {
+  width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
+  background: var(--accent-soft); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+}
+.svc-all-doc svg { width: 18px; height: 18px; }
 .svc-all-name {
   flex: 1; min-width: 0; font-size: 12px; font-weight: 600;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .svc-all-chip .btn-icon { width: 34px; height: 34px; flex-shrink: 0; }
+.svc-all-more { margin: 0; }
 .svc-all-more summary {
   cursor: pointer; font-size: 12px; font-weight: 600; color: var(--accent);
-  padding: 2px 0;
+  padding: 4px 0; list-style: none;
+}
+.svc-all-more summary::-webkit-details-marker { display: none; }
+.svc-all-more[open] summary { margin-bottom: 6px; }
 }
 
 .toast {
@@ -1270,22 +1280,23 @@ function allegatiHtml(dati) {
     ? SRServiziTappa.normalizeAllegati(dati && dati.allegati)
     : [];
   if (!list.length) return { html: '' };
+  const icoDoc = '<span class="svc-all-doc" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 3.5h7l4 4V20.5H7z"/><path d="M14 3.5V8h4.5"/><path d="M9.5 12h5M9.5 15.5h5"/></svg></span>';
   const chip = (a) => {
     const dl = SRServiziTappa.driveDownloadUrl(a);
     const view = SRServiziTappa.driveViewUrl(a);
     const icoDl = (typeof SRScontrini !== 'undefined') ? SRScontrini.ICO_DOWNLOAD : '↓';
     const icoPr = (typeof SRScontrini !== 'undefined') ? SRScontrini.ICO_PRINT : 'P';
     return `<div class="svc-all-chip">
+      ${icoDoc}
       <span class="svc-all-name" title="${esc(a.nome)}">${esc(a.nome)}</span>
       <a class="soft-btn btn-icon svc-all-dl" href="${esc(dl)}" target="_blank" rel="noopener" download title="Scarica" aria-label="Scarica">${icoDl}</a>
       <button type="button" class="soft-btn btn-icon svc-all-print" data-all-view="${esc(view)}" data-all-dl="${esc(dl)}" title="Stampa" aria-label="Stampa">${icoPr}</button>
     </div>`;
   };
-  const first = chip(list[0]);
-  const rest = list.slice(1).map(chip).join('');
+  const chips = list.map(chip).join('');
   const body = list.length === 1
-    ? first
-    : `${first}<details class="svc-all-more"><summary>${list.length - 1} ${list.length === 2 ? 'altro allegato' : 'altri allegati'}</summary>${rest}</details>`;
+    ? chips
+    : `<details class="svc-all-more"><summary>Mostra tutte</summary>${chips}</details>`;
   return { html: `<div class="svc-allegati"><div class="svc-all-label">Allegati</div>${body}</div>` };
 }
 
