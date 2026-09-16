@@ -424,6 +424,25 @@ body {
 .svc-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
 .svc-row span { color: var(--muted); }
 .svc-row b { color: var(--text); font-weight: 600; text-align: right; }
+.svc-allegati { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
+.svc-all-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); margin-bottom: 6px;
+}
+.svc-all-chip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 8px; margin-bottom: 6px;
+  background: #fff; border: 1px solid var(--border); border-radius: 10px;
+}
+.svc-all-name {
+  flex: 1; min-width: 0; font-size: 12px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.svc-all-chip .btn-icon { width: 34px; height: 34px; flex-shrink: 0; }
+.svc-all-more summary {
+  cursor: pointer; font-size: 12px; font-weight: 600; color: var(--accent);
+  padding: 2px 0;
+}
 
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(12px);
@@ -575,7 +594,7 @@ body {
   <script src="js/nota-spese.js?v=55"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
   <script src="js/nota-spese-export.js?v=55"></script>
-  <script src="js/servizi-tappa.js?v=50"></script>
+  <script src="js/servizi-tappa.js?v=58"></script>
 <script>
 const WEBHOOK = SR_CONFIG.WEBHOOK_GESTIONE_AMMINISTRATIVA;
 const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
@@ -1246,6 +1265,30 @@ function renderOrganizzazioneTappaCard(t, isFocus) {
   </article>`;
 }
 
+function allegatiHtml(dati) {
+  const list = (typeof SRServiziTappa !== 'undefined')
+    ? SRServiziTappa.normalizeAllegati(dati && dati.allegati)
+    : [];
+  if (!list.length) return { html: '' };
+  const chip = (a) => {
+    const dl = SRServiziTappa.driveDownloadUrl(a);
+    const view = SRServiziTappa.driveViewUrl(a);
+    const icoDl = (typeof SRScontrini !== 'undefined') ? SRScontrini.ICO_DOWNLOAD : '↓';
+    const icoPr = (typeof SRScontrini !== 'undefined') ? SRScontrini.ICO_PRINT : 'P';
+    return `<div class="svc-all-chip">
+      <span class="svc-all-name" title="${esc(a.nome)}">${esc(a.nome)}</span>
+      <a class="soft-btn btn-icon svc-all-dl" href="${esc(dl)}" target="_blank" rel="noopener" download title="Scarica" aria-label="Scarica">${icoDl}</a>
+      <button type="button" class="soft-btn btn-icon svc-all-print" data-all-view="${esc(view)}" data-all-dl="${esc(dl)}" title="Stampa" aria-label="Stampa">${icoPr}</button>
+    </div>`;
+  };
+  const first = chip(list[0]);
+  const rest = list.slice(1).map(chip).join('');
+  const body = list.length === 1
+    ? first
+    : `${first}<details class="svc-all-more"><summary>${list.length - 1} ${list.length === 2 ? 'altro allegato' : 'altri allegati'}</summary>${rest}</details>`;
+  return { html: `<div class="svc-allegati"><div class="svc-all-label">Allegati</div>${body}</div>` };
+}
+
 function flattenServizio(dati) {
   const rows = [];
   if (!dati || typeof dati !== 'object') return rows;
@@ -1253,7 +1296,8 @@ function flattenServizio(dati) {
   const skip = new Set([
     'id', 'tipo',
     'stato', 'prenotato', 'giornate_da', 'giornate_a', 'mezzo_viaggio',
-    'metodo_pagamento', 'valore_voucher', 'differenza_pagamento', 'metodo_pagamento_differenza'
+    'metodo_pagamento', 'valore_voucher', 'differenza_pagamento', 'metodo_pagamento_differenza',
+    'allegati'
   ]);
   let costoShown = false;
 
@@ -1303,11 +1347,12 @@ function renderServiziHtml(raw) {
     if (dati && dati.stato) stato = labelStato(dati.stato);
     else if (dati?.prenotazione_operatrice?.prenotato) stato = 'Prenotato';
     const rest = rows.filter(r => r[0] !== 'Stato');
-    if (!rest.length && !stato) return '';
+    if (!rest.length && !stato && !allegatiHtml(dati).html) return '';
     return `<div class="svc-card">
       <h4>${esc(title + extra)}${stato ? `<span class="tag tag-trasferta">${esc(stato)}</span>` : ''}</h4>
       ${rest.length ? `<div class="svc-rows">${rest.map(([l, v]) =>
         `<div class="svc-row"><span>${esc(l)}</span><b>${esc(v)}</b></div>`).join('')}</div>` : ''}
+      ${allegatiHtml(dati).html}
     </div>`;
   }).filter(Boolean);
   if (!cards.length) return '';
@@ -1502,6 +1547,17 @@ function renderDettaglioTappaBody() {
     btn.addEventListener('click', () => {
       const it = detailTappaCtx.flatNote[Number(btn.dataset.nsIdx)];
       apriNotaSpesaViewerAmm(it);
+    });
+  });
+  document.querySelectorAll('.svc-all-print').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const view = btn.getAttribute('data-all-view') || btn.getAttribute('data-all-dl');
+      if (!view) return;
+      const w = window.open(view, '_blank');
+      if (!w) return;
+      setTimeout(() => {
+        try { w.print(); } catch (_) {}
+      }, 800);
     });
   });
 }

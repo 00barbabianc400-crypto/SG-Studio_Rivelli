@@ -23,6 +23,7 @@ window.SR_CONFIG = {
 
   WEBHOOK_TR_RECUPERO: 'https://studiorivelli.app.n8n.cloud/webhook/recupero-dati',
   WEBHOOK_TR_SALVATAGGIO: 'https://studiorivelli.app.n8n.cloud/webhook/salvataggio-dati',
+  /* invio-dati: non più usato dalla PWA (niente email); nodo da disattivare in n8n */
   WEBHOOK_TR_INVIO: 'https://studiorivelli.app.n8n.cloud/webhook/invio-dati',
   WEBHOOK_TR_CANCELLA: 'https://studiorivelli.app.n8n.cloud/webhook/cancellazione-dati',
   WEBHOOK_TR_NUOVA: 'https://studiorivelli.app.n8n.cloud/webhook/informazioni-trasferte',

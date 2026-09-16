@@ -231,6 +231,68 @@
     font-size: 11px; font-weight: 600; color: var(--gray-600);
     text-transform: uppercase; letter-spacing: 0.04em;
   }
+  .pren-card-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(168px, 210px);
+    gap: 14px;
+    align-items: stretch;
+  }
+  .pren-allegati {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 12px;
+    background: var(--blue-pale);
+    border: 1px solid var(--gray-200);
+    box-shadow: 0 1px 0 rgba(255,255,255,.7) inset;
+  }
+  .pren-allegati-title {
+    font-size: 10px; font-weight: 700; color: var(--gray-600);
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .srv-drop {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; min-height: 72px; max-height: 84px;
+    border: 1.5px dashed #c5d4ee; border-radius: 10px;
+    background: var(--white); cursor: pointer; text-align: center;
+    padding: 8px 6px; color: var(--blue-main);
+    transition: border-color .15s, background .15s, box-shadow .15s;
+  }
+  .srv-drop:hover, .srv-drop.is-over {
+    border-color: var(--blue-bright); background: #f7faff;
+    box-shadow: 0 2px 10px var(--accent-glow);
+  }
+  .srv-drop-ico { width: 22px; height: 22px; color: var(--blue-bright); }
+  .srv-drop-txt { font-size: 11px; font-weight: 600; line-height: 1.3; color: var(--gray-600); }
+  .srv-all-list { min-height: 0; }
+  .srv-all-empty { font-size: 11px; color: var(--gray-400); margin: 0; }
+  .srv-all-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 6px; border-radius: 8px; background: var(--white);
+    border: 1px solid var(--gray-200); margin-bottom: 4px;
+  }
+  .srv-all-name {
+    flex: 1; min-width: 0; font-size: 11px; font-weight: 600; color: var(--gray-800);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .srv-all-link {
+    font-size: 10px; font-weight: 600; color: var(--blue-main); text-decoration: none; flex-shrink: 0;
+  }
+  .srv-all-wait { font-size: 10px; color: var(--gray-400); }
+  .srv-all-x {
+    width: 22px; height: 22px; border: none; background: transparent; color: var(--gray-400);
+    cursor: pointer; border-radius: 6px; font-size: 16px; line-height: 1; font-family: inherit;
+  }
+  .srv-all-x:hover { color: var(--danger); background: rgba(217,48,37,.08); }
+  .srv-all-more { margin: 0; }
+  .srv-all-more summary {
+    cursor: pointer; font-size: 11px; font-weight: 600; color: var(--blue-main);
+    list-style: none; padding: 2px 0;
+  }
+  .srv-all-more summary::-webkit-details-marker { display: none; }
+  .srv-all-more[open] summary { margin-bottom: 4px; }
   .pren-add-servizio {
     display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch;
     margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--gray-200);
@@ -341,6 +403,7 @@
   @media (max-width: 600px) {
     .header { padding: 20px; }
     .pren-fields { grid-template-columns: 1fr; }
+    .pren-card-body { grid-template-columns: 1fr; }
   }
 
   /* ===== Nuova Trasferta ===== */
@@ -482,7 +545,7 @@
     </div>
     <div class="action-bar modal-edit-tr-foot">
       <button class="btn btn-secondary" onclick="ntReset()">🔄 Azzera</button>
-      <button class="btn btn-primary" id="nt-btn-invia" onclick="ntInviaDati()">📤 Invia trasferta</button>
+      <button class="btn btn-primary" id="nt-btn-invia" onclick="ntInviaDati()">💾 Salva trasferta</button>
     </div>
   </div>
 </div>
@@ -517,8 +580,7 @@
     </div>
     <div class="action-bar modal-edit-tr-foot">
       <button class="btn btn-outline" onclick="nuovaRicerca()">↩ Elenco trasferte</button>
-      <button class="btn btn-secondary" id="btn-salva" onclick="salvaProgresso()">💾 Salva progresso</button>
-      <button class="btn btn-primary" id="btn-invia" onclick="inviaPrenotazioni()">📤 Invia prenotazioni</button>
+      <button class="btn btn-primary" id="btn-salva" onclick="salvaProgresso()">💾 Salva progresso</button>
     </div>
   </div>
 </div>
@@ -549,13 +611,12 @@
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/dipendenti-list.js"></script>
-<script src="js/range-trasferta.js?v=56"></script>
-<script src="js/servizi-tappa.js?v=56"></script>
+<script src="js/range-trasferta.js?v=58"></script>
+<script src="js/servizi-tappa.js?v=58"></script>
 <script>
 // ========== Webhook da SR_CONFIG ==========
 const WEBHOOK_RECUPERO = SR_CONFIG.WEBHOOK_TR_RECUPERO;
 const WEBHOOK_SALVATAGGIO = SR_CONFIG.WEBHOOK_TR_SALVATAGGIO;
-const WEBHOOK_INVIO_PRENOTAZIONI = SR_CONFIG.WEBHOOK_TR_INVIO;
 const WEBHOOK_CANCELLA_TRASFERTA = SR_CONFIG.WEBHOOK_TR_CANCELLA;
 const NT_WEBHOOK = SR_CONFIG.WEBHOOK_TR_NUOVA;
 
@@ -676,6 +737,7 @@ const TIPI_ATTIVITA = [
 
 let sessionTrasferta = null;
 let sessionTrasfertaId = null;
+let ntTrasfertaId = '';
 
 // ========== Helpers ==========
 function esc(s) {
@@ -922,7 +984,184 @@ function leggiDatiServizioDaCard(card) {
   });
   const costo = readCostoServizioCard(card);
   if (costo) out.costo = costo;
+  const allegati = allegatiDaCard(card);
+  out.allegati = allegati;
   return out;
+}
+
+const SRV_DROP_ICO = '<svg class="srv-drop-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 16V7"/><path d="M8.5 10.5 12 7l3.5 3.5"/><path d="M5 18h14"/></svg>';
+
+function allegatiDaCard(card) {
+  try {
+    const meta = JSON.parse(card.getAttribute('data-meta').replace(/&quot;/g, '"'));
+    return ST().normalizeAllegati(meta.dati_servizio?.allegati || meta.dati_origine?.allegati || []);
+  } catch (_) {
+    return [];
+  }
+}
+
+function scriviAllegatiSuCard(card, list) {
+  let meta = {};
+  try { meta = JSON.parse(card.getAttribute('data-meta').replace(/&quot;/g, '"')); } catch (_) {}
+  const next = ST().normalizeAllegati(list);
+  if (!meta.dati_servizio) meta.dati_servizio = {};
+  if (!meta.dati_origine) meta.dati_origine = {};
+  meta.dati_servizio.allegati = next;
+  meta.dati_origine.allegati = next;
+  card.setAttribute('data-meta', JSON.stringify(meta).replace(/"/g, '&quot;'));
+  const host = card.querySelector('[data-srv-allegati]');
+  if (!host) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = renderAllegatiServizioHtml(next);
+  host.replaceWith(tmp.firstElementChild);
+  bindAllegatiOnCard(card);
+}
+
+function renderAllegatiRowsHtml(items) {
+  const S = ST();
+  return items.map(a => {
+    const href = (a.fileId || a.url) ? S.driveViewUrl(a) : '';
+    return `<div class="srv-all-row" data-all-id="${esc(a.id)}">
+      <span class="srv-all-name" title="${esc(a.nome)}">${esc(a.nome)}</span>
+      ${href ? `<a class="srv-all-link" href="${esc(href)}" target="_blank" rel="noopener">apri</a>` : '<span class="srv-all-wait">…</span>'}
+      <button type="button" class="srv-all-x" data-all-remove="${esc(a.id)}" aria-label="Rimuovi allegato">×</button>
+    </div>`;
+  }).join('');
+}
+
+function renderAllegatiServizioHtml(allegati) {
+  const list = ST().normalizeAllegati(allegati);
+  const first = list[0];
+  const rest = list.slice(1);
+  return `
+    <aside class="pren-allegati" data-srv-allegati>
+      <span class="pren-allegati-title">Allegati del servizio</span>
+      <label class="srv-drop" data-srv-drop>
+        <input type="file" hidden accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-srv-file>
+        ${SRV_DROP_ICO}
+        <span class="srv-drop-txt">PDF o DOCX</span>
+      </label>
+      <div class="srv-all-list" data-srv-all-list>
+        ${first ? renderAllegatiRowsHtml([first]) : '<p class="srv-all-empty">Nessun file</p>'}
+        ${rest.length ? `<details class="srv-all-more"><summary>${rest.length} ${rest.length === 1 ? 'altro allegato' : 'altri allegati'}</summary>${renderAllegatiRowsHtml(rest)}</details>` : ''}
+      </div>
+    </aside>`;
+}
+
+function driveIdPerUpload(card) {
+  if (sessionTrasfertaId) return String(sessionTrasfertaId);
+  if (!ntTrasfertaId) ntTrasfertaId = nuovoTrasfertaIdClient();
+  return ntTrasfertaId;
+}
+
+function nuovoTrasfertaIdClient() {
+  return 'TRF-' + Date.now() + '-' + Math.random().toString(36).slice(2, 11).toUpperCase();
+}
+
+function tappaNumeroDaCard(card) {
+  try {
+    const meta = JSON.parse(card.getAttribute('data-meta').replace(/&quot;/g, '"'));
+    if (meta.tappa) return String(meta.tappa);
+    if (meta.nt_uid != null) return String(ntTappaIndex(meta.nt_uid));
+  } catch (_) {}
+  const block = card.closest('[data-tappa]');
+  if (block?.dataset.tappa) return String(block.dataset.tappa);
+  const nt = card.closest('.nt-tappa-card');
+  if (nt) return String(ntTappaIndex(nt.id.replace('nt-tappa-', '')));
+  return '1';
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result || ''));
+    r.onerror = () => reject(new Error('Lettura file non riuscita'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function postGoogleScript(payload) {
+  const url = (window.SR_CONFIG || {}).GOOGLE_SCRIPT_URL;
+  if (!url || String(url).includes('INSERISCI')) throw new Error('GOOGLE_SCRIPT_URL non configurato');
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  const text = await resp.text();
+  let data;
+  try { data = JSON.parse(text); } catch { throw new Error('Risposta Drive non valida'); }
+  if (!data.ok) throw new Error(data.message || 'Upload Drive fallito');
+  return data;
+}
+
+async function onAllegatoServizioFile(card, file) {
+  if (!file) return;
+  const S = ST();
+  if (!S.isAllegatoExtOk(file.name) && !S.isAllegatoMimeOk(file.type)) {
+    showToast('Solo PDF o DOCX', 'warn');
+    return;
+  }
+  if (file.size > 12 * 1024 * 1024) {
+    showToast('File troppo grande (max 12 MB)', 'warn');
+    return;
+  }
+  const drop = card.querySelector('[data-srv-drop]');
+  if (drop) drop.classList.add('is-over');
+  try {
+    const dataUrl = await readFileAsDataUrl(file);
+    const u = (window.SRAuth && SRAuth.getUser && SRAuth.getUser()) || {};
+    const up = await postGoogleScript({
+      action: 'uploadServizioAllegato',
+      file: dataUrl,
+      fileName: file.name,
+      mime: file.type || '',
+      email: u.email || '',
+      trasferta_id: driveIdPerUpload(card),
+      tappa_numero: tappaNumeroDaCard(card)
+    });
+    const next = allegatiDaCard(card).concat([{
+      id: S.uidAllegato(),
+      nome: file.name,
+      mime: up.mime || file.type || '',
+      fileId: up.fileId,
+      url: up.url
+    }]);
+    scriviAllegatiSuCard(card, next);
+    showToast('Allegato caricato su Drive', 'success');
+  } catch (e) {
+    showToast('Upload allegato: ' + (e.message || e), 'error');
+  } finally {
+    if (drop) drop.classList.remove('is-over');
+  }
+}
+
+function bindAllegatiOnCard(card) {
+  const zone = card.querySelector('[data-srv-drop]');
+  const input = card.querySelector('[data-srv-file]');
+  if (!zone || zone.dataset.bound === '1') return;
+  zone.dataset.bound = '1';
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('is-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('is-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('is-over');
+    const f = e.dataTransfer?.files && e.dataTransfer.files[0];
+    onAllegatoServizioFile(card, f);
+  });
+  input?.addEventListener('change', () => {
+    const f = input.files && input.files[0];
+    input.value = '';
+    onAllegatoServizioFile(card, f);
+  });
+  card.querySelectorAll('[data-all-remove]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.getAttribute('data-all-remove');
+      scriviAllegatiSuCard(card, allegatiDaCard(card).filter(a => a.id !== id));
+    });
+  });
 }
 
 /** Converte righe flat n8n (una riga = una tappa) nel formato usato dalla UI */
@@ -1145,6 +1384,7 @@ function renderPrenotazioneCard(item) {
           aria-label="Rimuovi servizio">×</button>
         ` : ''}
       </div>
+      <div class="pren-card-body">
       <div class="pren-fields">
         ${srvFields}
         ${isServizio ? `
@@ -1171,6 +1411,8 @@ function renderPrenotazioneCard(item) {
             <select data-field="metodo_pagamento_differenza">${diffOpts}</select>
           </div>
         </div>` : ''}
+      </div>
+      ${isServizio ? renderAllegatiServizioHtml(datiSrv.allegati) : ''}
       </div>
     </div>
   `;
@@ -1225,6 +1467,7 @@ function bindPrenotazioneCards(root) {
     const inpVoucher = card.querySelector('[data-field=valore_voucher]');
     if (inpVoucher) inpVoucher.addEventListener('input', () => syncVoucherPanel(card));
     syncVoucherPanel(card);
+    bindAllegatiOnCard(card);
   });
 }
 
@@ -2320,6 +2563,7 @@ function trasfertaCanonicaPerInvio(trasferta, prenotazioni) {
   if (clean.itinerario) {
     clean.itinerario = clean.itinerario.map(t => {
       const { _db_id, ...rest } = t;
+      if (rest.servizi) rest.servizi = JSON.parse(ST().serializeServizi(rest.servizi));
       return rest;
     });
   }
@@ -2346,17 +2590,6 @@ function buildPayloadBase() {
     trasferta_originale: trasferta,
     righe_db,
     prenotazioni
-  };
-}
-
-function buildPayloadInvio() {
-  return {
-    ...buildPayloadBase(),
-    meta: {
-      aggiornato_il: new Date().toISOString(),
-      origine: 'Studio Rivelli — Form Prenotazioni',
-      azione: 'invio_email'
-    }
   };
 }
 
@@ -2424,68 +2657,6 @@ async function salvaProgresso() {
   } catch (e) {
     showToast('Salvataggio fallito: ' + (e.message || e), 'error');
     console.error('salvaProgresso:', e);
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-// ========== Fase invio (placeholder webhook) ==========
-async function inviaPrenotazioni() {
-  if (!sessionTrasferta || !sessionTrasfertaId) {
-    showToast('Carica prima una trasferta', 'warn');
-    return;
-  }
-  const errPren = validaPrenotazioni();
-  if (errPren) {
-    showToast('⚠️ ' + errPren, 'warn');
-    return;
-  }
-
-  syncSessionDaDom();
-  const errDate = validaOrdineDateTrasfertaEdit();
-  if (errDate) {
-    showToast('⚠️ ' + errDate, 'warn');
-    return;
-  }
-
-  if (!(await confermaEstendiRangeAlCommit())) {
-    showToast('Invio annullato: periodo non confermato', 'warn');
-    return;
-  }
-
-  const btn = document.getElementById('btn-invia');
-  btn.disabled = true;
-  try {
-    const editPart = document.getElementById('edit-partecipanti');
-    if (editPart) {
-      if (!sessionTrasferta.anagrafica) sessionTrasferta.anagrafica = {};
-      sessionTrasferta.anagrafica.numero_partecipanti = parseNumeroPartecipanti(editPart.value);
-    }
-    showToast('Invio in corso…');
-    const payload = buildPayloadInvio();
-    await apiPost(WEBHOOK_INVIO_PRENOTAZIONI, payload);
-    // Aggiorna cache locale dallo stato inviato, poi torna all'elenco
-    sessionTrasferta._righe_db = payload.righe_db || sessionTrasferta._righe_db;
-    if (payload.trasferta) {
-      sessionTrasferta.itinerario = payload.trasferta.itinerario || sessionTrasferta.itinerario;
-      if (payload.trasferta.anagrafica) sessionTrasferta.anagrafica = payload.trasferta.anagrafica;
-    }
-    showToast('Prenotazioni inviate con successo', 'success', 3000);
-    memorizzaSnapshotRangeEdit();
-    const idInvio = sessionTrasfertaId;
-    chiudiDettaglioTrasferta({ sync: true });
-    // Chiede se eliminare (sopra l'elenco, senza altra GET)
-    pendingDeleteId = idInvio;
-    deleteContext = 'after-invio';
-    const title = document.getElementById('modal-elimina-title');
-    if (title) title.textContent = 'Prenotazioni inviate';
-    document.getElementById('modal-elimina-testo').innerHTML =
-      'Vuoi eliminare il record della trasferta <strong>' + esc(idInvio) + '</strong> dal sistema?<br><br>'
-      + 'Se elimini, non dovrai gestirla di nuovo. Se lo tieni, resta nell\'elenco trasferte attive.';
-    document.getElementById('modal-elimina').classList.add('show');
-  } catch (e) {
-    showToast('Invio fallito: ' + (e.message || e), 'error');
-    console.error('inviaPrenotazioni:', e);
   } finally {
     btn.disabled = false;
   }
@@ -2906,7 +3077,7 @@ function ntBuildJSON() {
       tipo_attivita: ntVal(`nt-${uid}-tipo`),
       pernottamento: ntVal(`nt-${uid}-pernotto`) === 'si',
       mezzo_per_raggiungere: mezzi.length ? mezzi : null,
-      servizi: servizi.length ? ST().normalizeServizi(servizi) : null,
+      servizi: servizi.length ? JSON.parse(ST().serializeServizi(servizi)) : null,
       note: ntVal(`nt-${uid}-note`)
     });
   });
@@ -2921,7 +3092,11 @@ function ntBuildJSON() {
     },
     itinerario: tappe,
     note_generali: ntVal('nt-note-generali'),
-    meta: { generato_il: new Date().toISOString(), origine: 'Studio Rivelli — Form Trasferte' }
+    meta: {
+      generato_il: new Date().toISOString(),
+      origine: 'Studio Rivelli — Form Trasferte',
+      trasferta_id: ntTrasfertaId || (ntTrasfertaId = nuovoTrasfertaIdClient())
+    }
   };
 }
 
@@ -2987,11 +3162,15 @@ async function ntInviaDati() {
   const btn = document.getElementById('nt-btn-invia');
   btn.disabled = true;
   try {
-    showToast('Invio in corso…');
+    showToast('Salvataggio in corso…');
     await apiPost(NT_WEBHOOK, ntBuildJSON());
-    showToast('✅ Trasferta inviata con successo!', 'success', 4500);
+    showToast('Trasferta salvata', 'success', 4500);
     ntReset();
     ntChiudiPanel();
+    try {
+      const list = await fetchTutteTrasferte();
+      renderListaTrasferte(list);
+    } catch (_) {}
   } catch (e) {
     showToast('Invio fallito: ' + (e.message || e), 'error');
   } finally {
@@ -3001,6 +3180,7 @@ async function ntInviaDati() {
 
 function ntReset() {
   ntUid = 0;
+  ntTrasfertaId = '';
   ntRangeSnapshot = { inizio: '', fine: '' };
   ntRangeSnapshotFromUser = false;
   const dipSel = document.getElementById('nt-dipendente');
@@ -3052,6 +3232,7 @@ function ntApriPanel() {
   panel.setAttribute('aria-hidden', 'false');
   if (btn) btn.textContent = '✕ Chiudi';
   if (!document.querySelector('.nt-tappa-card')) ntAddTappa();
+  if (!ntTrasfertaId) ntTrasfertaId = nuovoTrasfertaIdClient();
   ntBindAnagraficaSnapshot();
   ntCaricaDipendenti();
 }
