@@ -91,7 +91,8 @@
       const fileId = driveFileId(it);
       const url = String(it.url || it.foto_url || '').trim();
       const dataUrl = String(it.dataUrl || '').trim();
-      if (!fileId && !url && !dataUrl) return null;
+      const pending = !!it._pending;
+      if (!fileId && !url && !dataUrl && !pending) return null;
       const out = {
         id: it.id ? String(it.id) : uidAllegato(),
         nome: nome || 'allegato',
@@ -100,7 +101,7 @@
         url: url || (fileId ? ('https://drive.google.com/open?id=' + fileId) : '')
       };
       if (dataUrl) out.dataUrl = dataUrl;
-      if (it._pending) out._pending = true;
+      if (pending || (dataUrl && !fileId)) out._pending = true;
       return out;
     }).filter(Boolean);
   }
@@ -115,6 +116,16 @@
         fileId: a.fileId,
         url: a.fileId ? ('https://drive.google.com/open?id=' + a.fileId) : a.url
       }));
+  }
+
+  function isPendingAllegato(a) {
+    if (!a || typeof a !== 'object') return false;
+    if (a.fileId || isDriveUrl(a.url)) return false;
+    return !!(a._pending || a.dataUrl);
+  }
+
+  function pendingAllegati(raw) {
+    return normalizeAllegati(raw).filter(isPendingAllegato);
   }
 
   function asItem(tipo, dati, keepId) {
@@ -217,6 +228,8 @@
     isAllegatoExtOk,
     normalizeAllegati,
     persistAllegati,
+    isPendingAllegato,
+    pendingAllegati,
     isDriveUrl,
     driveFileId,
     driveViewUrl,

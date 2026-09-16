@@ -293,6 +293,17 @@
   }
   .srv-all-more summary::-webkit-details-marker { display: none; }
   .srv-all-more[open] summary { margin-bottom: 4px; }
+  .srv-up-overlay { z-index: 2050; }
+  .srv-up-modal { max-width: 380px; }
+  .srv-up-modal h3 { font-size: 16px; margin-bottom: 6px; }
+  .srv-up-count { font-size: 13px; color: var(--gray-600); margin-bottom: 14px; }
+  .srv-up-bar {
+    height: 8px; border-radius: 999px; background: var(--gray-200); overflow: hidden;
+  }
+  .srv-up-bar-fill {
+    height: 100%; width: 0%; border-radius: 999px; background: var(--blue-bright);
+    transition: width .15s ease;
+  }
   .pren-add-servizio {
     display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch;
     margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--gray-200);
@@ -608,11 +619,19 @@
   </div>
 </div>
 
+<div class="modal-overlay srv-up-overlay" id="modal-upload-allegati" aria-hidden="true">
+  <div class="modal srv-up-modal" role="dialog" aria-labelledby="modal-upload-title" aria-modal="true">
+    <h3 id="modal-upload-title">Caricamento degli allegati</h3>
+    <p class="srv-up-count" id="modal-upload-count">0 / 0</p>
+    <div class="srv-up-bar" aria-hidden="true"><div class="srv-up-bar-fill" id="modal-upload-bar"></div></div>
+  </div>
+</div>
+
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/dipendenti-list.js"></script>
 <script src="js/range-trasferta.js?v=58"></script>
-<script src="js/servizi-tappa.js?v=58"></script>
+<script src="js/servizi-tappa.js?v=60"></script>
 <script>
 // ========== Webhook da SR_CONFIG ==========
 const WEBHOOK_RECUPERO = SR_CONFIG.WEBHOOK_TR_RECUPERO;
@@ -991,19 +1010,36 @@ function leggiDatiServizioDaCard(card) {
 
 const SRV_DROP_ICO = '<svg class="srv-drop-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 16V7"/><path d="M8.5 10.5 12 7l3.5 3.5"/><path d="M5 18h14"/></svg>';
 
+const allegatiBlobStore = Object.create(null);
+
 function allegatiDaCard(card) {
   try {
     const meta = JSON.parse(card.getAttribute('data-meta').replace(/&quot;/g, '"'));
-    return ST().normalizeAllegati(meta.dati_servizio?.allegati || meta.dati_origine?.allegati || []);
+    const list = ST().normalizeAllegati(meta.dati_servizio?.allegati || meta.dati_origine?.allegati || []);
+    return list.map(a => {
+      const dataUrl = allegatiBlobStore[a.id];
+      if (!dataUrl) return a;
+      return { ...a, dataUrl, _pending: ST().isPendingAllegato({ ...a, dataUrl }) };
+    });
   } catch (_) {
     return [];
   }
 }
 
+function allegatiPerDom(list) {
+  return ST().normalizeAllegati(list).map(a => {
+    if (a.dataUrl) allegatiBlobStore[a.id] = a.dataUrl;
+    const out = { ...a };
+    delete out.dataUrl;
+    if (allegatiBlobStore[a.id] && !out.fileId) out._pending = true;
+    return out;
+  });
+}
+
 function scriviAllegatiSuCard(card, list) {
   let meta = {};
   try { meta = JSON.parse(card.getAttribute('data-meta').replace(/&quot;/g, '"')); } catch (_) {}
-  const next = ST().normalizeAllegati(list);
+  const next = allegatiPerDom(list);
   if (!meta.dati_servizio) meta.dati_servizio = {};
   if (!meta.dati_origine) meta.dati_origine = {};
   meta.dati_servizio.allegati = next;
@@ -1021,9 +1057,10 @@ function renderAllegatiRowsHtml(items) {
   const S = ST();
   return items.map(a => {
     const href = (a.fileId || a.url) ? S.driveViewUrl(a) : '';
+    const pending = S.isPendingAllegato(a) || (!href && a._pending);
     return `<div class="srv-all-row" data-all-id="${esc(a.id)}">
       <span class="srv-all-name" title="${esc(a.nome)}">${esc(a.nome)}</span>
-      ${href ? `<a class="srv-all-link" href="${esc(href)}" target="_blank" rel="noopener">apri</a>` : '<span class="srv-all-wait">…</span>'}
+      ${href ? `<a class="srv-all-link" href="${esc(href)}" target="_blank" rel="noopener">apri</a>` : `<span class="srv-all-wait">${pending ? 'in coda' : '…'}</span>`}
       <button type="button" class="srv-all-x" data-all-remove="${esc(a.id)}" aria-label="Rimuovi allegato">×</button>
     </div>`;
   }).join('');
@@ -1037,7 +1074,7 @@ function renderAllegatiServizioHtml(allegati) {
     <aside class="pren-allegati" data-srv-allegati>
       <span class="pren-allegati-title">Allegati del servizio</span>
       <label class="srv-drop" data-srv-drop>
-        <input type="file" hidden accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-srv-file>
+        <input type="file" hidden multiple accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-srv-file>
         ${SRV_DROP_ICO}
         <span class="srv-drop-txt">PDF o DOCX</span>
       </label>
@@ -1106,33 +1143,96 @@ async function onAllegatoServizioFile(card, file) {
     showToast('File troppo grande (max 12 MB)', 'warn');
     return;
   }
-  const drop = card.querySelector('[data-srv-drop]');
-  if (drop) drop.classList.add('is-over');
   try {
     const dataUrl = await readFileAsDataUrl(file);
-    const u = (window.SRAuth && SRAuth.getUser && SRAuth.getUser()) || {};
-    const up = await postGoogleScript({
-      action: 'uploadServizioAllegato',
-      file: dataUrl,
-      fileName: file.name,
-      mime: file.type || '',
-      email: u.email || '',
-      trasferta_id: driveIdPerUpload(card),
-      tappa_numero: tappaNumeroDaCard(card)
-    });
+    const id = S.uidAllegato();
+    allegatiBlobStore[id] = dataUrl;
     const next = allegatiDaCard(card).concat([{
-      id: S.uidAllegato(),
+      id,
       nome: file.name,
-      mime: up.mime || file.type || '',
-      fileId: up.fileId,
-      url: up.url
+      mime: file.type || '',
+      _pending: true,
+      dataUrl
     }]);
     scriviAllegatiSuCard(card, next);
-    showToast('Allegato caricato su Drive', 'success');
   } catch (e) {
-    showToast('Upload allegato: ' + (e.message || e), 'error');
+    showToast('Lettura file: ' + (e.message || e), 'error');
+  }
+}
+
+function raccogliJobAllegatiPending() {
+  const jobs = [];
+  document.querySelectorAll('.prenotazione-card').forEach(card => {
+    allegatiDaCard(card).forEach(a => {
+      if (ST().isPendingAllegato(a) && (a.dataUrl || allegatiBlobStore[a.id])) {
+        jobs.push({ card, allegato: a });
+      }
+    });
+  });
+  return jobs;
+}
+
+function mostraProgressoAllegati(done, total) {
+  const overlay = document.getElementById('modal-upload-allegati');
+  const count = document.getElementById('modal-upload-count');
+  const bar = document.getElementById('modal-upload-bar');
+  const title = document.getElementById('modal-upload-title');
+  if (!overlay) return;
+  overlay.classList.add('show');
+  overlay.setAttribute('aria-hidden', 'false');
+  const n = Math.max(1, total);
+  const cur = Math.min(done, n);
+  if (title) title.textContent = 'Caricamento degli allegati';
+  if (count) count.textContent = cur + ' / ' + n;
+  if (bar) bar.style.width = Math.round((cur / n) * 100) + '%';
+}
+
+function nascondiProgressoAllegati() {
+  const overlay = document.getElementById('modal-upload-allegati');
+  if (!overlay) return;
+  overlay.classList.remove('show');
+  overlay.setAttribute('aria-hidden', 'true');
+}
+
+async function caricaAllegatiPendingConProgresso() {
+  const jobs = raccogliJobAllegatiPending();
+  if (!jobs.length) return true;
+  const u = (window.SRAuth && SRAuth.getUser && SRAuth.getUser()) || {};
+  mostraProgressoAllegati(0, jobs.length);
+  try {
+    for (let i = 0; i < jobs.length; i++) {
+      mostraProgressoAllegati(i + 1, jobs.length);
+      const { card, allegato } = jobs[i];
+      const dataUrl = allegato.dataUrl || allegatiBlobStore[allegato.id];
+      if (!dataUrl) throw new Error('File in coda non trovato: ' + (allegato.nome || ''));
+      const up = await postGoogleScript({
+        action: 'uploadServizioAllegato',
+        file: dataUrl,
+        fileName: allegato.nome,
+        mime: allegato.mime || '',
+        email: u.email || '',
+        trasferta_id: driveIdPerUpload(card),
+        tappa_numero: tappaNumeroDaCard(card)
+      });
+      delete allegatiBlobStore[allegato.id];
+      const next = allegatiDaCard(card).map(a => {
+        if (a.id !== allegato.id) return a;
+        return {
+          id: a.id,
+          nome: a.nome,
+          mime: up.mime || a.mime,
+          fileId: up.fileId,
+          url: up.url
+        };
+      });
+      scriviAllegatiSuCard(card, next);
+    }
+    return true;
+  } catch (e) {
+    showToast('Upload allegati: ' + (e.message || e), 'error');
+    return false;
   } finally {
-    if (drop) drop.classList.remove('is-over');
+    nascondiProgressoAllegati();
   }
 }
 
@@ -1143,22 +1243,25 @@ function bindAllegatiOnCard(card) {
   zone.dataset.bound = '1';
   zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('is-over'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('is-over'));
-  zone.addEventListener('drop', e => {
+  zone.addEventListener('drop', async e => {
     e.preventDefault();
     zone.classList.remove('is-over');
-    const f = e.dataTransfer?.files && e.dataTransfer.files[0];
-    onAllegatoServizioFile(card, f);
+    const files = e.dataTransfer?.files;
+    if (!files || !files.length) return;
+    for (const f of [...files]) await onAllegatoServizioFile(card, f);
   });
-  input?.addEventListener('change', () => {
-    const f = input.files && input.files[0];
+  input?.addEventListener('change', async () => {
+    const files = input.files;
+    const list = files ? [...files] : [];
     input.value = '';
-    onAllegatoServizioFile(card, f);
+    for (const f of list) await onAllegatoServizioFile(card, f);
   });
   card.querySelectorAll('[data-all-remove]').forEach(btn => {
     btn.addEventListener('click', e => {
       e.preventDefault();
       e.stopPropagation();
       const id = btn.getAttribute('data-all-remove');
+      delete allegatiBlobStore[id];
       scriviAllegatiSuCard(card, allegatiDaCard(card).filter(a => a.id !== id));
     });
   });
@@ -2634,6 +2737,9 @@ async function salvaProgresso() {
   const btn = document.getElementById('btn-salva');
   btn.disabled = true;
   try {
+    const upOk = await caricaAllegatiPendingConProgresso();
+    if (!upOk) return;
+    syncSessionDaDom();
     showToast('Salvataggio in corso…');
     const payload = buildPayloadSalvataggio();
     const raw = await apiPost(WEBHOOK_SALVATAGGIO, payload);
@@ -3162,6 +3268,8 @@ async function ntInviaDati() {
   const btn = document.getElementById('nt-btn-invia');
   btn.disabled = true;
   try {
+    const upOk = await caricaAllegatiPendingConProgresso();
+    if (!upOk) return;
     showToast('Salvataggio in corso…');
     await apiPost(NT_WEBHOOK, ntBuildJSON());
     showToast('Trasferta salvata', 'success', 4500);
@@ -3181,6 +3289,7 @@ async function ntInviaDati() {
 function ntReset() {
   ntUid = 0;
   ntTrasfertaId = '';
+  Object.keys(allegatiBlobStore).forEach(k => { delete allegatiBlobStore[k]; });
   ntRangeSnapshot = { inizio: '', fine: '' };
   ntRangeSnapshotFromUser = false;
   const dipSel = document.getElementById('nt-dipendente');
