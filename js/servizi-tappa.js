@@ -213,6 +213,83 @@
     return tappa.servizi;
   }
 
+  function firstNonEmpty() {
+    for (let i = 0; i < arguments.length; i++) {
+      const s = arguments[i] == null ? '' : String(arguments[i]).trim();
+      if (s) return s;
+    }
+    return '';
+  }
+
+  function campiPagamento(dati) {
+    const d = dati && typeof dati === 'object' ? dati : {};
+    const po = d.prenotazione_operatrice && typeof d.prenotazione_operatrice === 'object'
+      ? d.prenotazione_operatrice
+      : {};
+    return {
+      metodo_pagamento: firstNonEmpty(po.metodo_pagamento, d.metodo_pagamento),
+      valore_voucher: firstNonEmpty(po.valore_voucher, d.valore_voucher),
+      metodo_pagamento_differenza: firstNonEmpty(po.metodo_pagamento_differenza, d.metodo_pagamento_differenza)
+    };
+  }
+
+  function statoServizio(dati) {
+    const d = dati && typeof dati === 'object' ? dati : {};
+    const po = d.prenotazione_operatrice && typeof d.prenotazione_operatrice === 'object'
+      ? d.prenotazione_operatrice
+      : {};
+    const top = firstNonEmpty(d.stato);
+    if (top) return top;
+    if (po.prenotato) return 'prenotato';
+    return '';
+  }
+
+  function mergePagamentoSuServizio(dati, pag) {
+    const d = { ...(dati && typeof dati === 'object' ? dati : {}) };
+    const incoming = pag && typeof pag === 'object' ? pag : {};
+    const keep = campiPagamento(d);
+    const metodo = firstNonEmpty(incoming.metodo_pagamento, keep.metodo_pagamento);
+    const isVoucher = metodo === 'voucher';
+    const voucher = isVoucher
+      ? firstNonEmpty(incoming.valore_voucher, keep.valore_voucher)
+      : '';
+    const diffMetodo = isVoucher
+      ? firstNonEmpty(incoming.metodo_pagamento_differenza, keep.metodo_pagamento_differenza)
+      : '';
+    d.metodo_pagamento = metodo;
+    if (isVoucher && voucher) d.valore_voucher = voucher;
+    else delete d.valore_voucher;
+    if (isVoucher && diffMetodo) d.metodo_pagamento_differenza = diffMetodo;
+    else delete d.metodo_pagamento_differenza;
+    const po = {
+      ...(d.prenotazione_operatrice && typeof d.prenotazione_operatrice === 'object'
+        ? d.prenotazione_operatrice
+        : {})
+    };
+    po.metodo_pagamento = metodo;
+    if (incoming.costo_servizio != null && String(incoming.costo_servizio).trim() !== '') {
+      po.costo_servizio = incoming.costo_servizio;
+    }
+    if (isVoucher) {
+      po.valore_voucher = voucher;
+      po.metodo_pagamento_differenza = diffMetodo;
+      if (incoming.differenza_pagamento != null) po.differenza_pagamento = incoming.differenza_pagamento;
+    } else {
+      po.valore_voucher = '';
+      po.metodo_pagamento_differenza = '';
+      po.differenza_pagamento = 0;
+    }
+    if (incoming.giornate_da != null) po.giornate_da = incoming.giornate_da;
+    if (incoming.giornate_a != null) po.giornate_a = incoming.giornate_a;
+    if (incoming.prenotato != null) po.prenotato = !!incoming.prenotato;
+    d.prenotazione_operatrice = po;
+    return d;
+  }
+
+  function noteTappaDaSorgenti(tappaNote, noteGenerali, precedente) {
+    return firstNonEmpty(tappaNote, precedente, noteGenerali);
+  }
+
   global.SRServiziTappa = {
     uidSrv,
     parseCosto,
@@ -223,6 +300,11 @@
     costiAggregati,
     mergeCostoColonna,
     ensureList,
+    firstNonEmpty,
+    campiPagamento,
+    statoServizio,
+    mergePagamentoSuServizio,
+    noteTappaDaSorgenti,
     uidAllegato,
     isAllegatoMimeOk,
     isAllegatoExtOk,

@@ -186,7 +186,7 @@
     align-items: end;
   }
   .pren-field label { font-size: 11px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; display: block; margin-bottom: 5px; }
-  .pren-field input, .pren-field select {
+  .pren-field input, .pren-field select, .pren-field textarea {
     width: 100%; border: 1.5px solid var(--gray-200); border-radius: 8px;
     padding: 8px 10px; font-size: 13px; font-family: inherit;
   }
@@ -1389,9 +1389,15 @@ function costoServizioDaItem(item) {
 
 function buildItemServizio(tappa, key, datiRaw) {
   const dati = { ...(datiRaw || {}) };
+  const S = ST();
   const po = dati.prenotazione_operatrice || {};
-  if (!dati.id) dati.id = ST().uidSrv();
+  const pag = S.campiPagamento(dati);
+  if (!dati.id) dati.id = S.uidSrv();
   dati.tipo = key;
+  if (!dati.stato) {
+    const st = S.statoServizio(dati);
+    if (st) dati.stato = st;
+  }
   if (key === 'hotel' && !dati.notti && tappa.pernottamento) {
     dati.notti = String(nottiSuggeriteHotel(tappa));
   }
@@ -1424,9 +1430,9 @@ function buildItemServizio(tappa, key, datiRaw) {
     giornate_a: gg.a,
     prenotato_default: prenDef,
     costo_servizio: costoSrv,
-    metodo_pagamento: po.metodo_pagamento || '',
-    valore_voucher: po.valore_voucher || '',
-    metodo_pagamento_differenza: po.metodo_pagamento_differenza || '',
+    metodo_pagamento: pag.metodo_pagamento,
+    valore_voucher: pag.valore_voucher,
+    metodo_pagamento_differenza: pag.metodo_pagamento_differenza,
     dati_servizio: { ...dati },
     dati_origine: dati,
     db_row_id: tappa._db_id
@@ -1812,7 +1818,8 @@ function renderTappaEditForm(tappa) {
           <span class="switch-label" data-tappa-pern-lbl>${tappa.pernottamento ? 'Sì' : 'No'}</span>
         </div>
       </div>
-      <div class="tappa-edit-note"><label class="ro-lbl" style="display:block;margin-bottom:6px">Note tappa</label>
+      <div class="pren-field tappa-edit-note">
+        <label>Note della tappa</label>
         <textarea data-tappa-field="note" placeholder="Note per questa tappa">${esc(tappa.note || '')}</textarea>
       </div>
     </div>
@@ -1896,7 +1903,7 @@ function aggiungiTappa() {
     pernottamento: false,
     mezzo_per_raggiungere: null,
     servizi: null,
-    note: '',
+    note: ST().noteTappaDaSorgenti('', sessionTrasferta.note_generali, last?.note || ''),
     _db_id: null
   };
   sessionTrasferta.itinerario = [...it, newTappa];
@@ -2632,12 +2639,12 @@ function applicaPrenotazioniATrasferta(trasferta, prenotazioni) {
     const sid = p.servizio_id || p.dati_servizio?.id;
     let hit = sid ? list.find(x => x.id === sid) : null;
     if (!hit) hit = list.find(x => x.tipo === key);
-    const dati = { ...(p.dati_servizio || {}) };
+    let dati = { ...(hit || {}), ...(p.dati_servizio || {}) };
     if (p.mezzo && !dati.mezzo_viaggio) dati.mezzo_viaggio = p.mezzo;
     if (p.costo_servizio) dati.costo = p.costo_servizio;
     if (p.prenotato && (!dati.stato || dati.stato === 'da_prenotare')) dati.stato = 'prenotato';
     if (!p.prenotato && !dati.stato) dati.stato = 'da_prenotare';
-    dati.prenotazione_operatrice = {
+    dati = S.mergePagamentoSuServizio(dati, {
       prenotato: !!p.prenotato,
       metodo_pagamento: p.metodo_pagamento || '',
       costo_servizio: p.costo_servizio || '',
@@ -2646,7 +2653,7 @@ function applicaPrenotazioniATrasferta(trasferta, prenotazioni) {
       metodo_pagamento_differenza: p.metodo_pagamento_differenza || '',
       giornate_da: p.giornate_da || '',
       giornate_a: p.giornate_a || ''
-    };
+    });
     delete dati.tipo;
     if (hit) {
       const id = hit.id;
@@ -2923,12 +2930,18 @@ function ntLeggiServizi(uid) {
       dati.mezzo_viaggio = meta.dati_origine.mezzo_viaggio;
     }
     const metodo = card.querySelector('[data-field=metodo_pagamento]')?.value || '';
-    const item = { id: meta.servizio_id, tipo: key, ...dati };
-    if (metodo) item.metodo_pagamento = metodo;
-    if (metodo === 'voucher') {
-      item.valore_voucher = card.querySelector('[data-field=valore_voucher]')?.value?.trim() || '';
-      item.metodo_pagamento_differenza = card.querySelector('[data-field=metodo_pagamento_differenza]')?.value || '';
-    }
+    const item = ST().mergePagamentoSuServizio(
+      { id: meta.servizio_id, tipo: key, ...dati },
+      {
+        metodo_pagamento: metodo,
+        valore_voucher: metodo === 'voucher'
+          ? (card.querySelector('[data-field=valore_voucher]')?.value?.trim() || '')
+          : '',
+        metodo_pagamento_differenza: metodo === 'voucher'
+          ? (card.querySelector('[data-field=metodo_pagamento_differenza]')?.value || '')
+          : ''
+      }
+    );
     list.push(item);
   });
   return ST().normalizeServizi(list);
@@ -3009,8 +3022,8 @@ function ntAddTappa() {
         </div>
       </div>
       <div class="field">
-        <label>Note tappa</label>
-        <input type="text" id="nt-${uid}-note" placeholder="es. Portare documentazione...">
+        <label>Note della tappa</label>
+        <textarea class="nt-note-ta" id="nt-${uid}-note" placeholder="es. Portare documentazione..."></textarea>
       </div>
       <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--gray-200)">
         <div style="font-size:12px;font-weight:600;color:var(--blue-mid);text-transform:uppercase;margin-bottom:10px">🛎 Servizi in questa tappa</div>
@@ -3032,6 +3045,9 @@ function ntAddTappa() {
         if (arr) arr.value = next;
         if (part) part.value = next;
       }
+      const prevNote = ntVal(`nt-${prevUid}-note`);
+      const noteEl = document.getElementById(`nt-${uid}-note`);
+      if (noteEl && prevNote) noteEl.value = prevNote;
     }
   }
   ntBindTappaDate(uid);
@@ -3184,7 +3200,7 @@ function ntBuildJSON() {
       pernottamento: ntVal(`nt-${uid}-pernotto`) === 'si',
       mezzo_per_raggiungere: mezzi.length ? mezzi : null,
       servizi: servizi.length ? JSON.parse(ST().serializeServizi(servizi)) : null,
-      note: ntVal(`nt-${uid}-note`)
+      note: ST().noteTappaDaSorgenti(ntVal(`nt-${uid}-note`), ntVal('nt-note-generali'), '')
     });
   });
   const dip = SRDipendenti.selectedDipendente(document.getElementById('nt-dipendente'));

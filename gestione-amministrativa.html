@@ -445,9 +445,10 @@ body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .svc-all-chip .btn-icon { width: 34px; height: 34px; flex-shrink: 0; }
-.svc-all-more { margin: 0; }
+.svc-all-more { margin: 0; text-align: center; }
 .svc-all-more summary {
-  cursor: pointer; list-style: none; display: inline-flex; padding: 0;
+  cursor: pointer; list-style: none; display: flex; justify-content: center;
+  width: 100%; padding: 0;
 }
 .svc-all-more summary::-webkit-details-marker { display: none; }
 .svc-all-more[open] summary { margin-bottom: 8px; }
@@ -465,6 +466,7 @@ body {
   transition: transform .15s ease;
 }
 .svc-all-more[open] .svc-attestati-chev { transform: rotate(180deg); }
+.svc-all-more .svc-all-chip { text-align: left; }
 
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(12px);
@@ -1307,9 +1309,7 @@ function allegatiHtml(dati) {
   };
   const chips = list.map(chip).join('');
   const chev = '<svg class="svc-attestati-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
-  const body = list.length === 1
-    ? chips
-    : `<details class="svc-all-more"><summary><span class="svc-attestati-chip">Attestati disponibili${chev}</span></summary>${chips}</details>`;
+  const body = `<details class="svc-all-more"><summary><span class="svc-attestati-chip">Attestati disponibili${chev}</span></summary>${chips}</details>`;
   return { html: `<div class="svc-allegati"><div class="svc-all-label">Allegati</div>${body}</div>` };
 }
 
