@@ -878,6 +878,18 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-avviso-leader" aria-hidden="true">
+  <div class="modal" role="dialog" aria-labelledby="modal-avviso-title" aria-modal="true">
+    <h3 id="modal-avviso-title">Avvisare il leader?</h3>
+    <p id="modal-avviso-testo"></p>
+    <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
+      <button type="button" class="btn btn-secondary" id="modal-avviso-annulla">Annulla</button>
+      <button type="button" class="btn btn-secondary" id="modal-avviso-salva">Solo salva</button>
+      <button type="button" class="btn btn-primary" id="modal-avviso-invia">Invia avviso e salva</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay srv-up-overlay" id="modal-upload-allegati" aria-hidden="true">
   <div class="modal srv-up-modal" role="dialog" aria-labelledby="modal-upload-title" aria-modal="true">
     <h3 id="modal-upload-title">Caricamento degli allegati</h3>
@@ -891,6 +903,7 @@
 <script src="js/dipendenti-list.js"></script>
 <script src="js/range-trasferta.js?v=58"></script>
 <script src="js/servizi-tappa.js?v=60"></script>
+<script src="js/trasferta-avviso-email.js?v=78"></script>
 <script>
 // ========== Webhook da SR_CONFIG ==========
 const WEBHOOK_RECUPERO = SR_CONFIG.WEBHOOK_TR_RECUPERO;
@@ -2260,6 +2273,71 @@ document.getElementById('modal-estendi-range')?.addEventListener('click', e => {
   if (e.target.id === 'modal-estendi-range') rispondiEstendiRange(false);
 });
 
+let _avvisoLeaderResolve = null;
+
+function chiediInvioAvvisoLeader(pack) {
+  const overlay = document.getElementById('modal-avviso-leader');
+  const testo = document.getElementById('modal-avviso-testo');
+  const btnInvia = document.getElementById('modal-avviso-invia');
+  if (!overlay || !testo) return Promise.resolve('save');
+  const p = pack || {};
+  const nome = p.toName || 'il leader';
+  const mail = p.toEmail || '';
+  let html = 'Vuoi inviare a <strong>' + (typeof esc === 'function' ? esc(nome) : nome) + '</strong>';
+  if (mail) html += ' (<code>' + (typeof esc === 'function' ? esc(mail) : mail) + '</code>)';
+  html += ' un avviso con l\'itinerario della trasferta appena salvata?';
+  if (p.hasAutoAz) {
+    html += '<br><br>Nell\'email verrà ricordato di <strong>prenotare l\'auto aziendale</strong>.';
+  }
+  if (!p.canSend) {
+    html += '<br><br>Manca l\'email del leader: puoi solo salvare, senza avviso.';
+  }
+  testo.innerHTML = html;
+  if (btnInvia) btnInvia.disabled = !p.canSend;
+  overlay.classList.add('show');
+  overlay.setAttribute('aria-hidden', 'false');
+  return new Promise(resolve => { _avvisoLeaderResolve = resolve; });
+}
+
+function rispondiAvvisoLeader(choice) {
+  const overlay = document.getElementById('modal-avviso-leader');
+  if (overlay) {
+    overlay.classList.remove('show');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
+  const r = _avvisoLeaderResolve;
+  _avvisoLeaderResolve = null;
+  if (r) r(choice);
+}
+
+function applicaSceltaAvviso(payload, choice, pack) {
+  const send = choice === 'send' && pack && pack.canSend;
+  payload.send_email = !!send;
+  payload.email_html = send ? pack.html : '';
+  payload.email_to = send ? pack.toEmail : '';
+  payload.email_subject = send ? pack.subject : '';
+  return payload;
+}
+
+function packAvvisoDaTrasferta(trasferta, trasfertaId, noteGenerali) {
+  if (!window.SRTrasfertaAvvisoEmail) return null;
+  const ana = (trasferta && trasferta.anagrafica) || {};
+  return SRTrasfertaAvvisoEmail.build({
+    trasferta_id: trasfertaId || '',
+    anagrafica: ana,
+    itinerario: (trasferta && trasferta.itinerario) || [],
+    note_generali: noteGenerali || (trasferta && trasferta.note_generali) || '',
+    meta: (trasferta && trasferta.meta) || {}
+  });
+}
+
+document.getElementById('modal-avviso-annulla')?.addEventListener('click', () => rispondiAvvisoLeader(false));
+document.getElementById('modal-avviso-salva')?.addEventListener('click', () => rispondiAvvisoLeader('save'));
+document.getElementById('modal-avviso-invia')?.addEventListener('click', () => rispondiAvvisoLeader('send'));
+document.getElementById('modal-avviso-leader')?.addEventListener('click', e => {
+  if (e.target.id === 'modal-avviso-leader') rispondiAvvisoLeader(false);
+});
+
 function setDatePairInvalid(elA, elB, hintEl, invalid, msg) {
   [elA, elB].forEach(el => {
     if (!el) return;
@@ -3049,8 +3127,15 @@ async function salvaProgresso() {
     const upOk = await caricaAllegatiPendingConProgresso();
     if (!upOk) return;
     syncSessionDaDom();
-    showToast('Salvataggio in corso…');
     const payload = buildPayloadSalvataggio();
+    const pack = packAvvisoDaTrasferta(payload.trasferta, payload.trasferta_id);
+    const choice = pack ? await chiediInvioAvvisoLeader(pack) : 'save';
+    if (!choice) {
+      showToast('Salvataggio annullato', 'warn');
+      return;
+    }
+    applicaSceltaAvviso(payload, choice, pack);
+    showToast('Salvataggio in corso…');
     const raw = await apiPost(WEBHOOK_SALVATAGGIO, payload);
     sessionTrasferta._tappe_eliminate = [];
     // Preferisci righe restituite da n8n (id DB aggiornati); altrimenti payload locale
@@ -3588,8 +3673,16 @@ async function ntInviaDati() {
   try {
     const upOk = await caricaAllegatiPendingConProgresso();
     if (!upOk) return;
+    const body = ntBuildJSON();
+    const pack = packAvvisoDaTrasferta(body, body.meta && body.meta.trasferta_id, body.note_generali);
+    const choice = pack ? await chiediInvioAvvisoLeader(pack) : 'save';
+    if (!choice) {
+      showToast('Invio annullato', 'warn');
+      return;
+    }
+    applicaSceltaAvviso(body, choice, pack);
     showToast('Salvataggio in corso…');
-    await apiPost(NT_WEBHOOK, ntBuildJSON());
+    await apiPost(NT_WEBHOOK, body);
     showToast('Trasferta salvata', 'success', 4500);
     ntReset();
     ntChiudiPanel();
