@@ -79,6 +79,31 @@
     display: none; margin-top: 6px; font-size: 12px; font-weight: 600; color: var(--danger);
   }
   .date-order-hint.is-on { display: block; }
+  .nt-piano-box {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: var(--blue-pale);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+  }
+  .nt-piano-box[hidden] { display: none !important; }
+  .nt-piano-kicker {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--blue-mid);
+    text-transform: uppercase;
+    letter-spacing: .2px;
+    margin-bottom: 8px;
+  }
+  .nt-piano-item {
+    font-size: 13px;
+    color: var(--gray-800);
+    padding: 8px 0;
+    border-top: 1px solid var(--gray-200);
+  }
+  .nt-piano-item:first-of-type { border-top: none; padding-top: 0; }
+  .nt-piano-meta { font-size: 12px; color: var(--gray-600); margin-top: 2px; }
+  .nt-piano-empty { font-size: 13px; color: var(--gray-600); }
   .btn {
     padding: 11px 22px; border-radius: var(--radius); font-family: inherit; font-size: 14px;
     font-weight: 500; cursor: pointer; border: none; transition: all 0.18s;
@@ -523,7 +548,7 @@
             <div class="field-row">
               <div class="field">
                 <label>Dipendente <span class="req">*</span></label>
-                <select id="nt-dipendente" required>
+                <select id="nt-dipendente" required onchange="ntOnDipendenteChange()">
                   <option value="">Caricamento dipendenti…</option>
                 </select>
               </div>
@@ -541,6 +566,7 @@
               </div>
             </div>
             <div class="date-order-hint" id="nt-anagrafica-date-hint"></div>
+            <div class="nt-piano-box" id="nt-piano-collegato" hidden></div>
           </div>
           <div style="margin-bottom:20px">
             <div style="font-size:12px;font-weight:600;color:var(--blue-mid);text-transform:uppercase;letter-spacing:.2px;margin-bottom:12px">📍 Itinerario — Tappe</div>
@@ -3345,6 +3371,10 @@ async function ntInviaDati() {
   }
 }
 
+let ntContestoCache = null;
+let ntContestoPromise = null;
+let ntContestoGen = 0;
+
 function ntReset() {
   ntUid = 0;
   ntTrasfertaId = '';
@@ -3358,20 +3388,88 @@ function ntReset() {
   document.getElementById('nt-data-fine').value = '';
   document.getElementById('nt-note-generali').value = '';
   document.getElementById('nt-tappe-container').innerHTML = '';
+  ntRenderPianoCollegato(null);
   ntAddTappa();
+}
+
+function ntRenderPianoCollegato(row) {
+  const box = document.getElementById('nt-piano-collegato');
+  if (!box) return;
+  if (!row) {
+    box.hidden = true;
+    box.innerHTML = '';
+    return;
+  }
+  const excel = Array.isArray(row.excel) ? row.excel : [];
+  const pren = (Array.isArray(row.prenotazioni) ? row.prenotazioni : [])
+    .filter(p => SRDipendenti.prenotazioneDaOggi(p));
+  const parts = [];
+  excel.forEach(r => {
+    const n = r.numero_trasferta != null && r.numero_trasferta !== '' ? 'N. ' + r.numero_trasferta : 'Excel';
+    const titolo = [n, r.attivita_luogo, r.mese].filter(Boolean).join(' · ');
+    const meta = [
+      (r.driver || []).join(', '),
+      r.mezzo,
+      r.ora,
+      r.note
+    ].filter(Boolean).join(' · ');
+    parts.push(
+      '<div class="nt-piano-item"><div>' + esc(titolo || 'Riga Excel') + '</div>' +
+      (meta ? '<div class="nt-piano-meta">' + esc(meta) + '</div>' : '') +
+      '</div>'
+    );
+  });
+  pren.forEach(p => {
+    const n = p.numero_trasferta ? 'N. ' + p.numero_trasferta : '';
+    const titolo = [p.tipo_utilizzo || 'Prenotazione auto', n].filter(Boolean).join(' · ');
+    const meta = [p.data_da, p.data_a && p.data_a !== p.data_da ? '→ ' + p.data_a : '', p.note]
+      .filter(Boolean).join(' ');
+    parts.push(
+      '<div class="nt-piano-item"><div>' + esc(titolo) + '</div>' +
+      (meta ? '<div class="nt-piano-meta">' + esc(meta) + '</div>' : '') +
+      '</div>'
+    );
+  });
+  box.innerHTML = '<div class="nt-piano-kicker">Piano Excel / auto collegati</div>' +
+    (parts.length ? parts.join('') : '<div class="nt-piano-empty">Nessuna trasferta Excel né prenotazione auto da oggi per questo dipendente.</div>');
+  box.hidden = false;
+}
+
+function ntOnDipendenteChange() {
+  const sel = document.getElementById('nt-dipendente');
+  const email = String(sel && sel.value || '').trim().toLowerCase();
+  if (!email || !ntContestoCache) {
+    ntRenderPianoCollegato(null);
+    return;
+  }
+  const row = ntContestoCache.find(d => d.email === email);
+  ntRenderPianoCollegato(row || null);
 }
 
 async function ntCaricaDipendenti() {
   const sel = document.getElementById('nt-dipendente');
   if (!sel) return;
   const prev = sel.value;
+  const gen = ntContestoGen;
   sel.disabled = true;
-  sel.innerHTML = '<option value="">Caricamento dipendenti…</option>';
+  if (!ntContestoCache) {
+    sel.innerHTML = '<option value="">Caricamento dipendenti…</option>';
+  }
   try {
-    const url = (SR_CONFIG || {}).WEBHOOK_RECUPERO_DIPENDENTI;
-    if (!url) throw new Error('Webhook recupero-dipendenti non configurato');
-    const data = await apiPost(url, {});
-    const list = SRDipendenti.parseDipendentiList(data);
+    if (!ntContestoCache) {
+      const url = (SR_CONFIG || {}).WEBHOOK_RECUPERO_DIPENDENTI;
+      if (!url) throw new Error('Webhook recupero-dipendenti non configurato');
+      if (!ntContestoPromise) {
+        ntContestoPromise = apiPost(url, {}).finally(() => { ntContestoPromise = null; });
+      }
+      const data = await ntContestoPromise;
+      if (gen !== ntContestoGen) return;
+      if (data && data.ok === false) {
+        throw new Error(data.message || 'Elenco dipendenti non disponibile');
+      }
+      ntContestoCache = SRDipendenti.parseContestoRecupero(data);
+    }
+    const list = ntContestoCache;
     if (!list.length) {
       sel.innerHTML = '<option value="">Nessun dipendente in elenco</option>';
       showToast('Nessun dipendente trovato', 'warn');
@@ -3379,10 +3477,13 @@ async function ntCaricaDipendenti() {
     }
     sel.innerHTML = '<option value="">— Seleziona dipendente —</option>' +
       list.map(d =>
-        '<option value="' + esc(d.email) + '" data-nome="' + esc(d.nome) + '">' +
-        esc(d.nome) + '</option>'
+        '<option value="' + esc(d.email) + '" data-nome="' + esc(d.nome || d.dipendente) + '">' +
+        esc(d.nome || d.dipendente) + '</option>'
       ).join('');
-    if (prev && list.some(d => d.email === prev)) sel.value = prev;
+    if (prev && list.some(d => d.email === prev)) {
+      sel.value = prev;
+      ntOnDipendenteChange();
+    }
   } catch (e) {
     console.error(e);
     sel.innerHTML = '<option value="">Elenco non disponibile</option>';
@@ -3412,6 +3513,10 @@ function ntChiudiPanel() {
   panel.classList.remove('show');
   panel.setAttribute('aria-hidden', 'true');
   if (btn) btn.textContent = '＋ Nuova trasferta';
+  ntContestoGen++;
+  ntContestoCache = null;
+  ntContestoPromise = null;
+  ntRenderPianoCollegato(null);
 }
 
 function ntTogglePanel() {
@@ -3431,7 +3536,6 @@ document.getElementById('nt-panel')?.addEventListener('click', e => {
       location.replace('index.html');
       return;
     }
-    ntCaricaDipendenti();
   } catch (ex) {
     if (SRAuth.isNotEnabledError(ex)) SRAuth.redirectNotEnabled();
     else SRAuth.redirectToLogin('api');

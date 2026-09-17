@@ -1147,6 +1147,7 @@ function apriDettaglioMacchina(id) {
     <dl>
       <dt>Tipo utilizzo</dt>
       <dd><span class="tag ${tagCls}">${esc(p.tipo_utilizzo || '—')}</span></dd>
+      ${p.tipo_utilizzo === 'Trasferta' ? `<dt>N. trasferta</dt><dd>${esc(String(p.numero_trasferta || '').trim() || '—')}</dd>` : ''}
       <dt>Periodo auto</dt>
       <dd>${esc(fmtPeriodoIt(p.data_da, p.data_a))}</dd>
       <dt>Cliente</dt>

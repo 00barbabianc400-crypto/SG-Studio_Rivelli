@@ -511,6 +511,12 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
             </select>
           </div>
         </div>
+        <div class="field-row hidden" id="ins-num-trasferta-wrap">
+          <div class="field">
+            <label>N. trasferta <span class="req">*</span></label>
+            <input type="text" id="ins-numero-trasferta" inputmode="numeric" placeholder="es. 0, 1, 12" autocomplete="off">
+          </div>
+        </div>
         <div class="field-row">
           <div class="field" style="flex:2">
             <label>Periodo prenotazione <span class="req">*</span></label>
@@ -657,6 +663,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
           </button>
         </div>
       </div>
+      <div class="field hidden" id="edit-num-trasferta-wrap">
+        <label>N. trasferta <span class="req">*</span></label>
+        <input type="text" id="edit-numero-trasferta" inputmode="numeric" placeholder="es. 0, 1, 12" autocomplete="off">
+      </div>
       <div class="field"><label>Cliente <span class="req">*</span></label><textarea id="edit-cliente" rows="2" placeholder="es. Nome cliente…" required></textarea></div>
     </div>
     <div class="modal-foot">
@@ -724,6 +734,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/scontrini.js"></script>
+<script src="js/prenotazione-auto.js?v=1"></script>
 <script>
 const WEBHOOK_CRUD = SR_CONFIG.WEBHOOK_CRUD;
 const WEBHOOK_RICHIESTA = SR_CONFIG.WEBHOOK_RICHIESTA;
@@ -835,6 +846,22 @@ function pickCliente(row) {
   if (!row) return '';
   const v = row.note ?? row.Cliente ?? row.cliente;
   return v != null ? String(v).trim() : '';
+}
+
+function pickNumeroTrasferta(row) {
+  if (!row) return '';
+  return String(row.numero_trasferta ?? row.Numero_trasferta ?? '').trim();
+}
+
+function syncWrapNumeroTrasferta(tipoSelId, wrapId) {
+  const tipo = document.getElementById(tipoSelId)?.value;
+  const isTr = SRPrenotazioneAuto.isTipoTrasferta(tipo);
+  document.getElementById(wrapId)?.classList.toggle('hidden', !isTr);
+}
+
+function numeroTrasfertaDaForm(tipo, inputId) {
+  const raw = document.getElementById(inputId)?.value;
+  return SRPrenotazioneAuto.normalizeNumeroTrasferta(tipo, raw);
 }
 
 function parseRows(data) {
@@ -1007,6 +1034,8 @@ function renderMiePrenotazioni() {
         <div class="mie-item-period">${fmtPeriodoIt(p.data_da, p.data_a)}</div>
         <div class="mie-item-meta">
           <span class="tag ${tagCls}">${esc(p.tipo_utilizzo || '—')}</span>
+          ${p.tipo_utilizzo === 'Trasferta' && pickNumeroTrasferta(p)
+            ? `<span class="tag">${esc('N. ' + pickNumeroTrasferta(p))}</span>` : ''}
         </div>
         ${cliente ? `<div class="mie-item-cliente">${esc(cliente)}</div>` : ''}
       </div>
@@ -1440,6 +1469,8 @@ function resetFormInserimento() {
   }
   sel.disabled = true;
   document.getElementById('ins-tipo').value = '';
+  document.getElementById('ins-numero-trasferta').value = '';
+  syncWrapNumeroTrasferta('ins-tipo', 'ins-num-trasferta-wrap');
   document.getElementById('ins-cliente').value = '';
   rangeStart = rangeEnd = null;
   aggiornaRangeLabel();
@@ -1460,6 +1491,7 @@ function apriDettaglioPrenotazione(id) {
       <dl>
         <dt>Tipo utilizzo</dt>
         <dd><span class="tag ${tagCls}">${esc(p.tipo_utilizzo)}</span></dd>
+        ${p.tipo_utilizzo === 'Trasferta' ? `<dt>N. trasferta</dt><dd>${esc(pickNumeroTrasferta(p) || '—')}</dd>` : ''}
         <dt>Periodo</dt>
         <dd>${fmtPeriodoIt(p.data_da, p.data_a)}</dd>
         <dt>Cliente</dt>
@@ -1588,14 +1620,16 @@ function apriConflictModal(conflitto, richiesta) {
       tipo_utilizzo: conflitto.tipo_utilizzo,
       data_da: conflitto.data_da,
       data_a: conflitto.data_a,
-      note: confCliente
+      note: confCliente,
+      numero_trasferta: pickNumeroTrasferta(conflitto)
     },
     richiesta: {
       operatore: richiesta.operatore,
       tipo_utilizzo: richiesta.tipo_utilizzo,
       data_da: richiesta.data_da,
       data_a: richiesta.data_a,
-      note: reqCliente
+      note: reqCliente,
+      numero_trasferta: richiesta.numero_trasferta || ''
     }
   };
   const tagCls = conflitto.tipo_utilizzo === 'Roma e dintorni' ? 'tag-roma' : 'tag-trasferta';
@@ -1623,8 +1657,10 @@ async function inviaPrenotazione() {
   const operatore = document.getElementById('ins-operatore').value;
   const tipo_utilizzo = document.getElementById('ins-tipo').value;
   const note = document.getElementById('ins-cliente').value.trim();
+  const numTr = numeroTrasfertaDaForm(tipo_utilizzo, 'ins-numero-trasferta');
   if (!operatore) return showToast('Seleziona operatore', 'warn');
   if (!tipo_utilizzo) return showToast('Seleziona tipo utilizzo', 'warn');
+  if (!numTr.ok) return showToast(numTr.error, 'warn');
   if (!note) return showToast('Inserisci il cliente', 'warn');
   if (!rangeStart || !rangeEnd) return showToast('Seleziona il periodo', 'warn');
 
@@ -1632,7 +1668,7 @@ async function inviaPrenotazione() {
   const data_a = rangeEnd;
   const conflitto = trovaConflitto(data_da, data_a);
   if (conflitto) {
-    apriConflictModal(conflitto, { operatore, tipo_utilizzo, data_da, data_a, note });
+    apriConflictModal(conflitto, { operatore, tipo_utilizzo, data_da, data_a, note, numero_trasferta: numTr.value });
     return;
   }
 
@@ -1646,6 +1682,7 @@ async function inviaPrenotazione() {
       data_da,
       data_a,
       note,
+      numero_trasferta: numTr.value,
       email: emailUtenteSessione()
     });
     showToast('Prenotazione registrata', 'success');
@@ -1685,7 +1722,8 @@ function apriEditModal(id) {
     tipo_utilizzo: p.tipo_utilizzo || '',
     data_da: pickDateField(p, ['data_da', 'dataDa', 'Data_da', 'dal', 'data_inizio']),
     data_a: pickDateField(p, ['data_a', 'dataA', 'Data_a', 'al', 'data_fine']),
-    note: pickCliente(p)
+    note: pickCliente(p),
+    numero_trasferta: pickNumeroTrasferta(p)
   };
   editRangeStart = editBookingSnapshot.data_da || null;
   editRangeEnd = editBookingSnapshot.data_a || editBookingSnapshot.data_da || null;
@@ -1694,6 +1732,8 @@ function apriEditModal(id) {
   document.getElementById('edit-operatore').value = editBookingSnapshot.operatore;
   document.getElementById('edit-tipo').value = editBookingSnapshot.tipo_utilizzo;
   document.getElementById('edit-cliente').value = editBookingSnapshot.note;
+  document.getElementById('edit-numero-trasferta').value = editBookingSnapshot.numero_trasferta || '';
+  syncWrapNumeroTrasferta('edit-tipo', 'edit-num-trasferta-wrap');
   aggiornaEditRangeLabel();
   document.getElementById('edit-backdrop').classList.add('open');
 }
@@ -1705,14 +1745,16 @@ async function salvaEdit() {
   const data_da = editRangeStart || editBookingSnapshot?.data_da || '';
   const data_a = editRangeEnd || editRangeStart || editBookingSnapshot?.data_a || '';
   const note = document.getElementById('edit-cliente').value.trim();
+  const numTr = numeroTrasfertaDaForm(tipo_utilizzo, 'edit-numero-trasferta');
 
   if (!operatore) return showToast('Seleziona operatore', 'warn');
   if (!tipo_utilizzo) return showToast('Seleziona tipo utilizzo', 'warn');
+  if (!numTr.ok) return showToast(numTr.error, 'warn');
   if (!note) return showToast('Inserisci il cliente', 'warn');
   if (!data_da || !data_a) return showToast('Seleziona il periodo', 'warn');
   if (data_a < data_da) return showToast('La data fine non può precedere la data inizio', 'warn');
 
-  const payload = { action: 'update', id, operatore, tipo_utilizzo, data_da, data_a, note };
+  const payload = { action: 'update', id, operatore, tipo_utilizzo, data_da, data_a, note, numero_trasferta: numTr.value };
   const conflitto = trovaConflitto(payload.data_da, payload.data_a, id);
   if (conflitto) return showToast('Conflitto con ' + conflitto.operatore, 'warn');
 
@@ -1753,6 +1795,12 @@ document.getElementById('cal-grid').addEventListener('click', e => {
   if (btn) onCalDayClick(btn.dataset.iso);
 });
 document.getElementById('btn-prenota').addEventListener('click', inviaPrenotazione);
+document.getElementById('ins-tipo').addEventListener('change', () => {
+  syncWrapNumeroTrasferta('ins-tipo', 'ins-num-trasferta-wrap');
+});
+document.getElementById('edit-tipo').addEventListener('change', () => {
+  syncWrapNumeroTrasferta('edit-tipo', 'edit-num-trasferta-wrap');
+});
 document.getElementById('conflict-chiudi').addEventListener('click', () => document.getElementById('conflict-backdrop').classList.remove('open'));
 document.getElementById('btn-richiedi-modifica').addEventListener('click', richiediModifica);
 document.getElementById('tim-prev').addEventListener('click', () => {
