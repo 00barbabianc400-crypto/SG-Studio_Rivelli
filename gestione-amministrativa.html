@@ -599,6 +599,8 @@ body {
         <dd id="sc-view-orario">—</dd>
         <dt id="sc-view-dt3" class="hidden">Importo</dt>
         <dd id="sc-view-importo" class="hidden">—</dd>
+        <dt id="sc-view-dt-note" class="hidden">Note</dt>
+        <dd id="sc-view-note" class="hidden">—</dd>
       </dl>
     </div>
     <div class="modal-foot">
@@ -615,7 +617,7 @@ body {
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/scontrini.js"></script>
-  <script src="js/nota-spese.js?v=55"></script>
+  <script src="js/nota-spese.js?v=58"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
   <script src="js/nota-spese-export.js?v=55"></script>
   <script src="js/servizi-tappa.js?v=58"></script>
@@ -1595,7 +1597,7 @@ function apriNotaSpesaViewerAmm(it) {
   document.getElementById('sc-view-title').textContent =
     (String(it.tipo).toLowerCase() === 'fattura' ? 'Fattura' : 'Scontrino') + ' · trasferta';
   document.getElementById('sc-view-dt1').textContent = 'Voce';
-  document.getElementById('sc-view-luogo').textContent = SRNotaSpese.labelVoce(it);
+  document.getElementById('sc-view-luogo').textContent = SRNotaSpese.labelVoce(it, { includeNote: false });
   document.getElementById('sc-view-dt2').textContent = 'Orario';
   document.getElementById('sc-view-orario').textContent = it.created_at
     ? new Date(it.created_at).toLocaleString('it-IT')
@@ -1603,6 +1605,20 @@ function apriNotaSpesaViewerAmm(it) {
   document.getElementById('sc-view-dt3').classList.remove('hidden');
   document.getElementById('sc-view-importo').classList.remove('hidden');
   document.getElementById('sc-view-importo').textContent = fmtEuroNota(it.importo);
+  const noteDt = document.getElementById('sc-view-dt-note');
+  const noteDd = document.getElementById('sc-view-note');
+  const noteTxt = String(it.categoria || '') !== 'altro' ? String(it.dettaglio || '').trim() : '';
+  if (noteDt && noteDd) {
+    if (noteTxt) {
+      noteDt.classList.remove('hidden');
+      noteDd.classList.remove('hidden');
+      noteDd.textContent = noteTxt;
+    } else {
+      noteDt.classList.add('hidden');
+      noteDd.classList.add('hidden');
+      noteDd.textContent = '—';
+    }
+  }
   const a = document.getElementById('sc-view-download');
   a.innerHTML = SRScontrini.ICO_DOWNLOAD;
   a.href = SRScontrini.downloadUrl(it);
@@ -1646,6 +1662,8 @@ function apriScontrinoViewerAmm(sc) {
     : '—';
   document.getElementById('sc-view-dt3').classList.add('hidden');
   document.getElementById('sc-view-importo').classList.add('hidden');
+  document.getElementById('sc-view-dt-note').classList.add('hidden');
+  document.getElementById('sc-view-note').classList.add('hidden');
   const a = document.getElementById('sc-view-download');
   a.innerHTML = SRScontrini.ICO_DOWNLOAD;
   a.href = SRScontrini.downloadUrl(sc);

@@ -212,6 +212,18 @@
     return 'ns_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
   }
 
+  const DETTAGLIO_MAX = 120;
+
+  function normalizeDettaglio(categoria, raw) {
+    const cat = String(categoria || '').trim();
+    const clipped = String(raw == null ? '' : raw).trim().slice(0, DETTAGLIO_MAX);
+    if (cat === 'altro') {
+      if (!clipped) throw new Error('Specifica di cosa si tratta');
+      return clipped;
+    }
+    return clipped || null;
+  }
+
   function appendNotaSpesa(existingRaw, incoming) {
     const list = parseNotaSpeseJson(existingRaw);
     const tipo = String(incoming.tipo || '').trim().toLowerCase();
@@ -223,22 +235,18 @@
 
     let pasto = incoming.pasto ? String(incoming.pasto).trim() : null;
     let mezzo = incoming.mezzo ? String(incoming.mezzo).trim() : null;
-    let dettaglio = incoming.dettaglio != null ? String(incoming.dettaglio).trim() : null;
+    let dettaglio = normalizeDettaglio(categoria, incoming.dettaglio);
 
     if (categoria === 'cibi_bevande') {
       mezzo = null;
-      dettaglio = null;
       if (!pasto) throw new Error('Pasto obbligatorio');
     } else if (categoria === 'mezzi') {
       pasto = null;
-      dettaglio = null;
       if (!mezzo) throw new Error('Mezzo obbligatorio');
     } else if (categoria === 'altro') {
       pasto = null;
       mezzo = null;
-      if (!dettaglio) throw new Error('Specifica di cosa si tratta');
     } else {
-      // legacy (parcheggio / benzina come categoria)
       if (categoria !== 'cibi_bevande') pasto = null;
     }
 
@@ -329,11 +337,16 @@
     return '';
   }
 
-  function labelVoce(it) {
+  function labelVoce(it, opts) {
     if (!it) return '—';
     const cat = labelCategoria(it.categoria);
     const sub = labelSottotipo(it);
-    return sub ? cat + ' · ' + sub : cat;
+    const parts = [cat];
+    if (sub) parts.push(sub);
+    const includeNote = !opts || opts.includeNote !== false;
+    const note = String(it.dettaglio || '').trim();
+    if (includeNote && note && (it.pasto || it.mezzo)) parts.push(note);
+    return parts.join(' · ');
   }
 
   function tappeStessaTrasferta(rows, trasfertaId) {
@@ -405,6 +418,8 @@
     alertNotaSpeseMancanti,
     GRACE_DAYS_AFTER_END,
     uid,
+    DETTAGLIO_MAX,
+    normalizeDettaglio,
     CATEGORIE,
     PASTI,
     MEZZI,

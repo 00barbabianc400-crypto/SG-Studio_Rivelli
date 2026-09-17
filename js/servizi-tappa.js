@@ -290,6 +290,19 @@
     return firstNonEmpty(tappaNote, precedente, noteGenerali);
   }
 
+  /** Copia File dal DataTransfer prima che il browser lo revochi dopo il drop. */
+  function snapshotFile(file) {
+    if (file == null) return file;
+    if (typeof File === 'undefined') return file;
+    try {
+      const name = file.name || 'allegato';
+      const type = file.type || 'application/octet-stream';
+      return new File([file], name, { type, lastModified: file.lastModified || Date.now() });
+    } catch {
+      return file;
+    }
+  }
+
   global.SRServiziTappa = {
     uidSrv,
     parseCosto,
@@ -305,6 +318,7 @@
     statoServizio,
     mergePagamentoSuServizio,
     noteTappaDaSorgenti,
+    snapshotFile,
     uidAllegato,
     isAllegatoMimeOk,
     isAllegatoExtOk,

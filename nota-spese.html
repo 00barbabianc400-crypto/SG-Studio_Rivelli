@@ -82,9 +82,12 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .choice-label { flex: 1; min-width: 0; }
 .field { margin-bottom: 14px; }
 .field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; margin-bottom: 6px; }
-.field input[type="text"] {
-  width: 100%; border: 1.5px solid var(--border); border-radius: var(--r2); padding: 12px; font: inherit; font-size: 16px;
+.field input[type="text"],
+.field textarea {
+  width: 100%; border: 1.5px solid var(--border); border-radius: var(--r2);
+  padding: 12px; font: inherit; font-size: 16px;
 }
+.field textarea { font-size: 15px; min-height: 72px; resize: vertical; }
 .field-with-ico { display: flex; align-items: flex-start; gap: 12px; }
 .field-with-ico .choice-ico { margin-top: 18px; }
 .field-with-ico .field { flex: 1; margin-bottom: 0; }
@@ -257,6 +260,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
         <dd id="ns-view-cat">—</dd>
         <dt>Importo</dt>
         <dd id="ns-view-importo">—</dd>
+        <dt id="ns-view-note-dt" class="hidden">Note</dt>
+        <dd id="ns-view-note" class="hidden">—</dd>
         <dt>Orario</dt>
         <dd id="ns-view-orario">—</dd>
       </dl>
@@ -274,7 +279,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js?v=37"></script>
-<script src="js/nota-spese.js?v=57"></script>
+<script src="js/nota-spese.js?v=58"></script>
 <script src="js/scontrini.js?v=37"></script>
 <script src="js/auth.js?v=37"></script>
 <script>
@@ -289,6 +294,11 @@ const state = {
   photo: null,
   tappa: null
 };
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 function toast(msg, kind) {
   const el = document.getElementById('toast');
@@ -470,6 +480,12 @@ function renderCompose() {
   const prev = state.photo
     ? '<img class="preview" alt="Anteprima" src="' + state.photo.dataUrl + '">'
     : '<p class="empty">Scatta o scegli una foto dello scontrino/fattura.</p>';
+  const showNote = state.categoria !== 'altro';
+  const noteMax = (SRNotaSpese && SRNotaSpese.DETTAGLIO_MAX) || 120;
+  const noteHtml = showNote
+    ? '<div class="field" style="margin-top:14px"><label for="ns-note">Note <span style="font-weight:500;text-transform:none;color:var(--text-3)">(facoltative)</span></label>'
+      + '<textarea id="ns-note" maxlength="' + noteMax + '" placeholder="es. Pagato con carta personale…"></textarea></div>'
+    : '';
   body.innerHTML =
     '<div class="field-with-ico">'
     + '<span class="choice-ico">' + CHOICE_ICONS.importo + '</span>'
@@ -479,9 +495,16 @@ function renderCompose() {
     + '<div class="photo-actions" style="margin-top:14px">'
     + '<button type="button" class="btn btn-cam btn-with-ico" id="btn-cam">' + CHOICE_ICONS.camera + ' Fotocamera</button>'
     + '<button type="button" class="btn btn-gal btn-with-ico" id="btn-gal">' + CHOICE_ICONS.gallery + ' Galleria</button>'
-    + '</div>' + prev;
+    + '</div>'
+    + noteHtml
+    + prev;
   const inp = document.getElementById('ns-importo');
   inp.addEventListener('input', () => { state.importo = inp.value; });
+  const noteEl = document.getElementById('ns-note');
+  if (noteEl) {
+    noteEl.value = state.dettaglio || '';
+    noteEl.addEventListener('input', () => { state.dettaglio = noteEl.value; });
+  }
   document.getElementById('btn-cam').onclick = () => document.getElementById('file-camera').click();
   document.getElementById('btn-gal').onclick = () => document.getElementById('file-gallery').click();
   inp.focus();
@@ -512,8 +535,8 @@ function renderLista() {
       || ((it.categoria || '') + (it.pasto ? ' · ' + it.pasto : '') + (it.mezzo ? ' · ' + it.mezzo : '') + (it.dettaglio ? ' · ' + it.dettaglio : ''));
     return '<button type="button" class="list-item" data-view-idx="' + i + '" title="Apri giustificativo">'
       + '<span class="choice-ico" style="width:34px;height:34px;border-radius:9px">' + catIco + '</span>'
-      + '<span class="list-item-main">' + (it.tipo || '') + ' · ' + voce + '</span>'
-      + '<strong class="list-item-amt">€ ' + euro + '</strong>'
+      + '<span class="list-item-main">' + esc(it.tipo || '') + ' · ' + esc(voce) + '</span>'
+      + '<strong class="list-item-amt">€ ' + esc(euro) + '</strong>'
       + '<span class="list-item-info">' + ICO_INFO + '</span>'
       + '</button>';
   }).join('');
@@ -530,9 +553,23 @@ function apriNotaViewer(it) {
   img.src = SRScontrini.thumbnailUrl(it);
   const tipo = String(it.tipo || '').toLowerCase() === 'fattura' ? 'Fattura' : 'Scontrino';
   document.getElementById('ns-view-title').textContent = tipo;
-  document.getElementById('ns-view-cat').textContent = SRNotaSpese.labelVoce(it);
+  document.getElementById('ns-view-cat').textContent = SRNotaSpese.labelVoce(it, { includeNote: false });
   document.getElementById('ns-view-importo').textContent =
     '€ ' + Number(it.importo).toFixed(2).replace('.', ',');
+  const noteDt = document.getElementById('ns-view-note-dt');
+  const noteDd = document.getElementById('ns-view-note');
+  const noteTxt = String(it.categoria || '') !== 'altro' ? String(it.dettaglio || '').trim() : '';
+  if (noteDt && noteDd) {
+    if (noteTxt) {
+      noteDt.classList.remove('hidden');
+      noteDd.classList.remove('hidden');
+      noteDd.textContent = noteTxt;
+    } else {
+      noteDt.classList.add('hidden');
+      noteDd.classList.add('hidden');
+      noteDd.textContent = '—';
+    }
+  }
   document.getElementById('ns-view-orario').textContent = it.created_at
     ? new Date(it.created_at).toLocaleString('it-IT')
     : '—';
@@ -611,7 +648,9 @@ async function salva() {
       categoria: state.categoria,
       pasto: state.pasto,
       mezzo: state.mezzo,
-      dettaglio: state.dettaglio,
+      dettaglio: state.categoria === 'altro'
+        ? state.dettaglio
+        : SRNotaSpese.normalizeDettaglio(state.categoria, state.dettaglio),
       importo: state.importo,
       foto_url: up.url,
       foto_id: up.fileId,
