@@ -65,21 +65,127 @@
 
   const servizioNomi = {
     hotel: 'Hotel', aereo: 'Aereo', treno: 'Treno', noleggio: 'Noleggio auto',
-    parcheggio: 'Parcheggio', auto_az: 'Auto aziendale', bus: 'Bus', moto: 'Moto'
+    parcheggio: 'Parcheggio', auto_az: 'Auto aziendale', bus: 'Bus', moto: 'Moto',
+    spostamento: 'Spostamento'
   };
+
+  const FIELD_LABELS = {
+    nome: 'Struttura',
+    notti: 'Notti',
+    tratta: 'Tratta',
+    ritiro: 'Ritiro',
+    restituzione: 'Restituzione',
+    luogo: 'Luogo',
+    costo: 'Costo',
+    costo_servizio: 'Costo',
+    stato: 'Stato',
+    metodo_pagamento: 'Pagamento',
+    valore_voucher: 'Voucher',
+    metodo_pagamento_differenza: 'Pagamento differenza',
+    differenza_pagamento: 'Differenza',
+    giornate_da: 'Dal',
+    giornate_a: 'Al',
+    prenotato: 'Prenotato'
+  };
+
+  const STATO_LABELS = {
+    da_prenotare: 'Da prenotare',
+    prenotato: 'Prenotato',
+    acquistato: 'Acquistato',
+    da_richiedere: 'Da richiedere',
+    confermato: 'Confermato'
+  };
+
+  const METODO_LABELS = {
+    carta_aziendale: 'Carta aziendale',
+    voucher: 'Voucher',
+    carta_credito: 'Carta di credito',
+    bonifico: 'Bonifico',
+    conto_corrente: 'Conto corrente'
+  };
+
+  function prettyVal(key, v) {
+    if (v == null || v === '') return '';
+    if (typeof v === 'boolean') return v ? 'Sì' : 'No';
+    const s = String(v).trim();
+    if (!s) return '';
+    if (key === 'stato') return STATO_LABELS[s] || s.replace(/_/g, ' ');
+    if (key === 'metodo_pagamento' || key === 'metodo_pagamento_differenza') {
+      return METODO_LABELS[s] || s.replace(/_/g, ' ');
+    }
+    if (key === 'giornate_da' || key === 'giornate_a') return formatDate(s);
+    if (key === 'prenotato') return s === 'true' || s === '1' ? 'Sì' : s;
+    return s;
+  }
+
+  function flattenServizio(s) {
+    const po = s.prenotazione_operatrice && typeof s.prenotazione_operatrice === 'object'
+      ? s.prenotazione_operatrice
+      : {};
+    const out = { ...s };
+    ['metodo_pagamento', 'valore_voucher', 'metodo_pagamento_differenza', 'differenza_pagamento',
+      'giornate_da', 'giornate_a', 'costo_servizio'].forEach(k => {
+      if (out[k] == null || out[k] === '') {
+        if (po[k] != null && po[k] !== '') out[k] = po[k];
+      }
+    });
+    if (!out.costo && po.costo_servizio) out.costo = po.costo_servizio;
+    return out;
+  }
+
+  const SKIP_KEYS = {
+    id: 1, tipo: 1, prenotazione_operatrice: 1, allegati: 1, mezzo_viaggio: 1
+  };
+
+  const FIELD_ORDER = [
+    'nome', 'notti', 'tratta', 'ritiro', 'restituzione', 'luogo',
+    'giornate_da', 'giornate_a', 'costo', 'costo_servizio',
+    'metodo_pagamento', 'valore_voucher', 'metodo_pagamento_differenza',
+    'differenza_pagamento', 'stato'
+  ];
 
   function renderServizi(servizi) {
     const list = normalizeServizi(servizi);
     if (!list.length) return '';
-    return list.map(s => {
-      const nome = servizioNomi[s.tipo] || s.tipo;
-      const stato = s.stato ? String(s.stato).replace(/_/g, ' ') : '';
-      const tratta = s.tratta ? ' · ' + s.tratta : '';
-      return '<div style="font-size:12px;color:#4a6180;margin:2px 0;">• '
-        + esc(nome) + (tratta ? esc(tratta) : '')
-        + (stato ? ' <em>(' + esc(stato) + ')</em>' : '')
-        + '</div>';
+    const cards = list.map(raw => {
+      const s = flattenServizio(raw);
+      const titolo = servizioNomi[s.tipo] || s.tipo;
+      const keys = FIELD_ORDER.filter(k => {
+        if (SKIP_KEYS[k]) return false;
+        if (k === 'costo_servizio' && s.costo) return false;
+        const val = prettyVal(k, s[k]);
+        return !!val;
+      });
+      Object.keys(s).forEach(k => {
+        if (SKIP_KEYS[k] || FIELD_ORDER.indexOf(k) >= 0) return;
+        if (typeof s[k] === 'object') return;
+        if (prettyVal(k, s[k])) keys.push(k);
+      });
+      const nAll = Array.isArray(raw.allegati) ? raw.allegati.length : 0;
+      const rows = keys.map(k => {
+        const label = FIELD_LABELS[k] || k.replace(/_/g, ' ');
+        return '<tr><td style="padding:3px 10px 3px 0;font-size:12px;color:#6b7280;white-space:nowrap;vertical-align:top;">'
+          + esc(label) + '</td><td style="padding:3px 0;font-size:13px;color:#111827;font-weight:500;">'
+          + esc(prettyVal(k, s[k])) + '</td></tr>';
+      }).join('');
+      const extra = nAll
+        ? '<tr><td style="padding:3px 10px 3px 0;font-size:12px;color:#6b7280;">Allegati</td>'
+          + '<td style="padding:3px 0;font-size:13px;color:#111827;">' + nAll + '</td></tr>'
+        : '';
+      return '<table width="100%" cellpadding="0" cellspacing="0" style="margin:10px 0 0;background:#f8fafc;border:1px solid #e8f0fe;border-radius:8px;">'
+        + '<tr><td style="padding:10px 12px;">'
+        + '<div style="font-size:13px;font-weight:700;color:#1e4fa3;margin:0 0 6px;">' + esc(titolo) + '</div>'
+        + '<table cellpadding="0" cellspacing="0">' + rows + extra + '</table>'
+        + '</td></tr></table>';
     }).join('');
+    return '<div style="margin-top:10px;"><div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;">Servizi prenotati</div>'
+      + cards + '</div>';
+  }
+
+  function ciaoNome(nome) {
+    const first = String(nome || '').split(/\s+[–—]\s+/)[0].trim();
+    const word = first.split(/\s+/)[0] || first;
+    return word || 'ciao';
   }
 
   function build(opts) {
@@ -125,7 +231,7 @@
       + '<div style="font-size:11px;letter-spacing:0.4px;text-transform:uppercase;opacity:.85;">Studio Rivelli</div>'
       + '<h1 style="margin:6px 0 0;font-size:22px;">La tua trasferta è stata preparata</h1>'
       + '</td></tr><tr><td style="padding:24px;">'
-      + '<p style="font-size:15px;line-height:1.5;margin:0 0 16px;">Ciao ' + esc(nome.split(' ')[0] || nome)
+      + '<p style="font-size:15px;line-height:1.5;margin:0 0 16px;">Ciao ' + esc(ciaoNome(nome))
       + ', l\'organizzazione ha salvato l\'itinerario. Controlla tappe e servizi qui sotto.</p>'
       + '<div style="font-size:12px;color:#6b7280;margin-bottom:16px;">ID <strong style="color:#111827;font-family:Consolas,monospace;">'
       + esc(trasferta_id) + '</strong> · ' + esc(nPart === 1 ? '1 partecipante' : nPart + ' partecipanti') + '</div>'
