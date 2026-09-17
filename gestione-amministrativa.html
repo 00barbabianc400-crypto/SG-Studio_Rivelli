@@ -553,6 +553,11 @@ body {
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8.2 16.2c3.5-2.5 4.1-7.5 7.8-10.2"/></svg>
           Trasferta / tappa
         </span>
+        <span class="legend-item">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16l1.5-6h11L19 16"/><path d="M4 16h16v2a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H10a2 2 0 0 1-4 0H5a1 1 0 0 1-1-1v-2z"/><path d="M7.5 10l1-3h7l1 3"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8.2 16.2c3.5-2.5 4.1-7.5 7.8-10.2"/></svg>
+          Macchina / trasferta
+        </span>
       </div>
       <div class="year-nav">
         <h2 id="year-label">—</h2>
@@ -621,6 +626,7 @@ body {
   <script src="assets/vendor/exceljs.min.js"></script>
   <script src="js/nota-spese-export.js?v=55"></script>
   <script src="js/servizi-tappa.js?v=58"></script>
+  <script src="js/slot-auto-trasferta.js?v=75"></script>
 <script>
 const WEBHOOK = SR_CONFIG.WEBHOOK_GESTIONE_AMMINISTRATIVA;
 const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
@@ -832,18 +838,22 @@ function toCalEventsTrasferte(tappe) {
       person: first.nome_persona,
       label: cognomeOperatore(first.nome_persona),
       raw: first,
+      tappe: sorted,
       tappeCount: sorted.length,
-      cities
+      cities,
+      hasAutoAz: typeof SRSlotAutoTrasferta !== 'undefined'
+        && sorted.some(t => SRSlotAutoTrasferta.tappaHasAutoAz(t))
     };
   });
   return [...grouped, ...orphans.map(toCalEventTappa)];
 }
 
 function rebuildCalendarEvents() {
-  calendarEvents = [
-    ...filteredMacchina.map(toCalEventMacchina),
-    ...toCalEventsTrasferte(filteredTappe)
-  ];
+  const macchina = filteredMacchina.map(toCalEventMacchina);
+  const trasferte = toCalEventsTrasferte(filteredTappe);
+  calendarEvents = (typeof SRSlotAutoTrasferta !== 'undefined')
+    ? SRSlotAutoTrasferta.mergeCalendarEvents(macchina, trasferte)
+    : [...macchina, ...trasferte];
 }
 
 function cognomeOperatore(name) {
@@ -1054,11 +1064,13 @@ function renderMonthCalendar(month) {
       const top = lane * (barH + barGap);
       const col = colorPerson(ev.person);
       const rCls = (seg.roundL ? ' round-l' : '') + (seg.roundR ? ' round-r' : '');
-      const ico = ev.kind === 'macchina' ? ICON_CAR : ICON_ROUTE;
+      const ico = ev.kind === 'macchina'
+        ? ICON_CAR
+        : (ev.kind === 'macchina_trasferta' ? ICON_CAR + ICON_ROUTE : ICON_ROUTE);
       let tip;
       if (ev.kind === 'macchina') {
         tip = ev.person + ' · ' + (pickCliente(ev.raw) || '—');
-      } else if (ev.kind === 'trasferta') {
+      } else if (ev.kind === 'macchina_trasferta' || ev.kind === 'trasferta') {
         const n = ev.tappeCount || 1;
         tip = ev.person + ' · ' + n + (n === 1 ? ' tappa' : ' tappe')
           + (ev.cities && ev.cities.length ? ' · ' + ev.cities.join(' → ') : '');
@@ -1078,8 +1090,8 @@ function renderMonthCalendar(month) {
   wrap.querySelectorAll('.oc-bar').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
-      if (btn.dataset.kind === 'tappa' || btn.dataset.kind === 'trasferta') apriDettaglioTappa(btn.dataset.id);
-      else apriDettaglioMacchina(btn.dataset.id);
+      if (btn.dataset.kind === 'macchina') apriDettaglioMacchina(btn.dataset.id);
+      else apriDettaglioTappa(btn.dataset.id);
     });
   });
 }
@@ -1412,6 +1424,7 @@ function renderOrganizzazioneTappa(t) {
 }
 
 function fmtEuroNota(n) {
+  if (n == null || n === '') return '—';
   const v = Number(n);
   if (!Number.isFinite(v)) return '—';
   return v.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
@@ -1430,7 +1443,13 @@ function renderNotaItemChip(it, flatIdx) {
 function renderScontriniTrasfertaBoard(tappe) {
   const flat = [];
   const cols = tappe.map(t => {
-    const notes = SRNotaSpese.parseNotaSpeseJson(t.nota_spese_json);
+    const notesRaw = SRNotaSpese.parseNotaSpeseJson(t.nota_spese_json);
+    const benzinaAuto = (typeof SRSlotAutoTrasferta !== 'undefined')
+      ? SRSlotAutoTrasferta.scontriniAutoAsNotaBenzina(t, rawPrenotazioni)
+      : [];
+    const notes = (typeof SRSlotAutoTrasferta !== 'undefined')
+      ? SRSlotAutoTrasferta.mergeNotaConBenzinaAuto(notesRaw, benzinaAuto)
+      : notesRaw;
     const byCat = SRNotaSpese.groupByCategoria(notes);
     const catKeys = Object.keys(byCat).sort((a, b) =>
       SRNotaSpese.labelCategoria(a).localeCompare(SRNotaSpese.labelCategoria(b), 'it'));
@@ -1561,7 +1580,15 @@ function renderDettaglioTappaBody() {
     const btn = document.getElementById('btn-export-ns');
     if (btn) btn.disabled = true;
     try {
-      const rows = detailTappaCtx.siblings.length ? detailTappaCtx.siblings : [detailTappaCtx.tappa];
+      const base = detailTappaCtx.siblings.length ? detailTappaCtx.siblings : [detailTappaCtx.tappa];
+      const rows = base.map(t => {
+        if (typeof SRSlotAutoTrasferta === 'undefined') return t;
+        const notes = SRSlotAutoTrasferta.mergeNotaConBenzinaAuto(
+          SRNotaSpese.parseNotaSpeseJson(t.nota_spese_json),
+          SRSlotAutoTrasferta.scontriniAutoAsNotaBenzina(t, rawPrenotazioni)
+        );
+        return { ...t, nota_spese_json: JSON.stringify(notes) };
+      });
       await SRNotaSpeseExport.downloadTransazioniExcel(rows);
     } catch (e) {
       console.error('export transazioni:', e);

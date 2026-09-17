@@ -459,6 +459,39 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   }
   .oc-cal { min-width: min(100%, 340px); }
 }
+
+.slot-alert-overlay {
+  position: fixed; inset: 0; z-index: 4000;
+  background: rgba(10, 22, 40, .55);
+  display: none; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.slot-alert-overlay.is-open { display: flex; }
+.slot-alert-modal {
+  width: min(440px, 100%); background: #fff; border-radius: 16px;
+  border: 1px solid #fed7aa; box-shadow: 0 8px 30px rgba(17, 24, 39, 0.08), 0 2px 8px rgba(17, 24, 39, 0.04);
+  padding: 28px 24px 22px; text-align: center;
+}
+.slot-alert-x {
+  width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%;
+  background: #fff7ed; border: 2px solid #fb923c;
+  display: flex; align-items: center; justify-content: center;
+  color: #ea580c; font-size: 36px; font-weight: 800; line-height: 1;
+}
+.slot-alert-title {
+  font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700;
+  color: #9a3412; margin-bottom: 10px;
+}
+.slot-alert-body {
+  font-size: 14px; color: var(--text-2); line-height: 1.5; margin-bottom: 20px; text-align: left;
+}
+.slot-alert-body strong { color: var(--text); }
+.slot-alert-btn {
+  width: 100%; padding: 12px 16px; border-radius: 12px; border: none;
+  background: #ea580c; color: #fff; font-family: inherit; font-size: 15px;
+  font-weight: 600; cursor: pointer;
+}
+.slot-alert-btn:hover { background: #c2410c; }
 </style>
 </head>
 <body>
@@ -730,11 +763,22 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
 <div class="toast" id="toast"></div>
 
+<div class="slot-alert-overlay" id="slot-alert-overlay" aria-hidden="true">
+  <div class="slot-alert-modal" role="dialog" aria-modal="true" aria-labelledby="slot-alert-title">
+    <div class="slot-alert-x" aria-hidden="true">!</div>
+    <h2 class="slot-alert-title" id="slot-alert-title">Slot riservato</h2>
+    <p class="slot-alert-body" id="slot-alert-body"></p>
+    <button type="button" class="slot-alert-btn" id="slot-alert-chiudi">Ho capito</button>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/scontrini.js"></script>
 <script src="js/prenotazione-auto.js?v=1"></script>
+<script src="js/servizi-tappa.js?v=75"></script>
+<script src="js/slot-auto-trasferta.js?v=75"></script>
 <script>
 const WEBHOOK_CRUD = SR_CONFIG.WEBHOOK_CRUD;
 const WEBHOOK_RICHIESTA = SR_CONFIG.WEBHOOK_RICHIESTA;
@@ -889,6 +933,28 @@ function trovaConflitto(dataDa, dataA, excludeId) {
     if (excludeId && Number(p.id) === Number(excludeId)) return false;
     return rangesOverlap(dataDa, dataA, p.data_da, p.data_a);
   }) || null;
+}
+
+function trovaSlotRiservato(dataDa, dataA, operatore) {
+  const Slot = window.SRSlotAutoTrasferta;
+  if (!Slot || !SRAuth.getSlotAutoAz) return null;
+  const email = (SRAuth.getUser() && SRAuth.getUser().email) || '';
+  return Slot.findReservedSlot(SRAuth.getSlotAutoAz(), {
+    data_da: dataDa,
+    data_a: dataA,
+    operatore: operatore,
+    email: email
+  });
+}
+
+function apriSlotRiservatoModal(tappa) {
+  const copy = SRSlotAutoTrasferta.reservedPopupCopy(tappa);
+  document.getElementById('slot-alert-body').innerHTML =
+    'Questo slot è riservato alla trasferta di <strong>' + esc(copy.driver) + '</strong>'
+    + ' · cliente <strong>' + esc(copy.cliente) + '</strong>.';
+  const ov = document.getElementById('slot-alert-overlay');
+  ov.classList.add('is-open');
+  ov.setAttribute('aria-hidden', 'false');
 }
 
 function popolaSelectOperatori() {
@@ -1666,6 +1732,11 @@ async function inviaPrenotazione() {
 
   const data_da = rangeStart;
   const data_a = rangeEnd;
+  const riservato = trovaSlotRiservato(data_da, data_a, operatore);
+  if (riservato) {
+    apriSlotRiservatoModal(riservato);
+    return;
+  }
   const conflitto = trovaConflitto(data_da, data_a);
   if (conflitto) {
     apriConflictModal(conflitto, { operatore, tipo_utilizzo, data_da, data_a, note, numero_trasferta: numTr.value });
@@ -1755,6 +1826,11 @@ async function salvaEdit() {
   if (data_a < data_da) return showToast('La data fine non può precedere la data inizio', 'warn');
 
   const payload = { action: 'update', id, operatore, tipo_utilizzo, data_da, data_a, note, numero_trasferta: numTr.value };
+  const riservato = trovaSlotRiservato(payload.data_da, payload.data_a, operatore);
+  if (riservato) {
+    apriSlotRiservatoModal(riservato);
+    return;
+  }
   const conflitto = trovaConflitto(payload.data_da, payload.data_a, id);
   if (conflitto) return showToast('Conflitto con ' + conflitto.operatore, 'warn');
 
@@ -1802,6 +1878,11 @@ document.getElementById('edit-tipo').addEventListener('change', () => {
   syncWrapNumeroTrasferta('edit-tipo', 'edit-num-trasferta-wrap');
 });
 document.getElementById('conflict-chiudi').addEventListener('click', () => document.getElementById('conflict-backdrop').classList.remove('open'));
+document.getElementById('slot-alert-chiudi').addEventListener('click', () => {
+  const ov = document.getElementById('slot-alert-overlay');
+  ov.classList.remove('is-open');
+  ov.setAttribute('aria-hidden', 'true');
+});
 document.getElementById('btn-richiedi-modifica').addEventListener('click', richiediModifica);
 document.getElementById('tim-prev').addEventListener('click', () => {
   timMonth--;

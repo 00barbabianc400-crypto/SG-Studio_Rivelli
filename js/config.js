@@ -41,6 +41,7 @@ window.SR_CONFIG = {
   TOKEN_EXP_KEY: 'sr_jwt_exp',
   USER_KEY: 'sr_user',
   TRASFERTE_KEY: 'sr_trasferte_tappe',
+  SLOT_AUTO_KEY: 'sr_slot_auto_az',
   RATE_KEY: 'sr_auth_rate',
 
   GOOGLE_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxbiATbcWjYVCKRQsM4mBGCv8r9bvvgaS-9QNaummPYkYz7wwur7-WsKZimPIGSRLRFkg/exec'

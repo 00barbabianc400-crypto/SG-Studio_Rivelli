@@ -103,6 +103,7 @@
     sessionStorage.removeItem(C.TOKEN_EXP_KEY || 'sr_jwt_exp');
     sessionStorage.removeItem(C.USER_KEY || 'sr_user');
     sessionStorage.removeItem(C.TRASFERTE_KEY || 'sr_trasferte_tappe');
+    sessionStorage.removeItem(C.SLOT_AUTO_KEY || 'sr_slot_auto_az');
     if (global.SRPush && typeof global.SRPush.clearServerState === 'function') {
       global.SRPush.clearServerState();
     }
@@ -147,6 +148,10 @@
       C.TRASFERTE_KEY || 'sr_trasferte_tappe',
       JSON.stringify(Array.isArray(data.tappe) ? data.tappe : [])
     );
+    sessionStorage.setItem(
+      C.SLOT_AUTO_KEY || 'sr_slot_auto_az',
+      JSON.stringify(Array.isArray(data.slot_auto_az) ? data.slot_auto_az : [])
+    );
   }
 
   function getTrasferteTappe() {
@@ -157,6 +162,19 @@
     } catch {
       return [];
     }
+  }
+
+  function getSlotAutoAz() {
+    try {
+      const raw = sessionStorage.getItem(C.SLOT_AUTO_KEY || 'sr_slot_auto_az');
+      const list = raw ? JSON.parse(raw) : [];
+      const fromAuth = Array.isArray(list) ? list : [];
+      if (fromAuth.length) return fromAuth;
+    } catch { /* cache vuota */ }
+    const Slot = global.SRSlotAutoTrasferta;
+    const tappe = getTrasferteTappe();
+    if (!Slot || typeof Slot.tappaHasAutoAz !== 'function') return tappe;
+    return tappe.filter(Slot.tappaHasAutoAz);
   }
 
   function setTrasferteTappe(rows) {
@@ -502,6 +520,7 @@
     getUser,
     getRole,
     getTrasferteTappe,
+    getSlotAutoAz,
     setTrasferteTappe,
     updateTappaNotaSpese,
     canAccessHubApp,
