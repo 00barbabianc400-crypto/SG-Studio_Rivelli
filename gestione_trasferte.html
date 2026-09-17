@@ -104,6 +104,55 @@
   .nt-piano-item:first-of-type { border-top: none; padding-top: 0; }
   .nt-piano-meta { font-size: 12px; color: var(--gray-600); margin-top: 2px; }
   .nt-piano-empty { font-size: 13px; color: var(--gray-600); }
+  .nt-piano-exp {
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    background: var(--white);
+    padding: 0;
+  }
+  .nt-piano-exp > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 10px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--blue-mid);
+    text-transform: uppercase;
+    letter-spacing: .2px;
+  }
+  .nt-piano-exp > summary::-webkit-details-marker { display: none; }
+  .nt-piano-exp > summary::after { content: ' ▾'; font-weight: 500; }
+  .nt-piano-exp:not([open]) > summary::after { content: ' ▸'; }
+  .nt-piano-exp-body { padding: 0 12px 12px; overflow-x: auto; }
+  .nt-piano-trip { margin-top: 12px; }
+  .nt-piano-trip h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: 6px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .nt-piano-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .nt-piano-table th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--blue-mid);
+    border-bottom: 1px solid var(--gray-200);
+    padding: 6px 8px;
+    white-space: nowrap;
+  }
+  .nt-piano-table td {
+    border-bottom: 1px solid var(--gray-200);
+    padding: 6px 8px;
+    vertical-align: top;
+    color: var(--gray-800);
+  }
+  .nt-piano-unmatched { font-size: 12px; color: var(--gray-600); margin-top: 10px; }
   .btn {
     padding: 11px 22px; border-radius: var(--radius); font-family: inherit; font-size: 14px;
     font-weight: 500; cursor: pointer; border: none; transition: all 0.18s;
@@ -389,6 +438,140 @@
   #fase-dettaglio.modal-overlay,
   #nt-panel.modal-overlay {
     z-index: 1900; align-items: flex-start; justify-content: center; padding: 16px;
+    position: fixed;
+  }
+  #nt-panel .nt-shell {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 12px;
+    width: min(1100px, calc(100vw - 28px));
+    max-height: min(94vh, 980px);
+  }
+  #nt-panel .nt-shell.has-segui {
+    width: min(1480px, calc(100vw - 28px));
+  }
+  #nt-panel .nt-shell > .modal-edit-tr {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-height: none;
+    height: 100%;
+  }
+  #nt-segui {
+    display: none;
+    flex-direction: column;
+    width: min(380px, 42vw);
+    flex: 0 0 min(380px, 42vw);
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    min-height: 0;
+  }
+  #nt-segui.show { display: flex; }
+  #nt-segui-head {
+    flex-shrink: 0;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--gray-200);
+    background: var(--blue-pale);
+  }
+  #nt-segui-head strong {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--blue-mid);
+  }
+  #nt-segui-head span {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--gray-600);
+  }
+  #nt-segui-body {
+    flex: 1;
+    overflow: auto;
+    padding: 12px 14px 16px;
+    background: var(--gray-100);
+  }
+  .nt-rilevate {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    background: rgba(10, 22, 40, 0.4);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .nt-rilevate.show { display: flex !important; }
+  .nt-rilevate-card {
+    width: min(640px, 100%);
+    max-height: min(82vh, 720px);
+    background: var(--white);
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--gray-200);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .nt-rilevate-card header {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--gray-200);
+  }
+  .nt-rilevate-card header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 650;
+    color: var(--gray-800);
+  }
+  .nt-rilevate-card header p {
+    margin: 6px 0 0;
+    font-size: 13px;
+    color: var(--gray-600);
+  }
+  .nt-rilevate-list {
+    overflow: auto;
+    flex: 1;
+    padding: 8px;
+  }
+  .nt-ril-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid transparent;
+  }
+  .nt-ril-row:hover { background: var(--gray-100); }
+  .nt-ril-row .nt-ril-copy { flex: 1; min-width: 0; }
+  .nt-ril-row .nt-ril-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-800);
+  }
+  .nt-ril-row .nt-ril-meta {
+    margin-top: 3px;
+    font-size: 12px;
+    color: var(--gray-600);
+  }
+  .nt-ril-row .btn { flex-shrink: 0; padding: 8px 14px; font-size: 13px; border-radius: 12px; }
+  .nt-rilevate-foot {
+    padding: 12px 16px 16px;
+    border-top: 1px solid var(--gray-200);
+    display: flex;
+    justify-content: flex-end;
+  }
+  @media (max-width: 900px) {
+    #nt-panel .nt-shell,
+    #nt-panel .nt-shell.has-segui { flex-direction: column; width: min(1100px, calc(100vw - 28px)); }
+    #nt-segui, #nt-segui.show {
+      width: 100%;
+      flex: 0 0 auto;
+      max-height: 36vh;
+    }
   }
   #fase-dettaglio.modal-overlay.show,
   #nt-panel.modal-overlay.show { display: flex; }
@@ -533,6 +716,19 @@
 
 <!-- Modale nuova trasferta (overlay, non spinge l'elenco) -->
 <div class="modal-overlay" id="nt-panel" aria-hidden="true">
+  <div class="nt-rilevate" id="nt-rilevate" hidden>
+    <div class="nt-rilevate-card" role="dialog" aria-modal="true" aria-labelledby="nt-rilevate-title">
+      <header>
+        <h3 id="nt-rilevate-title">Trasferte con macchina già prenotata</h3>
+        <p>Qualcuno ha già prenotato l’auto. Puoi seguire quella trasferta (diventi il leader in anagrafica) oppure continuare a crearne una nuova.</p>
+      </header>
+      <div class="nt-rilevate-list" id="nt-rilevate-list"></div>
+      <div class="nt-rilevate-foot">
+        <button type="button" class="btn btn-secondary" onclick="ntChiudiRilevate()">Continua senza seguire</button>
+      </div>
+    </div>
+  </div>
+  <div class="nt-shell" id="nt-shell">
   <div class="modal-edit-tr" role="dialog" aria-modal="true" aria-labelledby="nt-title">
     <div class="modal-edit-tr-head">
       <h2 id="nt-title">Nuova trasferta</h2>
@@ -566,7 +762,6 @@
               </div>
             </div>
             <div class="date-order-hint" id="nt-anagrafica-date-hint"></div>
-            <div class="nt-piano-box" id="nt-piano-collegato" hidden></div>
           </div>
           <div style="margin-bottom:20px">
             <div style="font-size:12px;font-weight:600;color:var(--blue-mid);text-transform:uppercase;letter-spacing:.2px;margin-bottom:12px">📍 Itinerario — Tappe</div>
@@ -584,6 +779,11 @@
       <button class="btn btn-secondary" onclick="ntReset()">🔄 Azzera</button>
       <button class="btn btn-primary" id="nt-btn-invia" onclick="ntInviaDati()">💾 Salva trasferta</button>
     </div>
+  </div>
+  <aside id="nt-segui" aria-label="Dati trasferta seguita">
+    <div id="nt-segui-head"></div>
+    <div id="nt-segui-body"></div>
+  </aside>
   </div>
 </div>
 
@@ -3374,6 +3574,7 @@ async function ntInviaDati() {
 let ntContestoCache = null;
 let ntContestoPromise = null;
 let ntContestoGen = 0;
+let ntRilevateItems = [];
 
 function ntReset() {
   ntUid = 0;
@@ -3388,62 +3589,113 @@ function ntReset() {
   document.getElementById('nt-data-fine').value = '';
   document.getElementById('nt-note-generali').value = '';
   document.getElementById('nt-tappe-container').innerHTML = '';
-  ntRenderPianoCollegato(null);
+  ntNascondiSegui();
   ntAddTappa();
 }
 
-function ntRenderPianoCollegato(row) {
-  const box = document.getElementById('nt-piano-collegato');
-  if (!box) return;
-  if (!row) {
-    box.hidden = true;
-    box.innerHTML = '';
+function ntChiudiRilevate() {
+  const el = document.getElementById('nt-rilevate');
+  if (!el) return;
+  el.classList.remove('show');
+  el.hidden = true;
+}
+
+function ntMostraRilevate() {
+  const wrap = document.getElementById('nt-rilevate');
+  const list = document.getElementById('nt-rilevate-list');
+  if (!wrap || !list) return;
+  ntRilevateItems = SRDipendenti.listaTrasferteRilevate(ntContestoCache);
+  if (!ntRilevateItems.length) {
+    ntChiudiRilevate();
     return;
   }
-  const excel = Array.isArray(row.excel) ? row.excel : [];
-  const pren = (Array.isArray(row.prenotazioni) ? row.prenotazioni : [])
-    .filter(p => SRDipendenti.prenotazioneDaOggi(p));
-  const parts = [];
-  excel.forEach(r => {
-    const n = r.numero_trasferta != null && r.numero_trasferta !== '' ? 'N. ' + r.numero_trasferta : 'Excel';
-    const titolo = [n, r.attivita_luogo, r.mese].filter(Boolean).join(' · ');
-    const meta = [
+  list.innerHTML = ntRilevateItems.map((r, i) => {
+    const when = [r.data_da, r.data_a && r.data_a !== r.data_da ? '→ ' + r.data_a : ''].filter(Boolean).join(' ');
+    const n = r.numero_trasferta ? 'N. ' + r.numero_trasferta : '';
+    const mezzo = r.excel && r.excel[0] && r.excel[0].mezzo ? r.excel[0].mezzo : '';
+    const meta = [n, when, r.note, mezzo].filter(Boolean).join(' · ');
+    return '<div class="nt-ril-row"><div class="nt-ril-copy"><div class="nt-ril-name">' + esc(r.nome) + '</div>' +
+      '<div class="nt-ril-meta">' + esc(meta || 'Prenotazione auto') + '</div></div>' +
+      '<button type="button" class="btn btn-primary" onclick="ntSeguiTrasferta(' + i + ')">Segui trasferta</button></div>';
+  }).join('');
+  wrap.hidden = false;
+  wrap.removeAttribute('hidden');
+  wrap.classList.add('show');
+}
+
+function ntHtmlExcelTable(rows) {
+  const cols = ['Trasferta', 'Data', 'Mese', 'Attività / Luogo', 'Driver', 'Mezzo', 'Note', 'Ora'];
+  const thead = '<thead><tr>' + cols.map(c => '<th>' + esc(c) + '</th>').join('') + '</tr></thead>';
+  const body = (rows || []).map(r => {
+    const cells = [
+      r.numero_trasferta,
+      r.data,
+      r.mese,
+      r.attivita_luogo,
       (r.driver || []).join(', '),
       r.mezzo,
-      r.ora,
-      r.note
-    ].filter(Boolean).join(' · ');
-    parts.push(
-      '<div class="nt-piano-item"><div>' + esc(titolo || 'Riga Excel') + '</div>' +
-      (meta ? '<div class="nt-piano-meta">' + esc(meta) + '</div>' : '') +
-      '</div>'
-    );
-  });
-  pren.forEach(p => {
-    const n = p.numero_trasferta ? 'N. ' + p.numero_trasferta : '';
-    const titolo = [p.tipo_utilizzo || 'Prenotazione auto', n].filter(Boolean).join(' · ');
-    const meta = [p.data_da, p.data_a && p.data_a !== p.data_da ? '→ ' + p.data_a : '', p.note]
-      .filter(Boolean).join(' ');
-    parts.push(
-      '<div class="nt-piano-item"><div>' + esc(titolo) + '</div>' +
-      (meta ? '<div class="nt-piano-meta">' + esc(meta) + '</div>' : '') +
-      '</div>'
-    );
-  });
-  box.innerHTML = '<div class="nt-piano-kicker">Piano Excel / auto collegati</div>' +
-    (parts.length ? parts.join('') : '<div class="nt-piano-empty">Nessuna trasferta Excel né prenotazione auto da oggi per questo dipendente.</div>');
-  box.hidden = false;
+      r.note,
+      r.ora
+    ];
+    return '<tr>' + cells.map(c => '<td>' + esc(c == null ? '' : c) + '</td>').join('') + '</tr>';
+  }).join('');
+  return '<table class="nt-piano-table">' + thead + '<tbody>' + body + '</tbody></table>';
+}
+
+function ntNascondiSegui() {
+  const shell = document.getElementById('nt-shell');
+  const aside = document.getElementById('nt-segui');
+  if (shell) shell.classList.remove('has-segui');
+  if (aside) {
+    aside.classList.remove('show');
+    const head = document.getElementById('nt-segui-head');
+    const body = document.getElementById('nt-segui-body');
+    if (head) head.innerHTML = '';
+    if (body) body.innerHTML = '';
+  }
+}
+
+function ntRenderSeguiPanel(item) {
+  const shell = document.getElementById('nt-shell');
+  const aside = document.getElementById('nt-segui');
+  const head = document.getElementById('nt-segui-head');
+  const body = document.getElementById('nt-segui-body');
+  if (!shell || !aside || !head || !body || !item) return;
+  const n = item.numero_trasferta ? 'N. ' + item.numero_trasferta : 'Trasferta';
+  const when = [item.data_da, item.data_a && item.data_a !== item.data_da ? '→ ' + item.data_a : ''].filter(Boolean).join(' ');
+  head.innerHTML = '<strong>' + esc(n) + ' · ' + esc(item.nome) + '</strong><span>' +
+    esc([when, item.note].filter(Boolean).join(' · ')) + '</span>';
+  if (item.excel && item.excel.length) {
+    body.innerHTML = ntHtmlExcelTable(item.excel);
+  } else {
+    body.innerHTML = '<p class="nt-piano-empty">Prenotazione auto senza riga Excel collegata.</p>';
+  }
+  aside.classList.add('show');
+  shell.classList.add('has-segui');
+}
+
+function ntSeguiTrasferta(i) {
+  const item = ntRilevateItems[i];
+  if (!item) return;
+  ntChiudiRilevate();
+  const sel = document.getElementById('nt-dipendente');
+  if (sel) sel.value = item.email;
+  const da = document.getElementById('nt-data-inizio');
+  const a = document.getElementById('nt-data-fine');
+  if (da && item.data_da) {
+    da.value = item.data_da;
+    da.dispatchEvent(new Event('change'));
+  }
+  if (a) {
+    a.value = item.data_a || item.data_da || '';
+    a.dispatchEvent(new Event('change'));
+  }
+  ntRefreshAnagraficaDateUi();
+  ntRenderSeguiPanel(item);
 }
 
 function ntOnDipendenteChange() {
-  const sel = document.getElementById('nt-dipendente');
-  const email = String(sel && sel.value || '').trim().toLowerCase();
-  if (!email || !ntContestoCache) {
-    ntRenderPianoCollegato(null);
-    return;
-  }
-  const row = ntContestoCache.find(d => d.email === email);
-  ntRenderPianoCollegato(row || null);
+  /* Il piano Excel non dipende dalla tendina: si apre da «Segui trasferta». */
 }
 
 async function ntCaricaDipendenti() {
@@ -3480,10 +3732,8 @@ async function ntCaricaDipendenti() {
         '<option value="' + esc(d.email) + '" data-nome="' + esc(d.nome || d.dipendente) + '">' +
         esc(d.nome || d.dipendente) + '</option>'
       ).join('');
-    if (prev && list.some(d => d.email === prev)) {
-      sel.value = prev;
-      ntOnDipendenteChange();
-    }
+    if (prev && list.some(d => d.email === prev)) sel.value = prev;
+    ntMostraRilevate();
   } catch (e) {
     console.error(e);
     sel.innerHTML = '<option value="">Elenco non disponibile</option>';
@@ -3503,6 +3753,7 @@ function ntApriPanel() {
   if (!document.querySelector('.nt-tappa-card')) ntAddTappa();
   if (!ntTrasfertaId) ntTrasfertaId = nuovoTrasfertaIdClient();
   ntBindAnagraficaSnapshot();
+  ntNascondiSegui();
   ntCaricaDipendenti();
 }
 
@@ -3516,7 +3767,8 @@ function ntChiudiPanel() {
   ntContestoGen++;
   ntContestoCache = null;
   ntContestoPromise = null;
-  ntRenderPianoCollegato(null);
+  ntChiudiRilevate();
+  ntNascondiSegui();
 }
 
 function ntTogglePanel() {
@@ -3526,7 +3778,8 @@ function ntTogglePanel() {
 }
 
 document.getElementById('nt-panel')?.addEventListener('click', e => {
-  if (e.target.id === 'nt-panel') ntChiudiPanel();
+  if (e.target.id === 'nt-rilevate') ntChiudiRilevate();
+  else if (e.target.id === 'nt-panel') ntChiudiPanel();
 });
 
 (async function boot() {

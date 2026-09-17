@@ -2,6 +2,11 @@
  * Elenco dipendenti + contesto Excel/prenotazioni auto (webhook recupero-dipendenti).
  */
 (function (global) {
+  const MESI = {
+    gennaio: 1, febbraio: 2, marzo: 3, aprile: 4, maggio: 5, giugno: 6,
+    luglio: 7, agosto: 8, settembre: 9, ottobre: 10, novembre: 11, dicembre: 12
+  };
+
   function normEmail(v) {
     return String(v || '').trim().toLowerCase();
   }
@@ -23,13 +28,112 @@
     return fine >= today;
   }
 
+  function isTrasfertaTipo(p) {
+    return String(p && p.tipo_utilizzo || '').trim().toLowerCase() === 'trasferta';
+  }
+
   function cellStr(v) {
     if (v == null || v === '') return '';
     return String(v).trim();
   }
 
-  function parseExcelValues(values) {
+  function pad2(n) {
+    return String(n).padStart(2, '0');
+  }
+
+  function fracToHm(n) {
+    const total = Math.round(n * 24 * 60);
+    const h = Math.floor(total / 60) % 24;
+    const m = ((total % 60) + 60) % 60;
+    return pad2(h) + ':' + pad2(m);
+  }
+
+  function formatExcelOra(v) {
+    if (v == null || v === '') return '';
+    if (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v < 1) return fracToHm(v);
+    const s = String(v).trim();
+    if (!s) return '';
+    if (/^\d{1,2}:\d{2}/.test(s)) return s;
+    const n = Number(s.replace(',', '.'));
+    if (Number.isFinite(n) && n >= 0 && n < 1) return fracToHm(n);
+    return s;
+  }
+
+  function parseMeseCell(s) {
+    const t = String(s || '').trim();
+    if (!t) return { mese: '', month: 0, oraFromMese: '' };
+    const lower = t.toLowerCase();
+    let month = 0;
+    let nome = '';
+    Object.keys(MESI).forEach(k => {
+      if (lower.indexOf(k) === 0 || lower.indexOf(k) !== -1 && !nome) {
+        if (lower.indexOf(k) === 0 || new RegExp('\\b' + k + '\\b', 'i').test(t)) {
+          month = MESI[k];
+          nome = k.charAt(0).toUpperCase() + k.slice(1);
+        }
+      }
+    });
+    const time = t.match(/(\d{1,2}:\d{2})/);
+    return { mese: nome || t, month, oraFromMese: time ? time[1] : '' };
+  }
+
+  function parseGiorni(dataCell) {
+    const t = String(dataCell || '').trim();
+    if (!t) return [];
+    const nums = t.match(/\d{1,2}/g);
+    if (!nums) return [];
+    const days = nums.map(n => parseInt(n, 10)).filter(n => n >= 1 && n <= 31);
+    const range = t.match(/(\d{1,2})\s*[-–]\s*(\d{1,2})/);
+    if (range) {
+      const a = parseInt(range[1], 10);
+      const b = parseInt(range[2], 10);
+      const out = [];
+      const lo = Math.min(a, b);
+      const hi = Math.max(a, b);
+      for (let d = lo; d <= hi; d++) out.push(d);
+      return out;
+    }
+    return days;
+  }
+
+  function isoDate(year, month, day) {
+    if (!year || !month || !day) return '';
+    return year + '-' + pad2(month) + '-' + pad2(day);
+  }
+
+  function excelRowDates(row, year) {
+    const y = year || new Date().getFullYear();
+    const parsed = parseMeseCell(row && row.mese);
+    const days = parseGiorni(row && row.data);
+    if (!parsed.month || !days.length) return [];
+    return days.map(d => isoDate(y, parsed.month, d)).filter(Boolean);
+  }
+
+  function normalizeNumero(n) {
+    return String(n || '').trim().toLowerCase().replace(/\s+/g, '');
+  }
+
+  function enrichExcelRow(raw, year) {
+    const meseInfo = parseMeseCell(raw.mese);
+    let ora = formatExcelOra(raw.ora);
+    if (!ora && meseInfo.oraFromMese) ora = meseInfo.oraFromMese;
+    return {
+      numero_trasferta: raw.numero_trasferta == null ? '' : String(raw.numero_trasferta).trim(),
+      data: raw.data == null ? '' : String(raw.data).trim(),
+      mese: meseInfo.mese || String(raw.mese || '').trim(),
+      month: meseInfo.month,
+      attivita_luogo: String(raw.attivita_luogo || '').trim(),
+      driver: Array.isArray(raw.driver) ? raw.driver.filter(Boolean) : [],
+      mezzo: String(raw.mezzo || '').trim(),
+      note: String(raw.note || '').trim(),
+      ora,
+      dates: excelRowDates({ data: raw.data, mese: raw.mese }, year)
+    };
+  }
+
+  function parseExcelValues(values, year) {
     if (!Array.isArray(values) || values.length < 2) return [];
+    const y = year || new Date().getFullYear();
     const out = [];
     for (let i = 1; i < values.length; i++) {
       const row = values[i];
@@ -38,16 +142,16 @@
       if (cells.every(c => !c)) continue;
       const driver = [cells[4], cells[5], cells[6]].filter(Boolean);
       if (!cells[0] && !cells[3] && !driver.length) continue;
-      out.push({
+      out.push(enrichExcelRow({
         numero_trasferta: cells[0],
         data: cells[1],
         mese: cells[2],
         attivita_luogo: cells[3],
-        driver: driver,
+        driver,
         mezzo: cells[7] || '',
         note: cells[8] || '',
-        ora: cells[9] || ''
-      });
+        ora: cells[9]
+      }, y));
     }
     return out;
   }
@@ -124,8 +228,140 @@
     return !!(email && nome);
   }
 
+  function bookingRange(p) {
+    const da = dateOnly(p.data_da) || String(p.data_da || '').trim();
+    const a = dateOnly(p.data_a) || da;
+    return { da, a };
+  }
+
+  function datesOverlapRange(dates, da, a) {
+    if (!da || !dates || !dates.length) return 0;
+    const fine = a || da;
+    let n = 0;
+    dates.forEach(d => {
+      if (d >= da && d <= fine) n++;
+    });
+    return n;
+  }
+
+  function monthsInRange(da, a) {
+    const start = da || a;
+    const end = a || da;
+    if (!start) return [];
+    const out = [];
+    let y = parseInt(start.slice(0, 4), 10);
+    let m = parseInt(start.slice(5, 7), 10);
+    const ey = parseInt(end.slice(0, 4), 10);
+    const em = parseInt(end.slice(5, 7), 10);
+    while (y < ey || (y === ey && m <= em)) {
+      out.push(m);
+      m++;
+      if (m > 12) { m = 1; y++; }
+    }
+    return out;
+  }
+
+  function fuzzyScore(booking, rows) {
+    const blob = (booking.note || '') + ' ' + (booking.tipo_utilizzo || '');
+    const hay = rows.map(r => [r.attivita_luogo, r.note, r.mese, r.mezzo].join(' ')).join(' ');
+    const bt = tokensNome(blob).filter(t => t.length >= 3);
+    const ht = new Set(tokensNome(hay));
+    let n = 0;
+    bt.forEach(t => { if (ht.has(t)) n++; });
+    return n;
+  }
+
+  function groupExcelByNumero(rows) {
+    const map = new Map();
+    rows.forEach(r => {
+      const key = normalizeNumero(r.numero_trasferta) || ('row-' + (r.attivita_luogo || '') + r.data);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(r);
+    });
+    return map;
+  }
+
+  function publicExcelRow(r) {
+    return {
+      numero_trasferta: r.numero_trasferta,
+      data: r.data,
+      mese: r.mese,
+      attivita_luogo: r.attivita_luogo,
+      driver: r.driver,
+      mezzo: r.mezzo,
+      note: r.note,
+      ora: r.ora
+    };
+  }
+
+  function pickExcelGroupForBooking(booking, groups, nome) {
+    if (!isTrasfertaTipo(booking)) return [];
+    const { da, a } = bookingRange(booking);
+    const months = monthsInRange(da, a);
+    const candidates = [];
+    groups.forEach((rows, key) => {
+      const mine = rows.filter(r => (r.driver || []).some(dr => driverMatchesNome(dr, nome)));
+      if (!mine.length) return;
+      const dates = [];
+      mine.forEach(r => (r.dates || []).forEach(d => dates.push(d)));
+      const overlap = datesOverlapRange(dates, da, a);
+      const monthHit = mine.some(r => r.month && months.indexOf(r.month) !== -1);
+      candidates.push({ key, rows: mine, dates, overlap, monthHit, score: fuzzyScore(booking, mine) });
+    });
+    if (!candidates.length) return [];
+
+    const wanted = normalizeNumero(booking.numero_trasferta);
+    if (wanted) {
+      const hit = candidates.find(c => c.key === wanted);
+      if (hit && (hit.overlap || (!hit.dates.length && hit.monthHit))) return hit.rows;
+      if (hit && hit.overlap) return hit.rows;
+      return [];
+    }
+
+    const dated = candidates.filter(c => c.overlap > 0);
+    if (dated.length) {
+      dated.sort((x, y) => y.overlap - x.overlap || y.score - x.score);
+      return dated[0].rows;
+    }
+    const undated = candidates.filter(c => !c.dates.length && c.monthHit && c.score > 0);
+    if (undated.length) {
+      undated.sort((x, y) => y.score - x.score);
+      return undated[0].rows;
+    }
+    return [];
+  }
+
+  function attachExcelToPrenotazioni(prenotazioni, excelRighe, nome, year) {
+    const y = year || (excelRighe[0] && excelRighe[0].dates && excelRighe[0].dates[0]
+      ? parseInt(excelRighe[0].dates[0].slice(0, 4), 10)
+      : new Date().getFullYear());
+    const enriched = excelRighe.map(r => (r.dates ? r : enrichExcelRow(r, y)));
+    const groups = groupExcelByNumero(enriched);
+    const attached = [];
+    const pren = (prenotazioni || []).map(p => {
+      const slim = Object.assign({}, p);
+      const rows = pickExcelGroupForBooking(slim, groups, nome);
+      slim.excel = rows.map(publicExcelRow);
+      if (!slim.numero_trasferta && rows[0] && rows[0].numero_trasferta) {
+        slim.numero_trasferta = String(rows[0].numero_trasferta);
+      }
+      rows.forEach(r => attached.push(r));
+      return slim;
+    });
+    const seen = new Set();
+    const excel = [];
+    attached.forEach(r => {
+      const k = [r.numero_trasferta, r.data, r.attivita_luogo, r.ora].join('|');
+      if (seen.has(k)) return;
+      seen.add(k);
+      excel.push(publicExcelRow(r));
+    });
+    return { prenotazioni: pren, excel };
+  }
+
   function packContestoFromMergeItems(rawItems, todayYmd) {
     const today = todayYmd || todayYmdRome();
+    const year = parseInt(String(today).slice(0, 4), 10) || new Date().getFullYear();
     const items = (rawItems || []).map(it => {
       if (!it) return null;
       if (it.json && typeof it.json === 'object' && !isExcelItem(it)) return it.json;
@@ -140,7 +376,7 @@
     items.forEach(row => {
       if (isWebhookOnlyItem(row)) return;
       if (isExcelItem(row)) {
-        const parsed = parseExcelValues(row.values);
+        const parsed = parseExcelValues(row.values, year);
         if (parsed.length && !excelRighe.length) excelRighe = parsed;
         return;
       }
@@ -164,13 +400,13 @@
     });
 
     dips.forEach(d => {
-      d.excel = excelRighe.filter(r =>
-        (r.driver || []).some(dr => driverMatchesNome(dr, d.dipendente))
-      );
-      d.prenotazioni = prenotazioni.filter(p => {
+      const mine = prenotazioni.filter(p => {
         if (p.email) return p.email === d.email;
         return driverMatchesNome(p.operatore, d.dipendente) || driverMatchesNome(d.dipendente, p.operatore);
       });
+      const linked = attachExcelToPrenotazioni(mine, excelRighe, d.dipendente, year);
+      d.prenotazioni = linked.prenotazioni;
+      d.excel = linked.excel;
     });
 
     dips.sort((a, b) => a.dipendente.localeCompare(b.dipendente, 'it', { sensitivity: 'base' }));
@@ -206,15 +442,26 @@
   function parseContestoRecupero(data, todayYmd) {
     const root = unwrapPayload(data);
     const today = todayYmd || todayYmdRome();
+    const year = parseInt(String(today).slice(0, 4), 10) || new Date().getFullYear();
     if (root && Array.isArray(root.dipendenti)) {
-      return root.dipendenti.map(d => ({
-        email: normEmail(d.email),
-        nome: String(d.dipendente || d.nome || '').trim(),
-        dipendente: String(d.dipendente || d.nome || '').trim(),
-        role: String(d.role || '').trim(),
-        excel: Array.isArray(d.excel) ? d.excel : [],
-        prenotazioni: (Array.isArray(d.prenotazioni) ? d.prenotazioni : []).filter(p => prenotazioneDaOggi(p, today))
-      })).filter(d => d.email);
+      return root.dipendenti.map(d => {
+        const nome = String(d.dipendente || d.nome || '').trim();
+        const pren = (Array.isArray(d.prenotazioni) ? d.prenotazioni : []).filter(p => prenotazioneDaOggi(p, today));
+        const excelSrc = [];
+        (Array.isArray(d.excel) ? d.excel : []).forEach(r => excelSrc.push(r));
+        pren.forEach(p => {
+          (Array.isArray(p.excel) ? p.excel : []).forEach(r => excelSrc.push(r));
+        });
+        const linked = attachExcelToPrenotazioni(pren, excelSrc, nome, year);
+        return {
+          email: normEmail(d.email),
+          nome,
+          dipendente: nome,
+          role: String(d.role || '').trim(),
+          excel: linked.excel,
+          prenotazioni: linked.prenotazioni
+        };
+      }).filter(d => d.email);
     }
     return parseDipendentiList(data).map(d => ({
       email: d.email,
@@ -224,6 +471,31 @@
       excel: [],
       prenotazioni: []
     }));
+  }
+
+  function listaTrasferteRilevate(dipendenti) {
+    const out = [];
+    (dipendenti || []).forEach(d => {
+      const nome = String(d.dipendente || d.nome || '').trim();
+      const email = normEmail(d.email);
+      (Array.isArray(d.prenotazioni) ? d.prenotazioni : []).forEach(p => {
+        if (!isTrasfertaTipo(p)) return;
+        if (!prenotazioneDaOggi(p)) return;
+        out.push({
+          email,
+          nome,
+          id: p.id,
+          tipo_utilizzo: String(p.tipo_utilizzo || 'Trasferta').trim(),
+          data_da: dateOnly(p.data_da) || String(p.data_da || '').trim(),
+          data_a: dateOnly(p.data_a) || String(p.data_a || '').trim(),
+          note: String(p.note || '').trim(),
+          numero_trasferta: p.numero_trasferta == null ? '' : String(p.numero_trasferta).trim(),
+          excel: Array.isArray(p.excel) ? p.excel : []
+        });
+      });
+    });
+    out.sort((a, b) => String(a.data_da).localeCompare(String(b.data_da)) || String(a.nome).localeCompare(String(b.nome), 'it'));
+    return out;
   }
 
   function selectedDipendente(selectEl) {
@@ -244,6 +516,9 @@
     parseExcelValues,
     driverMatchesNome,
     prenotazioneDaOggi,
+    formatExcelOra,
+    excelRowDates,
+    listaTrasferteRilevate,
     todayYmdRome,
     selectedDipendente
   };
