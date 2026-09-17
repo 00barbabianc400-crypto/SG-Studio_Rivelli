@@ -294,41 +294,10 @@
     };
   }
 
-  function pickExcelGroupForBooking(booking, groups, nome) {
-    if (!isTrasfertaTipo(booking)) return [];
-    const { da, a } = bookingRange(booking);
-    const months = monthsInRange(da, a);
-    const candidates = [];
-    groups.forEach((rows, key) => {
-      const mine = rows.filter(r => (r.driver || []).some(dr => driverMatchesNome(dr, nome)));
-      if (!mine.length) return;
-      const dates = [];
-      mine.forEach(r => (r.dates || []).forEach(d => dates.push(d)));
-      const overlap = datesOverlapRange(dates, da, a);
-      const monthHit = mine.some(r => r.month && months.indexOf(r.month) !== -1);
-      candidates.push({ key, rows: mine, dates, overlap, monthHit, score: fuzzyScore(booking, mine) });
-    });
-    if (!candidates.length) return [];
-
-    const wanted = normalizeNumero(booking.numero_trasferta);
-    if (wanted) {
-      const hit = candidates.find(c => c.key === wanted);
-      if (hit && (hit.overlap || (!hit.dates.length && hit.monthHit))) return hit.rows;
-      if (hit && hit.overlap) return hit.rows;
-      return [];
-    }
-
-    const dated = candidates.filter(c => c.overlap > 0);
-    if (dated.length) {
-      dated.sort((x, y) => y.overlap - x.overlap || y.score - x.score);
-      return dated[0].rows;
-    }
-    const undated = candidates.filter(c => !c.dates.length && c.monthHit && c.score > 0);
-    if (undated.length) {
-      undated.sort((x, y) => y.score - x.score);
-      return undated[0].rows;
-    }
-    return [];
+  function pickExcelGroupForBooking(booking, groups) {
+    const wanted = normalizeNumero(booking && booking.numero_trasferta);
+    if (!wanted) return [];
+    return groups.get(wanted) || [];
   }
 
   function attachExcelToPrenotazioni(prenotazioni, excelRighe, nome, year) {
@@ -340,11 +309,8 @@
     const attached = [];
     const pren = (prenotazioni || []).map(p => {
       const slim = Object.assign({}, p);
-      const rows = pickExcelGroupForBooking(slim, groups, nome);
+      const rows = pickExcelGroupForBooking(slim, groups);
       slim.excel = rows.map(publicExcelRow);
-      if (!slim.numero_trasferta && rows[0] && rows[0].numero_trasferta) {
-        slim.numero_trasferta = String(rows[0].numero_trasferta);
-      }
       rows.forEach(r => attached.push(r));
       return slim;
     });
@@ -481,6 +447,8 @@
       (Array.isArray(d.prenotazioni) ? d.prenotazioni : []).forEach(p => {
         if (!isTrasfertaTipo(p)) return;
         if (!prenotazioneDaOggi(p)) return;
+        const numero = p.numero_trasferta == null ? '' : String(p.numero_trasferta).trim();
+        if (!numero) return;
         out.push({
           email,
           nome,
@@ -489,7 +457,7 @@
           data_da: dateOnly(p.data_da) || String(p.data_da || '').trim(),
           data_a: dateOnly(p.data_a) || String(p.data_a || '').trim(),
           note: String(p.note || '').trim(),
-          numero_trasferta: p.numero_trasferta == null ? '' : String(p.numero_trasferta).trim(),
+          numero_trasferta: numero,
           excel: Array.isArray(p.excel) ? p.excel : []
         });
       });
