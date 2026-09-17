@@ -1858,21 +1858,22 @@ window.addEventListener('resize', () => {
 
 (async function startMacchina() {
   try {
-    if (!SRAuth.hasN8nToken()) {
-      await SRAuth.ensureN8nSession();
+    if (!SRAuth.hasN8nToken()) await SRAuth.ensureN8nSession();
+    if (!SRAuth.canAccessHubApp('macchina')) {
+      location.replace('index.html');
+      return;
     }
-    if (!SRAuth.hasN8nToken()) {
-      throw new Error('Sessione API non disponibile');
-    }
+  } catch (ex) {
+    if (SRAuth.isNotEnabledError(ex)) SRAuth.redirectNotEnabled();
+    else SRAuth.redirectToLogin('api');
+    return;
+  }
+  try {
     popolaSelectOperatori();
     await initOperatorePrenota();
     await caricaPrenotazioni();
   } catch (ex) {
-    if (SRAuth.isNotEnabledError(ex)) {
-      SRAuth.redirectNotEnabled();
-      return;
-    }
-    console.error('Macchina auth/load:', ex);
+    console.error('Macchina load:', ex);
     hideAppLoader();
     showToast(ex.message || 'Caricamento fallito', 'error');
   }

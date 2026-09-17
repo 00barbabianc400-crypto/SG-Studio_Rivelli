@@ -4108,9 +4108,16 @@ function showToast(msg, type, ms) {
     if (!SRAuth.hasN8nToken() || forcePushState) {
       await SRAuth.ensureN8nSession(forcePushState ? { force: true } : undefined);
     }
-    if (!SRAuth.hasN8nToken()) {
-      throw new Error('Sessione API non disponibile');
+    if (!SRAuth.canAccessHubApp('timesheet')) {
+      location.replace('index.html');
+      return;
     }
+  } catch (err) {
+    if (SRAuth.isNotEnabledError(err)) SRAuth.redirectNotEnabled();
+    else SRAuth.redirectToLogin('api');
+    return;
+  }
+  try {
     await caricaParametri();
     initDipendenteSelect();
     document.body.classList.add('app-loading');
@@ -4128,12 +4135,8 @@ function showToast(msg, type, ms) {
       showToast(`✓ Dati caricati (${DIPENDENTI.length} dip., ${CLIENTI.length} clienti)`);
     }
   } catch (err) {
-    if (SRAuth.isNotEnabledError(err)) {
-      SRAuth.redirectNotEnabled();
-      return;
-    }
     const sel = document.getElementById('inp-dipendente');
-    sel.innerHTML = '<option value="">Errore caricamento</option>';
+    if (sel) sel.innerHTML = '<option value="">Errore caricamento</option>';
     showToast('⚠ Impossibile caricare i dati: ' + (err.message || err));
     console.error('[retrieve-data]', err);
   }

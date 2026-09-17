@@ -436,20 +436,24 @@ fillRoleSelect(document.getElementById('edit-role'));
 (async function boot() {
   try {
     if (!SRAuth.hasN8nToken()) await SRAuth.ensureN8nSession();
-    if (!SRAuth.hasN8nToken()) throw new Error('Sessione non disponibile');
-    if (SRAuth.getRole() !== 'Admin') {
+    if (!SRAuth.canAccessHubApp('utenti')) {
       location.replace('index.html');
       return;
     }
     await loadUsers();
   } catch (ex) {
-    if (SRAuth.isNotEnabledError(ex)) SRAuth.redirectNotEnabled();
-    else {
-      setStatus(ex.message || 'Errore caricamento', 'error');
-      document.getElementById('users-table').classList.add('hidden');
-      document.getElementById('user-empty').classList.remove('hidden');
-      document.getElementById('user-empty').textContent = 'Impossibile caricare gli utenti.';
+    if (SRAuth.isNotEnabledError(ex)) {
+      SRAuth.redirectNotEnabled();
+      return;
     }
+    if (!SRAuth.hasN8nToken()) {
+      SRAuth.redirectToLogin('api');
+      return;
+    }
+    setStatus(ex.message || 'Errore caricamento', 'error');
+    document.getElementById('users-table').classList.add('hidden');
+    document.getElementById('user-empty').classList.remove('hidden');
+    document.getElementById('user-empty').textContent = 'Impossibile caricare gli utenti.';
   }
 })();
 </script>

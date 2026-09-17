@@ -1711,18 +1711,21 @@ async function caricaDati() {
 
 (async function boot() {
   try {
-    await SRAuth.init();
-    if (!(await SRAuth.isMsalLoggedIn())) {
+    if (!SRAuth.hasN8nToken()) await SRAuth.ensureN8nSession();
+    if (!SRAuth.canAccessHubApp('amm')) {
       location.replace('index.html');
       return;
     }
+  } catch (e) {
+    if (SRAuth.isNotEnabledError(e)) SRAuth.redirectNotEnabled();
+    else SRAuth.redirectToLogin('api');
+    return;
+  }
+  try {
     await caricaDati();
   } catch (e) {
-    if (SRAuth.isNotEnabledError(e)) {
-      SRAuth.redirectNotEnabled();
-      return;
-    }
-    setStatus('Sessione non disponibile. Torna alla Home e accedi.', 'is-error');
+    setStatus('Errore caricamento: ' + (e.message || e), 'is-error');
+    showToast('Errore: ' + (e.message || e), 'error');
   }
 })();
 
