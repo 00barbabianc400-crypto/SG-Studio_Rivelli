@@ -80,6 +80,12 @@
     return !!(ex && (ex.code === 'NOT_ENABLED' || ex.authCode === 'not_enabled'));
   }
 
+  /** Copy utente sul gate di login (niente dettagli n8n/API). */
+  function gateMessageForReason(reason) {
+    if (reason === 'not_enabled') return null;
+    return 'Accesso negato';
+  }
+
   /** JWT **/
   function hasN8nToken() {
     const t = getToken();
@@ -503,6 +509,7 @@
     isMsalLoggedIn,
     isAuthenticated,
     isNotEnabledError,
+    gateMessageForReason,
     establishHubSession,
     rejectNotEnabledAtHub,
     ensureN8nSession,

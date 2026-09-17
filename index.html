@@ -457,8 +457,8 @@ async function refreshTappeQuietlyIfNeeded() {
     sessionStorage.setItem(flag, '1');
     applyHubRoles();
     maybeShowNotaSpeseAlert();
-  } catch (ex) {
-    console.warn('refreshTappeQuietlyIfNeeded:', ex);
+  } catch {
+    /* silenzioso: hub già visibile */
   }
 }
 
@@ -475,8 +475,7 @@ async function enterHubAfterMsal() {
       showGate(NOT_ENABLED_MSG);
       return;
     }
-    console.error('establishHubSession:', ex);
-    showGate(ex.message || 'Impossibile collegarsi alle API. Verifica il workflow in n8n');
+    showGate(SRAuth.gateMessageForReason('api'));
   }
 }
 
@@ -511,7 +510,7 @@ function setLoading(on) {
     }
     if (location.search.includes('err=api')) {
       history.replaceState(null, '', location.pathname);
-      showGate('Impossibile collegarsi alle API. Verifica il workflow in n8n');
+      showGate(SRAuth.gateMessageForReason('api'));
       return;
     }
     if (!state.loggedIn) {
@@ -524,8 +523,8 @@ function setLoading(on) {
       return;
     }
     await enterHubAfterMsal();
-  } catch (ex) {
-    showGate(ex.message || 'Errore inizializzazione');
+  } catch {
+    showGate(SRAuth.gateMessageForReason('api'));
   } finally {
     setLoading(false);
     document.getElementById('btn-ms-login').disabled = false;
@@ -540,8 +539,8 @@ document.getElementById('btn-ms-login').addEventListener('click', async () => {
   try {
     await SRAuth.loginWithMicrosoft(false);
     if (await SRAuth.isMsalLoggedIn()) await enterHubAfterMsal();
-  } catch (ex) {
-    err.textContent = ex.message || 'Accesso annullato o non autorizzato';
+  } catch {
+    err.textContent = SRAuth.gateMessageForReason('api');
   } finally {
     btn.disabled = false;
   }
