@@ -165,16 +165,33 @@
   }
 
   function getSlotAutoAz() {
+    let fromAuth = [];
     try {
       const raw = sessionStorage.getItem(C.SLOT_AUTO_KEY || 'sr_slot_auto_az');
       const list = raw ? JSON.parse(raw) : [];
-      const fromAuth = Array.isArray(list) ? list : [];
-      if (fromAuth.length) return fromAuth;
-    } catch { /* cache vuota */ }
+      fromAuth = Array.isArray(list) ? list : [];
+    } catch {
+      fromAuth = [];
+    }
     const Slot = global.SRSlotAutoTrasferta;
     const tappe = getTrasferteTappe();
-    if (!Slot || typeof Slot.tappaHasAutoAz !== 'function') return tappe;
-    return tappe.filter(Slot.tappaHasAutoAz);
+    const own = (Slot && typeof Slot.tappaHasAutoAz === 'function')
+      ? tappe.filter(Slot.tappaHasAutoAz)
+      : [];
+    const map = new Map();
+    fromAuth.concat(own).forEach(t => {
+      if (!t) return;
+      const k = String(t.id != null ? ('id:' + t.id) : ('trf:' + (t.trasferta_id || '') + '|' + (t.nome_persona || '')));
+      map.set(k, t);
+    });
+    return [...map.values()];
+  }
+
+  function setSlotAutoAz(rows) {
+    sessionStorage.setItem(
+      C.SLOT_AUTO_KEY || 'sr_slot_auto_az',
+      JSON.stringify(Array.isArray(rows) ? rows : [])
+    );
   }
 
   function setTrasferteTappe(rows) {
@@ -521,6 +538,7 @@
     getRole,
     getTrasferteTappe,
     getSlotAutoAz,
+    setSlotAutoAz,
     setTrasferteTappe,
     updateTappaNotaSpese,
     canAccessHubApp,

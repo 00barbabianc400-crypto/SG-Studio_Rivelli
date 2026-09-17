@@ -74,10 +74,29 @@
     });
   }
 
-  function isTripDriver(tappa, operatore, email) {
+  function isTripDriver(tappa, operatore) {
     if (!tappa) return false;
-    if (emailsMatch(tappa.email, email)) return true;
     return namesMatch(tappa.nome_persona, operatore);
+  }
+
+  function autoAzDateRange(tappa) {
+    let da = toYmd(tappa && (tappa.data_arrivo || tappa.data_da));
+    let a = toYmd(tappa && (tappa.data_partenza || tappa.data_a)) || da;
+    const list = parseServizi(tappa && (tappa.servizi_json != null ? tappa.servizi_json : tappa.servizi));
+    list.forEach(s => {
+      if (!s || typeof s !== 'object') return;
+      const tipo = String(s.tipo || '').trim().toLowerCase();
+      if (tipo !== 'auto_az' && !isAutoAzMezzo(s.nome || s.mezzo || s.label)) return;
+      const po = s.prenotazione_operatrice && typeof s.prenotazione_operatrice === 'object'
+        ? s.prenotazione_operatrice
+        : {};
+      const gda = toYmd(s.giornate_da || po.giornate_da);
+      const ga = toYmd(s.giornate_a || po.giornate_a) || gda;
+      if (!gda) return;
+      if (!da || gda < da) da = gda;
+      if (!a || ga > a) a = ga;
+    });
+    return { da: da, a: a || da };
   }
 
   function findReservedSlot(tappe, opts) {
@@ -88,10 +107,9 @@
     for (let i = 0; i < list.length; i++) {
       const t = list[i];
       if (!tappaHasAutoAz(t)) continue;
-      const tDa = t.data_arrivo || t.data_da;
-      const tA = t.data_partenza || t.data_a || tDa;
-      if (!rangesOverlap(da, a, tDa, tA)) continue;
-      if (isTripDriver(t, o.operatore, o.email)) continue;
+      const rng = autoAzDateRange(t);
+      if (!rangesOverlap(da, a, rng.da, rng.a)) continue;
+      if (isTripDriver(t, o.operatore)) continue;
       return t;
     }
     return null;
@@ -122,6 +140,22 @@
       );
     });
     return [...macOut, ...trfOut];
+  }
+
+  function tappeAutoAzFromPayload(data) {
+    let rows = data;
+    if (rows && !Array.isArray(rows)) {
+      if (Array.isArray(rows.body)) rows = rows.body;
+      else if (Array.isArray(rows.data)) rows = rows.data;
+      else if (rows.json) return tappeAutoAzFromPayload(rows.json);
+      else rows = [rows];
+    }
+    return (Array.isArray(rows) ? rows : []).filter(r => {
+      if (!r || typeof r !== 'object') return false;
+      if (r.tipo_utilizzo != null) return false;
+      if (r.trasferta_id == null && r.nome_persona == null && r.citta == null) return false;
+      return tappaHasAutoAz(r);
+    });
   }
 
   function scontriniAutoAsNotaBenzina(tappa, prenotazioni) {
@@ -189,6 +223,7 @@
     isTripDriver,
     findReservedSlot,
     reservedPopupCopy,
+    tappeAutoAzFromPayload,
     mergeCalendarEvents,
     scontriniAutoAsNotaBenzina,
     mergeNotaConBenzinaAuto

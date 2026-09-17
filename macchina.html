@@ -935,6 +935,24 @@ function trovaConflitto(dataDa, dataA, excludeId) {
   }) || null;
 }
 
+async function hydrateSlotAutoAzLive() {
+  const url = SR_CONFIG.WEBHOOK_GESTIONE_AMMINISTRATIVA;
+  if (!url || !SRAuth.setSlotAutoAz || !window.SRSlotAutoTrasferta) return;
+  try {
+    const resp = await SRAuth.fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    if (!resp.ok) return;
+    const data = await resp.json().catch(() => null);
+    const rows = SRSlotAutoTrasferta.tappeAutoAzFromPayload(data);
+    if (rows.length) SRAuth.setSlotAutoAz(rows);
+  } catch {
+    /* resta la cache login */
+  }
+}
+
 function trovaSlotRiservato(dataDa, dataA, operatore) {
   const Slot = window.SRSlotAutoTrasferta;
   if (!Slot || !SRAuth.getSlotAutoAz) return null;
@@ -1732,6 +1750,7 @@ async function inviaPrenotazione() {
 
   const data_da = rangeStart;
   const data_a = rangeEnd;
+  await hydrateSlotAutoAzLive();
   const riservato = trovaSlotRiservato(data_da, data_a, operatore);
   if (riservato) {
     apriSlotRiservatoModal(riservato);
@@ -1826,6 +1845,7 @@ async function salvaEdit() {
   if (data_a < data_da) return showToast('La data fine non può precedere la data inizio', 'warn');
 
   const payload = { action: 'update', id, operatore, tipo_utilizzo, data_da, data_a, note, numero_trasferta: numTr.value };
+  await hydrateSlotAutoAzLive();
   const riservato = trovaSlotRiservato(payload.data_da, payload.data_a, operatore);
   if (riservato) {
     apriSlotRiservatoModal(riservato);
@@ -1951,6 +1971,8 @@ window.addEventListener('resize', () => {
   }
   try {
     popolaSelectOperatori();
+    await SRAuth.ensureN8nSession({ force: true });
+    await hydrateSlotAutoAzLive();
     await initOperatorePrenota();
     await caricaPrenotazioni();
   } catch (ex) {
