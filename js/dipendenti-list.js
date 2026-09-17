@@ -410,15 +410,17 @@
     const today = todayYmd || todayYmdRome();
     const year = parseInt(String(today).slice(0, 4), 10) || new Date().getFullYear();
     if (root && Array.isArray(root.dipendenti)) {
+      const catalog = [];
+      root.dipendenti.forEach(d => {
+        (Array.isArray(d.excel) ? d.excel : []).forEach(r => catalog.push(r));
+        (Array.isArray(d.prenotazioni) ? d.prenotazioni : []).forEach(p => {
+          (Array.isArray(p.excel) ? p.excel : []).forEach(r => catalog.push(r));
+        });
+      });
       return root.dipendenti.map(d => {
         const nome = String(d.dipendente || d.nome || '').trim();
         const pren = (Array.isArray(d.prenotazioni) ? d.prenotazioni : []).filter(p => prenotazioneDaOggi(p, today));
-        const excelSrc = [];
-        (Array.isArray(d.excel) ? d.excel : []).forEach(r => excelSrc.push(r));
-        pren.forEach(p => {
-          (Array.isArray(p.excel) ? p.excel : []).forEach(r => excelSrc.push(r));
-        });
-        const linked = attachExcelToPrenotazioni(pren, excelSrc, nome, year);
+        const linked = attachExcelToPrenotazioni(pren, catalog, nome, year);
         return {
           email: normEmail(d.email),
           nome,

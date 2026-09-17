@@ -456,16 +456,24 @@
   }
   #nt-panel .nt-shell > .modal-edit-tr {
     width: auto;
-    flex: 1 1 auto;
+    flex: 1 1 0%;
     min-width: 0;
     min-height: 0;
     max-height: 100%;
-    height: 100%;
+    height: auto;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  #nt-panel .nt-shell > .modal-edit-tr .modal-edit-tr-head,
+  #nt-panel .nt-shell > .modal-edit-tr .modal-edit-tr-foot {
+    flex-shrink: 0;
   }
   #nt-panel .nt-shell > .modal-edit-tr .modal-edit-tr-body {
+    flex: 1 1 0%;
     min-height: 0;
-    overflow: auto;
+    overflow-y: auto !important;
+    overflow-x: hidden;
   }
   #nt-segui {
     display: none;
@@ -616,7 +624,7 @@
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   }
   .modal-edit-tr-body {
-    overflow: auto; padding: 16px 20px 8px; flex: 1; background: var(--gray-100);
+    overflow: auto; padding: 16px 20px 8px; flex: 1 1 0%; min-height: 0; background: var(--gray-100);
   }
   .modal-edit-tr-body .section { margin-bottom: 14px; }
   .modal-edit-tr-foot {
@@ -3629,7 +3637,8 @@ function ntMostraRilevate() {
   const wrap = document.getElementById('nt-rilevate');
   const list = document.getElementById('nt-rilevate-list');
   if (!wrap || !list) return;
-  ntRilevateItems = SRDipendenti.listaTrasferteRilevate(ntContestoCache);
+  ntRilevateItems = SRDipendenti.listaTrasferteRilevate(ntContestoCache)
+    .filter(r => String(r.numero_trasferta || '').trim());
   if (!ntRilevateItems.length) {
     ntChiudiRilevate();
     return;
