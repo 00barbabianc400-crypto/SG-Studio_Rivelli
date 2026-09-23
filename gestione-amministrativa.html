@@ -507,13 +507,11 @@ body {
 .arc-card h3 { font-size: 15px; font-weight: 700; }
 .arc-card h3 small { display: block; font-weight: 500; color: var(--muted); font-size: 12px; margin-top: 2px; }
 .arc-meta { font-size: 13px; color: var(--muted); margin: 6px 0 8px; }
-.arc-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  padding: 8px 0; border-top: 1px solid var(--border); font-size: 13px;
+#arc-list a.ns-item { text-decoration: none; color: inherit; }
+#arc-list .ns-item-meta { min-width: 0; }
+#arc-list .ns-item-meta span {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.arc-row a { color: var(--accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
-.arc-row a:hover { text-decoration: underline; }
-.arc-nolink { color: var(--faint); font-size: 12px; white-space: nowrap; }
 .arc-empty { font-size: 14px; color: var(--muted); padding: 8px 0 4px; }
 .arc-tappa { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); }
 .arc-tappa h4 { font-size: 13px; font-weight: 700; }
@@ -1845,34 +1843,83 @@ function personaMatch(blob, persona) {
   return parts.some(part => namesMatch(part, persona));
 }
 
-function fileOpen(f, label) {
-  const url = safeSpUrl(f && (f.web_url || f.webUrl));
-  if (!url) return '<span class="arc-nolink">Link non ancora in elenco</span>';
-  return '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(label || 'Apri in SharePoint') + '</a>';
+function arcHref(f) {
+  return safeSpUrl(f && (f.web_url || f.webUrl));
+}
+
+function arcWrap(href, inner) {
+  if (href) return '<a class="ns-item" href="' + esc(href) + '" target="_blank" rel="noopener">' + inner + '</a>';
+  return '<div class="ns-item" style="cursor:default">' + inner + '</div>';
+}
+
+function arcNotaChip(it) {
+  const voce = (typeof SRNotaSpese !== 'undefined' && SRNotaSpese.labelVoce)
+    ? SRNotaSpese.labelVoce(it)
+    : (it.dettaglio || it.indirizzo || '—');
+  const tipo = String(it.tipo || '').toLowerCase() === 'fattura' ? 'Fattura' : 'Scontrino';
+  const amt = it.importo != null && it.importo !== '' ? fmtEuroNota(it.importo) : '';
+  const inner = '<span class="sc-ico-wrap">' + SRScontrini.ICO_RECEIPT + '</span>'
+    + '<span class="ns-item-meta">' + esc(tipo) + '<span>' + esc(voce) + '</span></span>'
+    + (amt ? '<span class="ns-item-amt">' + esc(amt) + '</span>' : '');
+  return arcWrap(arcHref(it), inner);
+}
+
+function arcNoteHtml(notes) {
+  const list = Array.isArray(notes) ? notes : [];
+  if (!list.length) return '';
+  if (typeof SRNotaSpese === 'undefined') return list.map(arcNotaChip).join('');
+  const byCat = SRNotaSpese.groupByCategoria(list);
+  const keys = Object.keys(byCat).sort((a, b) =>
+    SRNotaSpese.labelCategoria(a).localeCompare(SRNotaSpese.labelCategoria(b), 'it'));
+  return keys.map(cat => {
+    const items = byCat[cat];
+    const scontrini = items.filter(x => String(x.tipo).toLowerCase() !== 'fattura');
+    const fatture = items.filter(x => String(x.tipo).toLowerCase() === 'fattura');
+    let body = '<div class="ns-cat"><div class="ns-cat-title">' + esc(SRNotaSpese.labelCategoria(cat)) + '</div>';
+    if (scontrini.length) {
+      body += '<div class="ns-tipo-title">Scontrini</div>' + scontrini.map(arcNotaChip).join('');
+    }
+    if (fatture.length) {
+      body += '<div class="ns-tipo-title">Fatture</div>' + fatture.map(arcNotaChip).join('');
+    }
+    return body + '</div>';
+  }).join('');
+}
+
+function arcAllegato(a) {
+  const nome = a.nome || 'Allegato';
+  const href = arcHref(a);
+  const ico = '<span class="svc-all-doc" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 3.5h7l4 4V20.5H7z"/><path d="M14 3.5V8h4.5"/><path d="M9.5 12h5M9.5 15.5h5"/></svg></span>';
+  const open = href
+    ? '<a class="soft-btn btn-icon" href="' + esc(href) + '" target="_blank" rel="noopener" title="Apri in SharePoint" aria-label="Apri in SharePoint">' + SRScontrini.ICO_DOWNLOAD + '</a>'
+    : '';
+  return '<div class="svc-all-chip">' + ico
+    + '<span class="svc-all-name" title="' + esc(nome) + '">' + esc(nome) + '</span>'
+    + open + '</div>';
 }
 
 function cardMacchina(p) {
   const quando = fmtDay(p.data_da) + (dayOnly(p.data_a) && dayOnly(p.data_a) !== dayOnly(p.data_da) ? ' → ' + fmtDay(p.data_a) : '');
-  const files = (p.scontrini || []).map(sc => {
-    const dove = sc.indirizzo ? esc(sc.indirizzo) : 'Scontrino';
-    return '<div class="arc-row"><span>' + fmtDay(sc.created_at) + ' · ' + dove + '</span>' + fileOpen(sc, 'Apri') + '</div>';
+  const files = (p.scontrini || []).map((sc, i) => {
+    const sub = sc.indirizzo || fmtDay(sc.created_at);
+    const inner = '<span class="sc-ico-wrap">' + SRScontrini.ICO_RECEIPT + '</span>'
+      + '<span class="ns-item-meta">Scontrino ' + (i + 1) + '<span>' + esc(sub) + '</span></span>';
+    return arcWrap(arcHref(sc), inner);
   }).join('');
+  const box = files
+    ? '<div class="sc-box"><div class="tappe-title">Scontrini benzina · ' + (p.scontrini || []).length + '</div><div class="sc-list">' + files + '</div></div>'
+    : '<p class="ns-empty">Nessuno scontrino in scheda.</p>';
   return '<article class="arc-card"><h3>' + esc(p.operatore || '—') + '<small>Prenotazione ' + esc(String(p.id || '')) + ' · ' + esc(quando) + '</small></h3>'
     + '<p class="arc-meta">' + esc(p.tipo_utilizzo || '') + (p.note ? ' · ' + esc(p.note) : '') + '</p>'
-    + (files || '<p class="arc-empty">Nessuno scontrino in scheda.</p>')
-    + '</article>';
+    + box + '</article>';
 }
 
 function righeTappa(t) {
-  const note = (t.note || []).map(n => {
-    const pezzi = [n.tipo, n.categoria, n.pasto, n.dettaglio].filter(Boolean).join(' · ');
-    const amt = fmtEuro(n.importo);
-    return '<div class="arc-row"><span>' + esc(pezzi || 'Nota') + (amt ? ' · ' + esc(amt) : '') + '</span>' + fileOpen(n, 'Apri') + '</div>';
-  }).join('');
-  const all = (t.servizi || []).map(sv => (sv.allegati || []).map(a => {
-    const lab = [sv.tipo, a.nome].filter(Boolean).join(' · ');
-    return '<div class="arc-row"><span>' + esc(lab || 'Allegato') + '</span>' + fileOpen(a, 'Apri') + '</div>';
-  }).join('')).join('');
+  const note = arcNoteHtml(t.note);
+  const allegati = (t.servizi || []).reduce((acc, sv) => acc.concat(sv.allegati || []), []);
+  const all = allegati.length
+    ? '<div class="svc-allegati"><div class="svc-all-label">Allegati</div>' + allegati.map(arcAllegato).join('') + '</div>'
+    : '';
   return note + all;
 }
 
