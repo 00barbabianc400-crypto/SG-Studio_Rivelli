@@ -497,7 +497,16 @@ body {
 }
 @keyframes load-spin { to { transform: rotate(360deg); } }
 .arc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.arc-tools { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+.arc-tools { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+.arc-filters { display: flex; align-items: flex-end; gap: 8px; }
+.arc-filters .field { min-width: 0; flex: 1 1 0; margin: 0; }
+.arc-filters .field-date { flex: 0 0 146px; }
+.arc-filters .field-persona { flex: 0 1 148px; }
+.arc-filters .field-q { flex: 1 1 160px; }
+.arc-filters .field label { letter-spacing: 0; font-size: 10px; margin-bottom: 4px; }
+.arc-filters .field input,
+.arc-filters .field select { padding: 8px 8px; font-size: 13px; }
+.arc-filters .soft-btn { height: 38px; flex: 0 0 auto; padding: 0 12px; white-space: nowrap; }
 .arc-count { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
 .arc-list { display: flex; flex-direction: column; gap: 12px; }
 .arc-card {
@@ -521,6 +530,7 @@ body {
   .shell { max-width: 100%; padding: 20px 12px 48px; }
   .field { min-width: 100%; }
   .page-head-row { flex-direction: column; }
+  #arc-modal .field { min-width: 0; }
 }
 </style>
 </head>
@@ -679,23 +689,24 @@ body {
           <button type="button" class="arc-tab seg-tab is-active" data-arc="macchina">Archivio macchina</button>
           <button type="button" class="arc-tab seg-tab" data-arc="trasferte">Archivio trasferte</button>
         </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="arc-dal">Periodo dal</label>
+        <div class="arc-filters">
+          <div class="field field-date">
+            <label for="arc-dal">Dal</label>
             <input type="date" id="arc-dal">
           </div>
-          <div class="field">
-            <label for="arc-al">Periodo al</label>
+          <div class="field field-date">
+            <label for="arc-al">Al</label>
             <input type="date" id="arc-al">
           </div>
-          <div class="field">
+          <div class="field field-persona">
             <label for="arc-persona">Persona</label>
             <select id="arc-persona"><option value="">— tutte —</option></select>
           </div>
-        </div>
-        <div class="field">
-          <label for="arc-q">Città o cliente</label>
-          <input type="search" id="arc-q" placeholder="Scrivi una città o un cliente" autocomplete="off">
+          <div class="field field-q">
+            <label for="arc-q">Città o cliente</label>
+            <input type="search" id="arc-q" placeholder="Città o cliente" autocomplete="off">
+          </div>
+          <button type="button" class="soft-btn" id="btn-arc-reset">Resetta filtri</button>
         </div>
       </div>
       <p class="arc-count" id="arc-count"></p>
@@ -2103,6 +2114,13 @@ document.querySelectorAll('#arc-modal .arc-tab').forEach(btn => {
 ['arc-dal', 'arc-al', 'arc-persona', 'arc-q'].forEach(id => {
   document.getElementById(id).addEventListener('input', renderArchivio);
   document.getElementById(id).addEventListener('change', renderArchivio);
+});
+document.getElementById('btn-arc-reset').addEventListener('click', () => {
+  document.getElementById('arc-dal').value = '';
+  document.getElementById('arc-al').value = '';
+  document.getElementById('arc-persona').value = '';
+  document.getElementById('arc-q').value = '';
+  renderArchivio();
 });
 </script>
 </body>
