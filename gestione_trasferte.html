@@ -910,6 +910,7 @@
 <script src="js/dipendenti-list.js"></script>
 <script src="js/range-trasferta.js?v=58"></script>
 <script src="js/servizi-tappa.js?v=60"></script>
+<script src="js/upload-file-guard.js?v=81"></script>
 <script src="js/trasferta-avviso-email.js?v=79"></script>
 <script>
 // ========== Webhook da SR_CONFIG ==========
@@ -1417,7 +1418,8 @@ async function postGoogleScript(payload) {
   const resp = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify((window.SRUploadGuard && SRUploadGuard.withSession)
+      ? SRUploadGuard.withSession(payload) : payload)
   });
   const text = await resp.text();
   let data;
@@ -1429,22 +1431,33 @@ async function postGoogleScript(payload) {
 async function onAllegatoServizioFile(card, file) {
   if (!file) return;
   const S = ST();
-  if (!S.isAllegatoExtOk(file.name) && !S.isAllegatoMimeOk(file.type)) {
+  const G = window.SRUploadGuard;
+  const meta = G ? G.inspectFile(file, 'documento') : null;
+  if (meta && !meta.ok) {
+    showToast(meta.message || 'Solo PDF o DOCX', 'warn');
+    return;
+  }
+  if (!meta && !S.isAllegatoExtOk(file.name) && !S.isAllegatoMimeOk(file.type)) {
     showToast('Solo PDF o DOCX', 'warn');
     return;
   }
-  if (file.size > 12 * 1024 * 1024) {
+  if (!meta && file.size > 12 * 1024 * 1024) {
     showToast('File troppo grande (max 12 MB)', 'warn');
     return;
   }
   try {
     const dataUrl = await readFileAsDataUrl(file);
+    const body = G && G.inspectDataUrl(dataUrl, 'documento');
+    if (body && !body.ok) {
+      showToast(body.message || 'File non valido', 'warn');
+      return;
+    }
     const id = S.uidAllegato();
     allegatiBlobStore[id] = dataUrl;
     const next = allegatiDaCard(card).concat([{
       id,
-      nome: file.name,
-      mime: file.type || '',
+      nome: (meta && meta.name) || (G ? G.sanitizeFileName(file.name) : file.name),
+      mime: (body && body.mime) || (meta && meta.mime) || file.type || '',
       _pending: true,
       dataUrl
     }]);
@@ -1499,10 +1512,13 @@ async function caricaAllegatiPendingConProgresso() {
       const { card, allegato } = jobs[i];
       const dataUrl = allegato.dataUrl || allegatiBlobStore[allegato.id];
       if (!dataUrl) throw new Error('File in coda non trovato: ' + (allegato.nome || ''));
+      const G = window.SRUploadGuard;
+      const body = G && G.inspectDataUrl(dataUrl, 'documento');
+      if (body && !body.ok) throw new Error(body.message || 'File non valido');
       const up = await postGoogleScript({
         action: 'uploadServizioAllegato',
         file: dataUrl,
-        fileName: allegato.nome,
+        fileName: G ? G.sanitizeFileName(allegato.nome) : allegato.nome,
         mime: allegato.mime || '',
         email: u.email || '',
         trasferta_id: driveIdPerUpload(card),

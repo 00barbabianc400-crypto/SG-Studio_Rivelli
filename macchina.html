@@ -779,6 +779,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 <script src="js/prenotazione-auto.js?v=1"></script>
 <script src="js/servizi-tappa.js?v=75"></script>
 <script src="js/slot-auto-trasferta.js?v=75"></script>
+<script src="js/upload-file-guard.js?v=81"></script>
 <script>
 const WEBHOOK_CRUD = SR_CONFIG.WEBHOOK_CRUD;
 const WEBHOOK_RICHIESTA = SR_CONFIG.WEBHOOK_RICHIESTA;
@@ -1223,13 +1224,19 @@ function provaGeolocalizzazione() {
 
 function onScontrinoFile(file) {
   if (!file) return;
-  if (!file.type.startsWith('image/')) return showToast('Solo immagini', 'warn');
-  if (file.size > SC_MAX_BYTES) return showToast('File oltre 10 MB', 'warn');
+  const G = window.SRUploadGuard;
+  const meta = G ? G.inspectFile(file, 'image') : null;
+  if (meta && !meta.ok) return showToast(meta.message || 'Solo immagini', 'warn');
+  if (!meta && !file.type.startsWith('image/')) return showToast('Solo immagini', 'warn');
+  if (!meta && file.size > SC_MAX_BYTES) return showToast('File oltre 10 MB', 'warn');
   const reader = new FileReader();
   reader.onload = () => {
-    scontrinoPhoto = { dataUrl: reader.result, mime: file.type };
+    const dataUrl = reader.result;
+    const body = G && G.inspectDataUrl(dataUrl, 'image');
+    if (body && !body.ok) return showToast(body.message || 'Immagine non valida', 'warn');
+    scontrinoPhoto = { dataUrl: dataUrl, mime: (body && body.mime) || file.type };
     const img = document.getElementById('sc-preview');
-    img.src = reader.result;
+    img.src = dataUrl;
     img.classList.remove('hidden');
   };
   reader.readAsDataURL(file);
@@ -1241,7 +1248,8 @@ async function postGoogleScript(payload) {
   const resp = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify((window.SRUploadGuard && SRUploadGuard.withSession)
+      ? SRUploadGuard.withSession(payload) : payload)
   });
   const text = await resp.text();
   let data;
@@ -1261,6 +1269,10 @@ async function salvaScontrino() {
   const indirizzo = document.getElementById('sc-indirizzo').value.trim();
   if (!indirizzo) return showToast('Inserisci l\'indirizzo del benzinaio', 'warn');
   if (!scontrinoPhoto) return showToast('Aggiungi la foto dello scontrino', 'warn');
+  if (window.SRUploadGuard) {
+    const body = SRUploadGuard.inspectDataUrl(scontrinoPhoto.dataUrl, 'image');
+    if (!body.ok) return showToast(body.message || 'Immagine non valida', 'warn');
+  }
   const btn = document.getElementById('sc-salva');
   btn.disabled = true;
   showAppLoader('Caricamento scontrino su Drive…');

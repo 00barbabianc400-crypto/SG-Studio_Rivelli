@@ -319,18 +319,17 @@ body {
 }
 .seg-tab.is-active { background: #fff; color: var(--accent); box-shadow: var(--shadow-sm); }
 .ns-board {
-  display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px;
-  scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
-  justify-content: safe center;
+  display: flex; gap: 8px; overflow: hidden; width: 100%;
+  align-items: stretch;
 }
 .ns-col {
-  flex: 0 0 min(300px, 78vw); scroll-snap-align: start;
+  flex: 1 1 0; min-width: 0;
   background: var(--hover); border: 1px solid var(--border); border-radius: var(--radius-sm);
-  padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 180px;
+  padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 160px;
 }
-@media (min-width: 900px) {
-  .ns-board { justify-content: center; padding-inline: 8px; }
-  .ns-col { flex: 0 0 min(340px, 38%); max-width: 380px; }
+@media (max-width: 640px) {
+  .ns-board { flex-wrap: wrap; overflow: visible; }
+  .ns-col { flex: 1 1 calc(50% - 8px); min-width: 140px; }
 }
 .ns-col-head { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.35; }
 .ns-col-head small { display: block; font-weight: 500; color: var(--muted); margin-top: 2px; font-size: 11px; }
@@ -343,10 +342,10 @@ body {
   font-size: 11px; font-weight: 600; color: var(--muted); margin: 8px 0 6px;
 }
 .ns-item {
-  display: flex; align-items: center; gap: 10px; width: 100%;
-  padding: 8px 10px; margin-bottom: 6px; text-align: left;
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 8px; margin-bottom: 6px; text-align: left;
   background: #fff; border: 1px solid var(--border); border-radius: 10px;
-  font-family: inherit; cursor: pointer; color: inherit;
+  font-family: inherit; cursor: pointer; color: inherit; min-width: 0;
 }
 .ns-item:hover { border-color: var(--accent); }
 .ns-item .sc-ico-wrap { width: 34px; height: 34px; border-radius: 9px; }

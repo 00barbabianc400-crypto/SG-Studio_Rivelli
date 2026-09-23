@@ -280,15 +280,26 @@
         toast('Massimo ' + MAX_PHOTOS + ' foto', 'err');
         break;
       }
-      if (!file.type.startsWith('image/')) {
+      const G = (typeof SRUploadGuard !== 'undefined') ? SRUploadGuard : null;
+      const meta = G ? G.inspectFile(file, 'image') : null;
+      if (meta && !meta.ok) {
+        toast(file.name + ': ' + (meta.message || 'solo immagini'), 'err');
+        continue;
+      }
+      if (!meta && !file.type.startsWith('image/')) {
         toast(file.name + ': solo immagini', 'err');
         continue;
       }
-      if (file.size > MAX_BYTES) {
+      if (!meta && file.size > MAX_BYTES) {
         toast(file.name + ': supera 10 MB', 'err');
         continue;
       }
       const dataUrl = await readFileAsDataURL(file);
+      const body = G && G.inspectDataUrl(dataUrl, 'image');
+      if (body && !body.ok) {
+        toast(file.name + ': ' + (body.message || 'immagine non valida'), 'err');
+        continue;
+      }
       photos.push({ file, preview: dataUrl, dataUrl });
     }
     renderPhotos();
@@ -302,7 +313,8 @@
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify((typeof SRUploadGuard !== 'undefined' && SRUploadGuard.withSession)
+        ? SRUploadGuard.withSession(payload) : payload)
     });
     const text = await resp.text();
     let data;
@@ -324,9 +336,14 @@
           ? 'Caricamento foto su Drive…'
           : 'Caricamento foto ' + (i + 1) + ' di ' + total + ' su Drive…'
       );
+      const dataUrl = photos[i].dataUrl;
+      if (typeof SRUploadGuard !== 'undefined') {
+        const body = SRUploadGuard.inspectDataUrl(dataUrl, 'image');
+        if (!body.ok) throw new Error(body.message || 'Immagine non valida');
+      }
       const data = await postJson({
         action: 'uploadPhoto',
-        photo: photos[i].dataUrl,
+        photo: dataUrl,
         email: userEmail,
         nome: userName
       });
