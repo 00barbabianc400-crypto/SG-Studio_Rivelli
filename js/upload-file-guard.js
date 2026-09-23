@@ -141,8 +141,8 @@
     const keys = Object.keys(src);
     for (let i = 0; i < keys.length; i++) out[keys[i]] = src[keys[i]];
     const Auth = g.SRAuth;
-    if (Auth && typeof Auth.getToken === 'function') {
-      const t = Auth.getToken();
+    if (Auth && typeof Auth.getGasToken === 'function') {
+      const t = Auth.getGasToken();
       if (t) out.token = t;
     }
     if (!out.email && Auth && typeof Auth.getUser === 'function') {

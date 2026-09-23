@@ -39,6 +39,7 @@ window.SR_CONFIG = {
 
   TOKEN_KEY: 'sr_jwt',
   TOKEN_EXP_KEY: 'sr_jwt_exp',
+  GAS_TOKEN_KEY: 'sr_gas_jwt',
   USER_KEY: 'sr_user',
   TRASFERTE_KEY: 'sr_trasferte_tappe',
   SLOT_AUTO_KEY: 'sr_slot_auto_az',

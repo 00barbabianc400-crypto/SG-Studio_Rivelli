@@ -34,6 +34,10 @@
     return sessionStorage.getItem(C.TOKEN_KEY || 'sr_jwt');
   }
 
+  function getGasToken() {
+    return sessionStorage.getItem(C.GAS_TOKEN_KEY || 'sr_gas_jwt') || '';
+  }
+
   function getTokenExp() {
     const v = sessionStorage.getItem(C.TOKEN_EXP_KEY || 'sr_jwt_exp');
     return v ? Number(v) : 0;
@@ -101,6 +105,7 @@
   function clearN8nSession() {
     sessionStorage.removeItem(C.TOKEN_KEY || 'sr_jwt');
     sessionStorage.removeItem(C.TOKEN_EXP_KEY || 'sr_jwt_exp');
+    sessionStorage.removeItem(C.GAS_TOKEN_KEY || 'sr_gas_jwt');
     sessionStorage.removeItem(C.USER_KEY || 'sr_user');
     sessionStorage.removeItem(C.TRASFERTE_KEY || 'sr_trasferte_tappe');
     sessionStorage.removeItem(C.SLOT_AUTO_KEY || 'sr_slot_auto_az');
@@ -139,6 +144,13 @@
       expMs = Date.now() + (Number(data.expiresInSec) || 28800) * 1000;
     }
     sessionStorage.setItem(C.TOKEN_EXP_KEY || 'sr_jwt_exp', String(expMs));
+
+    const gasToken = String(data.gas_token || '').trim();
+    if (gasToken.startsWith('eyJ')) {
+      sessionStorage.setItem(C.GAS_TOKEN_KEY || 'sr_gas_jwt', gasToken);
+    } else {
+      sessionStorage.removeItem(C.GAS_TOKEN_KEY || 'sr_gas_jwt');
+    }
 
     if (data.user) {
       sessionStorage.setItem(C.USER_KEY || 'sr_user', JSON.stringify(data.user));
@@ -362,6 +374,7 @@
 
     return {
       token,
+      gas_token: authObj.gas_token || data.gas_token || '',
       expiresAt: authObj.expiresAt || data.expiresAt,
       expiresInSec: authObj.expiresInSec ?? data.expiresInSec,
       user: authObj.user || data.user,
@@ -534,6 +547,7 @@
     logout,
     fetch,
     getToken,
+    getGasToken,
     getUser,
     getRole,
     getTrasferteTappe,
