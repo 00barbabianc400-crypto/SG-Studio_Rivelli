@@ -32,5 +32,9 @@
     }
   }
 
-  g.SRJwtHs256 = { sign: sign, verify: verify };
+  function deriveGasUploadKey(secret) {
+    return crypto.createHash('sha256').update(String(secret || ''), 'utf8').digest('hex');
+  }
+
+  g.SRJwtHs256 = { sign: sign, verify: verify, deriveGasUploadKey: deriveGasUploadKey };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
