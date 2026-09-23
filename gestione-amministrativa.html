@@ -57,6 +57,8 @@ body {
 
 .shell { max-width: min(1080px, calc(100vw - 32px)); margin: 0 auto; padding: 28px 16px 64px; }
 .page-head { margin-bottom: 20px; }
+.page-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.page-head-row .soft-btn { flex-shrink: 0; }
 .page-title { font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
 .page-sub { font-size: 14px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
 
@@ -476,13 +478,59 @@ body {
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast.error { background: var(--danger); }
 
+.load-buffer {
+  position: fixed; inset: 0; z-index: 1500;
+  background: rgba(243, 244, 246, .72);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.load-buffer[hidden] { display: none; }
+.load-card {
+  display: inline-flex; align-items: center; gap: 12px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 16px 20px; font-size: 14px; font-weight: 600;
+}
+.load-spin {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--border); border-top-color: var(--accent);
+  animation: load-spin .7s linear infinite;
+}
+@keyframes load-spin { to { transform: rotate(360deg); } }
+.arc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.arc-tools { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+.arc-count { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+.arc-list { display: flex; flex-direction: column; gap: 12px; }
+.arc-card {
+  background: var(--hover); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+.arc-card h3 { font-size: 15px; font-weight: 700; }
+.arc-card h3 small { display: block; font-weight: 500; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.arc-meta { font-size: 13px; color: var(--muted); margin: 6px 0 8px; }
+.arc-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 0; border-top: 1px solid var(--border); font-size: 13px;
+}
+.arc-row a { color: var(--accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.arc-row a:hover { text-decoration: underline; }
+.arc-nolink { color: var(--faint); font-size: 12px; white-space: nowrap; }
+.arc-empty { font-size: 14px; color: var(--muted); padding: 8px 0 4px; }
+.arc-tappa { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); }
+.arc-tappa h4 { font-size: 13px; font-weight: 700; }
+.arc-tappa h4 span { display: block; font-weight: 500; color: var(--muted); margin-top: 2px; }
+
 @media (max-width: 640px) {
   .shell { max-width: 100%; padding: 20px 12px 48px; }
   .field { min-width: 100%; }
+  .page-head-row { flex-direction: column; }
 }
 </style>
 </head>
 <body>
+
+<div class="load-buffer" id="load-buffer" role="status" aria-live="polite">
+  <div class="load-card"><span class="load-spin" aria-hidden="true"></span>Caricamento dati</div>
+</div>
 
 <header class="topbar">
   <div class="topbar-brand">
@@ -495,9 +543,15 @@ body {
 </header>
 
 <main class="shell">
-  <div class="page-head">
-    <h1 class="page-title">Gestione amministrativa</h1>
-    <p class="page-sub">Prenotazioni auto e trasferte sul calendario · filtra per persona e restringi per date</p>
+  <div class="page-head page-head-row">
+    <div>
+      <h1 class="page-title">Gestione amministrativa</h1>
+      <p class="page-sub">Prenotazioni auto e trasferte sul calendario · filtra per persona e restringi per date</p>
+    </div>
+    <button type="button" class="soft-btn" id="btn-archivio">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7z"/><path d="M4 7l2-3h12l2 3"/><path d="M9 12h6"/></svg>
+      Archivio storico
+    </button>
   </div>
 
   <section class="card" aria-label="Filtri">
@@ -615,6 +669,43 @@ body {
   </div>
 </div>
 
+<div class="modal-backdrop" id="arc-backdrop" role="dialog" aria-modal="true" aria-labelledby="arc-title">
+  <div class="modal modal-wide" id="arc-modal">
+    <div class="modal-head arc-head">
+      <h2 id="arc-title">Archivio storico</h2>
+      <button type="button" class="soft-btn btn-chiudi" id="arc-close">Chiudi</button>
+    </div>
+    <div class="modal-body">
+      <div class="arc-tools">
+        <div class="seg-tabs" role="tablist" aria-label="Tipo archivio">
+          <button type="button" class="arc-tab seg-tab is-active" data-arc="macchina">Archivio macchina</button>
+          <button type="button" class="arc-tab seg-tab" data-arc="trasferte">Archivio trasferte</button>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="arc-dal">Periodo dal</label>
+            <input type="date" id="arc-dal">
+          </div>
+          <div class="field">
+            <label for="arc-al">Periodo al</label>
+            <input type="date" id="arc-al">
+          </div>
+          <div class="field">
+            <label for="arc-persona">Persona</label>
+            <select id="arc-persona"><option value="">— tutte —</option></select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="arc-q">Città o cliente</label>
+          <input type="search" id="arc-q" placeholder="Scrivi una città o un cliente" autocomplete="off">
+        </div>
+      </div>
+      <p class="arc-count" id="arc-count"></p>
+      <div class="arc-list" id="arc-list"></div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
@@ -638,6 +729,7 @@ const ICON_ROUTE = '<svg class="oc-bar-ico" viewBox="0 0 24 24" aria-hidden="tru
 
 let rawPrenotazioni = [];
 let rawTappe = [];
+let rawArchivio = { macchina: [], trasferte: [] };
 let filteredMacchina = [];
 let filteredTappe = [];
 let calendarEvents = [];
@@ -742,8 +834,22 @@ function isTappaTrasferta(row) {
   return !!(row && (row.trasferta_id != null || (row.nome_persona != null && row.citta != null)));
 }
 
+function isArchivioEnvelope(row) {
+  return !!(row && Array.isArray(row.prenotazioni) && Array.isArray(row.tappe) && row.archivio);
+}
+
 function splitPayload(data) {
   const rows = unwrapRows(data).filter(Boolean);
+  if (rows.length === 1 && isArchivioEnvelope(rows[0])) {
+    const env = rows[0];
+    const split = splitPayload(env.prenotazioni.concat(env.tappe));
+    const arc = env.archivio || {};
+    split.archivio = {
+      macchina: Array.isArray(arc.macchina) ? arc.macchina : [],
+      trasferte: Array.isArray(arc.trasferte) ? arc.trasferte : []
+    };
+    return split;
+  }
   const prenotazioni = [];
   const tappe = [];
   rows.forEach(r => {
@@ -764,7 +870,7 @@ function splitPayload(data) {
       });
     }
   });
-  return { prenotazioni, tappe };
+  return { prenotazioni, tappe, archivio: { macchina: [], trasferte: [] } };
 }
 
 function toISO(y, m, d) {
@@ -1568,7 +1674,7 @@ function renderDettaglioTappaBody() {
     <div id="detail-panel">${panel}</div>`;
 
   wireDetailFilterOp(t.nome_persona);
-  document.querySelectorAll('.seg-tab').forEach(btn => {
+  document.querySelectorAll('#detail-modal .seg-tab').forEach(btn => {
     btn.addEventListener('click', () => {
       detailTappaCtx.tab = btn.dataset.tab;
       renderDettaglioTappaBody();
@@ -1709,7 +1815,134 @@ function apriScontrinoViewerAmm(sc) {
 }
 
 
+let arcKind = 'macchina';
+
+function dayOnly(v) {
+  const m = String(v || '').match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : '';
+}
+
+function fmtDay(v) {
+  const d = dayOnly(v);
+  if (!d) return '—';
+  const p = d.split('-');
+  return p[2] + '/' + p[1] + '/' + p[0];
+}
+
+function safeSpUrl(u) {
+  const s = String(u || '');
+  return /^https:\/\/[a-z0-9.-]+\.sharepoint\.com\//i.test(s) ? s : '';
+}
+
+function personeDi(name) {
+  return String(name || '').split(/\s+-\s+|\s*,\s*/).map(s => s.trim()).filter(Boolean);
+}
+
+function personaMatch(blob, persona) {
+  if (!persona) return true;
+  const parts = personeDi(blob);
+  if (!parts.length) return false;
+  return parts.some(part => namesMatch(part, persona));
+}
+
+function fileOpen(f, label) {
+  const url = safeSpUrl(f && (f.web_url || f.webUrl));
+  if (!url) return '<span class="arc-nolink">Link non ancora in elenco</span>';
+  return '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(label || 'Apri in SharePoint') + '</a>';
+}
+
+function cardMacchina(p) {
+  const quando = fmtDay(p.data_da) + (dayOnly(p.data_a) && dayOnly(p.data_a) !== dayOnly(p.data_da) ? ' → ' + fmtDay(p.data_a) : '');
+  const files = (p.scontrini || []).map(sc => {
+    const dove = sc.indirizzo ? esc(sc.indirizzo) : 'Scontrino';
+    return '<div class="arc-row"><span>' + fmtDay(sc.created_at) + ' · ' + dove + '</span>' + fileOpen(sc, 'Apri') + '</div>';
+  }).join('');
+  return '<article class="arc-card"><h3>' + esc(p.operatore || '—') + '<small>Prenotazione ' + esc(String(p.id || '')) + ' · ' + esc(quando) + '</small></h3>'
+    + '<p class="arc-meta">' + esc(p.tipo_utilizzo || '') + (p.note ? ' · ' + esc(p.note) : '') + '</p>'
+    + (files || '<p class="arc-empty">Nessuno scontrino in scheda.</p>')
+    + '</article>';
+}
+
+function righeTappa(t) {
+  const note = (t.note || []).map(n => {
+    const pezzi = [n.tipo, n.categoria, n.pasto, n.dettaglio].filter(Boolean).join(' · ');
+    const amt = fmtEuro(n.importo);
+    return '<div class="arc-row"><span>' + esc(pezzi || 'Nota') + (amt ? ' · ' + esc(amt) : '') + '</span>' + fileOpen(n, 'Apri') + '</div>';
+  }).join('');
+  const all = (t.servizi || []).map(sv => (sv.allegati || []).map(a => {
+    const lab = [sv.tipo, a.nome].filter(Boolean).join(' · ');
+    return '<div class="arc-row"><span>' + esc(lab || 'Allegato') + '</span>' + fileOpen(a, 'Apri') + '</div>';
+  }).join('')).join('');
+  return note + all;
+}
+
+function cardTrasferta(tr) {
+  const tappe = (tr.tappe || []).map(t => {
+    const head = 'Tappa ' + esc(String(t.tappa_numero || '')) + ' · ' + esc(t.citta || '—');
+    const sub = esc(t.cliente_tappa || '—') + ' · ' + fmtDay(t.data_arrivo) + ' → ' + fmtDay(t.data_partenza);
+    return '<div class="arc-tappa"><h4>' + head + '<span>' + sub + '</span></h4>' + (righeTappa(t) || '<p class="arc-empty">Nessun file in questa tappa.</p>') + '</div>';
+  }).join('');
+  return '<article class="arc-card"><h3>' + esc(tr.nome_persona || '—') + '<small>' + esc(tr.trasferta_id || '') + '</small></h3>' + tappe + '</article>';
+}
+
+function popolaPersoneArchivio() {
+  const sel = document.getElementById('arc-persona');
+  const cur = sel.value;
+  const names = [];
+  function add(name) {
+    personeDi(name).forEach(part => {
+      if (!names.some(x => namesMatch(x, part))) names.push(part);
+    });
+  }
+  (rawArchivio.macchina || []).forEach(p => add(p.operatore));
+  (rawArchivio.trasferte || []).forEach(t => add(t.nome_persona));
+  names.sort((a, b) => a.localeCompare(b, 'it'));
+  sel.innerHTML = '<option value="">— tutte —</option>' + names.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('');
+  if (names.some(n => n === cur)) sel.value = cur;
+}
+
+function renderArchivio() {
+  const q = normName(document.getElementById('arc-q').value);
+  const persona = document.getElementById('arc-persona').value;
+  const f = { dal: document.getElementById('arc-dal').value, al: document.getElementById('arc-al').value };
+  const host = document.getElementById('arc-list');
+  const count = document.getElementById('arc-count');
+  if (arcKind === 'macchina') {
+    const rows = (rawArchivio.macchina || []).filter(p => {
+      if (!personaMatch(p.operatore, persona)) return false;
+      if (!passaFiltroDate(dayOnly(p.data_da), dayOnly(p.data_a) || dayOnly(p.data_da), f)) return false;
+      if (!q) return true;
+      const blob = normName([p.note, p.numero_trasferta].concat((p.scontrini || []).map(s => s.indirizzo)).join(' '));
+      return blob.indexOf(q) >= 0;
+    });
+    count.textContent = rows.length + (rows.length === 1 ? ' prenotazione' : ' prenotazioni');
+    host.innerHTML = rows.length ? rows.map(cardMacchina).join('') : '<p class="arc-empty">Nessuna scheda per questi filtri.</p>';
+    return;
+  }
+  const trips = [];
+  (rawArchivio.trasferte || []).forEach(tr => {
+    if (!personaMatch(tr.nome_persona, persona)) return;
+    const tappe = (tr.tappe || []).filter(t => {
+      const da = dayOnly(t.data_arrivo);
+      if (!passaFiltroDate(da, dayOnly(t.data_partenza) || da, f)) return false;
+      if (!q) return true;
+      return normName([t.citta, t.cliente_tappa].join(' ')).indexOf(q) >= 0;
+    });
+    if (tappe.length) trips.push(Object.assign({}, tr, { tappe: tappe }));
+  });
+  count.textContent = trips.length + (trips.length === 1 ? ' trasferta' : ' trasferte');
+  host.innerHTML = trips.length ? trips.map(cardTrasferta).join('') : '<p class="arc-empty">Nessuna scheda per questi filtri.</p>';
+}
+
+function apriArchivio() {
+  popolaPersoneArchivio();
+  renderArchivio();
+  document.getElementById('arc-backdrop').classList.add('open');
+}
+
 async function caricaDati() {
+  const buf = document.getElementById('load-buffer');
+  if (buf) buf.hidden = false;
   setStatus('Caricamento dati…');
   try {
     await SRAuth.ensureN8nSession();
@@ -1723,6 +1956,7 @@ async function caricaDati() {
     const split = splitPayload(data);
     rawPrenotazioni = split.prenotazioni;
     rawTappe = split.tappe;
+    rawArchivio = split.archivio || { macchina: [], trasferte: [] };
     popolaOperatoriDaRecord();
     applyFilters();
   } catch (e) {
@@ -1732,6 +1966,8 @@ async function caricaDati() {
     }
     setStatus('Errore caricamento: ' + (e.message || e), 'is-error');
     showToast('Errore: ' + (e.message || e), 'error');
+  } finally {
+    if (buf) buf.hidden = true;
   }
 }
 
@@ -1802,6 +2038,24 @@ document.getElementById('scontrino-view-backdrop').addEventListener('click', e =
     e.currentTarget.classList.remove('open');
     document.getElementById('sc-view-img').removeAttribute('src');
   }
+});
+document.getElementById('btn-archivio').addEventListener('click', apriArchivio);
+document.getElementById('arc-close').addEventListener('click', () => {
+  document.getElementById('arc-backdrop').classList.remove('open');
+});
+document.getElementById('arc-backdrop').addEventListener('click', e => {
+  if (e.target.id === 'arc-backdrop') e.currentTarget.classList.remove('open');
+});
+document.querySelectorAll('#arc-modal .arc-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    arcKind = btn.dataset.arc;
+    document.querySelectorAll('#arc-modal .arc-tab').forEach(b => b.classList.toggle('is-active', b === btn));
+    renderArchivio();
+  });
+});
+['arc-dal', 'arc-al', 'arc-persona', 'arc-q'].forEach(id => {
+  document.getElementById(id).addEventListener('input', renderArchivio);
+  document.getElementById(id).addEventListener('change', renderArchivio);
 });
 </script>
 </body>
