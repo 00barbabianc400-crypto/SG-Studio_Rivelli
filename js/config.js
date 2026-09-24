@@ -18,6 +18,7 @@ window.SR_CONFIG = {
   VAPID_PUBLIC: 'BKEDDuiZTy1wDbZWK_VPB47Mc8fwylHJYcX7hwIfWBNz_AUuRsGA4VRwQE8JvwWdspiQ7TNZIgzq3gCIxoq3qa8',
 
   WEBHOOK_GESTIONE_AMMINISTRATIVA: 'https://studiorivelli.app.n8n.cloud/webhook/gestione-amministrativa-auth',
+  WEBHOOK_GESTIONE_ARCHIVIO: 'https://studiorivelli.app.n8n.cloud/webhook/gestione-archivio-auth',
   WEBHOOK_GESTIONE_UTENTI: 'https://studiorivelli.app.n8n.cloud/webhook/gestione-utenti',
   WEBHOOK_RECUPERO_DIPENDENTI: 'https://studiorivelli.app.n8n.cloud/webhook/recupero-dipendenti',
 

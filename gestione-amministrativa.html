@@ -496,7 +496,7 @@ body {
   animation: load-spin .7s linear infinite;
 }
 @keyframes load-spin { to { transform: rotate(360deg); } }
-.arc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.arc-head-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .arc-tools { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
 .arc-filters { display: flex; align-items: flex-end; gap: 8px; }
 .arc-filters .field { min-width: 0; flex: 1 1 0; margin: 0; }
@@ -537,7 +537,7 @@ body {
 <body>
 
 <div class="load-buffer" id="load-buffer" role="status" aria-live="polite">
-  <div class="load-card"><span class="load-spin" aria-hidden="true"></span>Caricamento dati</div>
+  <div class="load-card"><span class="load-spin" aria-hidden="true"></span><span id="load-buffer-text">Caricamento dati</span></div>
 </div>
 
 <header class="topbar">
@@ -681,7 +681,10 @@ body {
   <div class="modal modal-wide" id="arc-modal">
     <div class="modal-head arc-head">
       <h2 id="arc-title">Archivio storico</h2>
-      <button type="button" class="soft-btn btn-chiudi" id="arc-close">Chiudi</button>
+      <div class="arc-head-actions">
+        <button type="button" class="soft-btn" id="btn-arc-export">Export excel dell'archivio</button>
+        <button type="button" class="soft-btn btn-chiudi" id="arc-close">Chiudi</button>
+      </div>
     </div>
     <div class="modal-body">
       <div class="arc-tools">
@@ -718,16 +721,17 @@ body {
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
-<script src="js/config.js"></script>
+<script src="js/config.js?v=83"></script>
 <script src="js/auth.js"></script>
 <script src="js/scontrini.js"></script>
   <script src="js/nota-spese.js?v=58"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
-  <script src="js/nota-spese-export.js?v=55"></script>
+  <script src="js/nota-spese-export.js?v=83"></script>
   <script src="js/servizi-tappa.js?v=58"></script>
   <script src="js/slot-auto-trasferta.js?v=75"></script>
 <script>
 const WEBHOOK = SR_CONFIG.WEBHOOK_GESTIONE_AMMINISTRATIVA;
+const WEBHOOK_ARCHIVIO = SR_CONFIG.WEBHOOK_GESTIONE_ARCHIVIO;
 const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 const MESI_SHORT = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
 const WD = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
@@ -739,6 +743,8 @@ const ICON_ROUTE = '<svg class="oc-bar-ico" viewBox="0 0 24 24" aria-hidden="tru
 let rawPrenotazioni = [];
 let rawTappe = [];
 let rawArchivio = { macchina: [], trasferte: [] };
+let archivioLoaded = false;
+let archivioLoading = null;
 let filteredMacchina = [];
 let filteredTappe = [];
 let calendarEvents = [];
@@ -1959,43 +1965,97 @@ function popolaPersoneArchivio() {
   if (names.some(n => n === cur)) sel.value = cur;
 }
 
-function renderArchivio() {
-  const q = normName(document.getElementById('arc-q').value);
-  const persona = document.getElementById('arc-persona').value;
-  const f = { dal: document.getElementById('arc-dal').value, al: document.getElementById('arc-al').value };
-  const host = document.getElementById('arc-list');
-  const count = document.getElementById('arc-count');
-  if (arcKind === 'macchina') {
-    const rows = (rawArchivio.macchina || []).filter(p => {
-      if (!personaMatch(p.operatore, persona)) return false;
-      if (!passaFiltroDate(dayOnly(p.data_da), dayOnly(p.data_a) || dayOnly(p.data_da), f)) return false;
-      if (!q) return true;
-      const blob = normName([p.note, p.numero_trasferta].concat((p.scontrini || []).map(s => s.indirizzo)).join(' '));
-      return blob.indexOf(q) >= 0;
-    });
-    count.textContent = rows.length + (rows.length === 1 ? ' prenotazione' : ' prenotazioni');
-    host.innerHTML = rows.length ? rows.map(cardMacchina).join('') : '<p class="arc-empty">Nessuna scheda per questi filtri.</p>';
-    return;
-  }
-  const trips = [];
+function filtriArchivio() {
+  return {
+    dal: document.getElementById('arc-dal').value,
+    al: document.getElementById('arc-al').value,
+    persona: document.getElementById('arc-persona').value,
+    q: normName(document.getElementById('arc-q').value)
+  };
+}
+
+function viewArchivioFiltrata() {
+  const f = filtriArchivio();
+  const macchina = (rawArchivio.macchina || []).filter(p => {
+    if (!personaMatch(p.operatore, f.persona)) return false;
+    if (!passaFiltroDate(dayOnly(p.data_da), dayOnly(p.data_a) || dayOnly(p.data_da), f)) return false;
+    if (!f.q) return true;
+    const blob = normName([p.note, p.numero_trasferta].concat((p.scontrini || []).map(s => s.indirizzo)).join(' '));
+    return blob.indexOf(f.q) >= 0;
+  });
+  const trasferte = [];
   (rawArchivio.trasferte || []).forEach(tr => {
-    if (!personaMatch(tr.nome_persona, persona)) return;
+    if (!personaMatch(tr.nome_persona, f.persona)) return;
     const tappe = (tr.tappe || []).filter(t => {
       const da = dayOnly(t.data_arrivo);
       if (!passaFiltroDate(da, dayOnly(t.data_partenza) || da, f)) return false;
-      if (!q) return true;
-      return normName([t.citta, t.cliente_tappa].join(' ')).indexOf(q) >= 0;
+      if (!f.q) return true;
+      return normName([t.citta, t.cliente_tappa].join(' ')).indexOf(f.q) >= 0;
     });
-    if (tappe.length) trips.push(Object.assign({}, tr, { tappe: tappe }));
+    if (tappe.length) trasferte.push(Object.assign({}, tr, { tappe: tappe }));
   });
-  count.textContent = trips.length + (trips.length === 1 ? ' trasferta' : ' trasferte');
-  host.innerHTML = trips.length ? trips.map(cardTrasferta).join('') : '<p class="arc-empty">Nessuna scheda per questi filtri.</p>';
+  return { macchina: macchina, trasferte: trasferte };
 }
 
-function apriArchivio() {
-  popolaPersoneArchivio();
-  renderArchivio();
+function renderArchivio() {
+  const view = viewArchivioFiltrata();
+  const host = document.getElementById('arc-list');
+  const count = document.getElementById('arc-count');
+  if (arcKind === 'macchina') {
+    count.textContent = view.macchina.length + (view.macchina.length === 1 ? ' prenotazione' : ' prenotazioni');
+    host.innerHTML = view.macchina.length ? view.macchina.map(cardMacchina).join('') : '<p class="arc-empty">Nessuna scheda per questi filtri.</p>';
+    return;
+  }
+  count.textContent = view.trasferte.length + (view.trasferte.length === 1 ? ' trasferta' : ' trasferte');
+  host.innerHTML = view.trasferte.length ? view.trasferte.map(cardTrasferta).join('') : '<p class="arc-empty">Nessuna scheda per questi filtri.</p>';
+}
+
+async function caricaArchivio() {
+  if (archivioLoaded) return;
+  if (archivioLoading) return archivioLoading;
+  const buf = document.getElementById('load-buffer');
+  const text = document.getElementById('load-buffer-text');
+  const prev = text ? text.textContent : '';
+  if (text) text.textContent = 'Caricamento archivio';
+  if (buf) buf.hidden = false;
+  archivioLoading = (async () => {
+    const resp = await SRAuth.fetch(WEBHOOK_ARCHIVIO, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error((data && data.message) || ('HTTP ' + resp.status));
+    const env = Array.isArray(data) ? data[0] : data;
+    const arc = (env && env.archivio) || env || {};
+    rawArchivio = {
+      macchina: Array.isArray(arc.macchina) ? arc.macchina : [],
+      trasferte: Array.isArray(arc.trasferte) ? arc.trasferte : []
+    };
+    archivioLoaded = true;
+  })();
+  try {
+    await archivioLoading;
+  } finally {
+    archivioLoading = null;
+    if (text) text.textContent = prev || 'Caricamento dati';
+    if (buf) buf.hidden = true;
+  }
+}
+
+async function apriArchivio() {
   document.getElementById('arc-backdrop').classList.add('open');
+  try {
+    await caricaArchivio();
+    popolaPersoneArchivio();
+    renderArchivio();
+  } catch (e) {
+    if (SRAuth.isNotEnabledError(e)) {
+      SRAuth.redirectNotEnabled();
+      return;
+    }
+    showToast('Errore archivio: ' + (e.message || e), 'error');
+  }
 }
 
 async function caricaDati() {
@@ -2014,7 +2074,6 @@ async function caricaDati() {
     const split = splitPayload(data);
     rawPrenotazioni = split.prenotazioni;
     rawTappe = split.tappe;
-    rawArchivio = split.archivio || { macchina: [], trasferte: [] };
     popolaOperatoriDaRecord();
     applyFilters();
   } catch (e) {
@@ -2121,6 +2180,23 @@ document.getElementById('btn-arc-reset').addEventListener('click', () => {
   document.getElementById('arc-persona').value = '';
   document.getElementById('arc-q').value = '';
   renderArchivio();
+});
+document.getElementById('btn-arc-export').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-arc-export');
+  if (btn) btn.disabled = true;
+  try {
+    await caricaArchivio();
+    const view = viewArchivioFiltrata();
+    if (!view.macchina.length && !view.trasferte.length) {
+      showToast('Nessun dato da esportare con questi filtri', 'error');
+      return;
+    }
+    await SRNotaSpeseExport.downloadArchivioExcel(view);
+  } catch (e) {
+    showToast('Export non riuscito: ' + (e.message || e), 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 });
 </script>
 </body>

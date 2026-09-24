@@ -112,7 +112,10 @@
   }
 
   function autofitWidths(rows) {
-    const cols = 6;
+    let cols = 6;
+    (rows || []).forEach(r => {
+      if ((r.values || []).length > cols) cols = r.values.length;
+    });
     const widths = Array(cols).fill(10);
     (rows || []).forEach(r => {
       (r.values || []).forEach((cell, i) => {
@@ -229,6 +232,142 @@
     return sheet;
   }
 
+  function dayOnly(v) {
+    const m = String(v || '').match(/^(\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : '';
+  }
+
+  function cell(v) {
+    return neutralizeExcelFormula(v == null ? '' : v);
+  }
+
+  function importoOf(v) {
+    const N = NS();
+    try {
+      if (N && typeof N.parseImporto === 'function') return N.parseImporto(v);
+    } catch { /* fall through */ }
+    const n = Number(String(v == null ? '' : v).replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function voceOf(it) {
+    const N = NS();
+    if (N && typeof N.labelVoce === 'function') return N.labelVoce(it);
+    return String((it && (it.dettaglio || it.indirizzo || it.pasto || it.mezzo)) || '');
+  }
+
+  function catOf(it) {
+    const N = NS();
+    if (N && typeof N.labelCategoria === 'function') return N.labelCategoria(it && it.categoria);
+    return String((it && it.categoria) || '');
+  }
+
+  function buildArchivioSheets(view) {
+    const macchinaRows = [{
+      kind: 'header',
+      values: ['Prenotazione', 'Operatore', 'Tipo', 'Dal', 'Al', 'Note', 'Data scontrino', 'Luogo']
+    }];
+    (view && view.macchina || []).forEach(p => {
+      const sc = Array.isArray(p.scontrini) ? p.scontrini : [];
+      if (!sc.length) {
+        macchinaRows.push({
+          kind: 'tx',
+          values: [cell(p.id), cell(p.operatore), cell(p.tipo_utilizzo), cell(dayOnly(p.data_da)), cell(dayOnly(p.data_a)), cell(p.note), '', '']
+        });
+        return;
+      }
+      sc.forEach(s => {
+        macchinaRows.push({
+          kind: 'tx',
+          values: [cell(p.id), cell(p.operatore), cell(p.tipo_utilizzo), cell(dayOnly(p.data_da)), cell(dayOnly(p.data_a)), cell(p.note), cell(fmtTimestamp(s.created_at)), cell(s.indirizzo)]
+        });
+      });
+    });
+
+    const trasferteRows = [{
+      kind: 'header',
+      values: ['Trasferta', 'Persona', 'Tappa', 'Città', 'Cliente', 'Dal', 'Al', 'Tipo riga', 'Voce', 'Importo']
+    }];
+    (view && view.trasferte || []).forEach(tr => {
+      (tr.tappe || []).forEach(t => {
+        const tappaLabel = 'Tappa ' + (t.tappa_numero == null ? '?' : t.tappa_numero);
+        const base = [cell(tr.trasferta_id), cell(tr.nome_persona), cell(tappaLabel), cell(t.citta), cell(t.cliente_tappa), cell(dayOnly(t.data_arrivo)), cell(dayOnly(t.data_partenza))];
+        const notes = Array.isArray(t.note) ? t.note : [];
+        notes.forEach(n => {
+          const tipo = String(n.tipo || '').toLowerCase() === 'fattura' ? 'Fattura' : 'Scontrino';
+          trasferteRows.push({
+            kind: 'tx',
+            values: base.concat([tipo, cell(voceOf(n) || catOf(n)), importoOf(n.importo)])
+          });
+        });
+        (t.servizi || []).forEach(sv => {
+          (sv.allegati || []).forEach(a => {
+            trasferteRows.push({
+              kind: 'tx',
+              values: base.concat(['Allegato', cell((sv.tipo ? sv.tipo + ' · ' : '') + (a.nome || 'file')), ''])
+            });
+          });
+        });
+        if (!notes.length && !(t.servizi || []).some(sv => (sv.allegati || []).length)) {
+          trasferteRows.push({
+            kind: 'tappa',
+            values: base.concat(['Tappa', '', ''])
+          });
+        }
+      });
+    });
+
+    return {
+      filename: 'archivio_storico.xlsx',
+      macchina: macchinaRows,
+      trasferte: trasferteRows
+    };
+  }
+
+  async function downloadArchivioExcel(view) {
+    const ExcelJS = getExcelJS();
+    const built = buildArchivioSheets(view);
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Studio Rivelli';
+    wb.created = new Date();
+    function addSheet(name, rows, moneyCol) {
+      const ws = wb.addWorksheet(name, { views: [{ state: 'frozen', ySplit: 1 }] });
+      rows.forEach((row, idx) => {
+        const excelRow = ws.addRow(row.values);
+        const style = styleForKind(row.kind);
+        excelRow.height = row.kind === 'header' ? 22 : 18;
+        excelRow.eachCell({ includeEmpty: true }, (cellObj, colNumber) => {
+          cellObj.font = style.font;
+          cellObj.fill = style.fill;
+          if (style.alignment) cellObj.alignment = style.alignment;
+          if (style.border) cellObj.border = Object.assign({}, cellObj.border, style.border);
+          if (moneyCol && colNumber === moneyCol && typeof row.values[moneyCol - 1] === 'number') {
+            cellObj.numFmt = '#,##0.00';
+            cellObj.alignment = { horizontal: 'right', vertical: 'middle' };
+          }
+        });
+        if (idx === 0) excelRow.eachCell(c => { c.protection = { locked: true }; });
+      });
+      autofitWidths(rows).forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+      if (rows[0] && rows[0].values) {
+        ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: rows[0].values.length } };
+      }
+    }
+    addSheet('Macchina', built.macchina);
+    addSheet('Trasferte', built.trasferte, 10);
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = built.filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    return built;
+  }
+
   global.SRNotaSpeseExport = {
     buildTransazioniSheet,
     buildTransazioniRows,
@@ -236,6 +375,8 @@
     styleForKind,
     buildWorkbookBuffer,
     downloadTransazioniExcel,
+    buildArchivioSheets,
+    downloadArchivioExcel,
     fmtTimestamp,
     neutralizeExcelFormula
   };
