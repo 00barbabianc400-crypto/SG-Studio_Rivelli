@@ -241,6 +241,22 @@
     return neutralizeExcelFormula(v == null ? '' : v);
   }
 
+  function sharePointUrl(v) {
+    const s = String(v == null ? '' : v).trim();
+    try {
+      const u = new URL(s);
+      if (u.protocol !== 'https:') return '';
+      if (!/\.sharepoint\.com$/i.test(u.hostname)) return '';
+      return s;
+    } catch {
+      return '';
+    }
+  }
+
+  function itemLink(it) {
+    return cell(sharePointUrl(it && (it.web_url || it.webUrl)));
+  }
+
   function importoOf(v) {
     const N = NS();
     try {
@@ -265,28 +281,28 @@
   function buildArchivioSheets(view) {
     const macchinaRows = [{
       kind: 'header',
-      values: ['Prenotazione', 'Operatore', 'Tipo', 'Dal', 'Al', 'Note', 'Data scontrino', 'Luogo']
+      values: ['Prenotazione', 'Operatore', 'Tipo', 'Dal', 'Al', 'Note', 'Data scontrino', 'Luogo', 'Link']
     }];
     (view && view.macchina || []).forEach(p => {
       const sc = Array.isArray(p.scontrini) ? p.scontrini : [];
       if (!sc.length) {
         macchinaRows.push({
           kind: 'tx',
-          values: [cell(p.id), cell(p.operatore), cell(p.tipo_utilizzo), cell(dayOnly(p.data_da)), cell(dayOnly(p.data_a)), cell(p.note), '', '']
+          values: [cell(p.id), cell(p.operatore), cell(p.tipo_utilizzo), cell(dayOnly(p.data_da)), cell(dayOnly(p.data_a)), cell(p.note), '', '', '']
         });
         return;
       }
       sc.forEach(s => {
         macchinaRows.push({
           kind: 'tx',
-          values: [cell(p.id), cell(p.operatore), cell(p.tipo_utilizzo), cell(dayOnly(p.data_da)), cell(dayOnly(p.data_a)), cell(p.note), cell(fmtTimestamp(s.created_at)), cell(s.indirizzo)]
+          values: [cell(p.id), cell(p.operatore), cell(p.tipo_utilizzo), cell(dayOnly(p.data_da)), cell(dayOnly(p.data_a)), cell(p.note), cell(fmtTimestamp(s.created_at)), cell(s.indirizzo), itemLink(s)]
         });
       });
     });
 
     const trasferteRows = [{
       kind: 'header',
-      values: ['Trasferta', 'Persona', 'Tappa', 'Città', 'Cliente', 'Dal', 'Al', 'Tipo riga', 'Voce', 'Importo']
+      values: ['Trasferta', 'Persona', 'Tappa', 'Città', 'Cliente', 'Dal', 'Al', 'Tipo riga', 'Voce', 'Importo', 'Link']
     }];
     (view && view.trasferte || []).forEach(tr => {
       (tr.tappe || []).forEach(t => {
@@ -297,21 +313,21 @@
           const tipo = String(n.tipo || '').toLowerCase() === 'fattura' ? 'Fattura' : 'Scontrino';
           trasferteRows.push({
             kind: 'tx',
-            values: base.concat([tipo, cell(voceOf(n) || catOf(n)), importoOf(n.importo)])
+            values: base.concat([tipo, cell(voceOf(n) || catOf(n)), importoOf(n.importo), itemLink(n)])
           });
         });
         (t.servizi || []).forEach(sv => {
           (sv.allegati || []).forEach(a => {
             trasferteRows.push({
               kind: 'tx',
-              values: base.concat(['Allegato', cell((sv.tipo ? sv.tipo + ' · ' : '') + (a.nome || 'file')), ''])
+              values: base.concat(['Allegato', cell((sv.tipo ? sv.tipo + ' · ' : '') + (a.nome || 'file')), '', itemLink(a)])
             });
           });
         });
         if (!notes.length && !(t.servizi || []).some(sv => (sv.allegati || []).length)) {
           trasferteRows.push({
             kind: 'tappa',
-            values: base.concat(['Tappa', '', ''])
+            values: base.concat(['Tappa', '', '', ''])
           });
         }
       });
@@ -344,6 +360,11 @@
           if (moneyCol && colNumber === moneyCol && typeof row.values[moneyCol - 1] === 'number') {
             cellObj.numFmt = '#,##0.00';
             cellObj.alignment = { horizontal: 'right', vertical: 'middle' };
+          }
+          const raw = row.values[colNumber - 1];
+          if (typeof raw === 'string' && /^https:\/\//i.test(raw)) {
+            cellObj.value = { text: raw, hyperlink: raw };
+            cellObj.font = Object.assign({}, style.font, { underline: true, color: { argb: 'FF1E4FA3' } });
           }
         });
         if (idx === 0) excelRow.eachCell(c => { c.protection = { locked: true }; });
