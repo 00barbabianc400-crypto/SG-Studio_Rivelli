@@ -683,6 +683,7 @@ body {
     <div class="modal-head"><h2 id="detail-title">Dettaglio prenotazione</h2></div>
     <div class="modal-body detail-card" id="detail-body"></div>
     <div class="modal-foot">
+      <button type="button" class="soft-btn primary" id="detail-print-verbale" hidden>Stampa verbale</button>
       <button type="button" class="soft-btn" id="detail-close">Chiudi</button>
     </div>
   </div>
@@ -766,9 +767,9 @@ body {
 <script src="js/config.js?v=84"></script>
 <script src="js/auth.js"></script>
 <script src="js/scontrini.js"></script>
-  <script src="js/nota-spese.js?v=88"></script>
+  <script src="js/nota-spese.js?v=91"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
-  <script src="js/nota-spese-export.js?v=88"></script>
+  <script src="js/nota-spese-export.js?v=90"></script>
   <script src="js/servizi-tappa.js?v=58"></script>
   <script src="js/slot-auto-trasferta.js?v=75"></script>
 <script>
@@ -972,20 +973,29 @@ function dayYmdRome(v) {
     return m ? m[1] : '';
   }
   return d.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
-}
-
-function toCalEventOrdinaria(n) {
-  const day = dayYmdRome(n.data || n.created_at);
-  return {
-    kind: 'ordinaria',
-    uid: 'ord-' + n.id,
-    id: n.id,
-    data_da: day,
-    data_a: day,
-    person: n.dipendente,
-    label: cognomeOperatore(n.dipendente),
-    raw: n
-  };
+function toCalEventsOrdinarie(rows) {
+  const groups = (typeof SRNotaSpese !== 'undefined' && SRNotaSpese.groupNoteOrdinarieByDay)
+    ? SRNotaSpese.groupNoteOrdinarieByDay(rows)
+    : [];
+  return groups.map(g => {
+    const names = [];
+    (g.note || []).forEach(n => {
+      const p = String(n.dipendente || '').trim();
+      if (p && !names.some(x => namesMatch(x, p))) names.push(p);
+    });
+    const surnames = [...new Set(names.map(cognomeOperatore))];
+    return {
+      kind: 'ordinaria',
+      uid: 'ord-' + g.day,
+      id: g.day,
+      data_da: g.day,
+      data_a: g.day,
+      person: names[0] || '',
+      people: names,
+      label: surnames.length ? surnames.join(' · ') : 'Roma',
+      raw: { data: g.day, note: g.note }
+    };
+  });
 }
 
 function toCalEventMacchina(p) {
@@ -1057,7 +1067,7 @@ function rebuildCalendarEvents() {
   const merged = (typeof SRSlotAutoTrasferta !== 'undefined')
     ? SRSlotAutoTrasferta.mergeCalendarEvents(macchina, trasferte)
     : [...macchina, ...trasferte];
-  calendarEvents = merged.concat(filteredNoteOrdinarie.map(toCalEventOrdinaria).filter(ev => ev.data_da));
+  calendarEvents = merged.concat(toCalEventsOrdinarie(filteredNoteOrdinarie).filter(ev => ev.data_da));
 }
 
 function cognomeOperatore(name) {
@@ -1288,8 +1298,8 @@ function renderMonthCalendar(month) {
           : (ev.kind === 'macchina_trasferta' ? ICON_CAR + ICON_ROUTE : ICON_ROUTE));
       let tip;
       if (ev.kind === 'ordinaria') {
-        const km = typeof SRNotaSpese !== 'undefined' && SRNotaSpese.isRimborsoKm(ev.raw);
-        tip = ev.person + (km ? ' · ' + ev.raw.km + ' km' : ' · nota spese');
+        const n = (ev.raw && ev.raw.note && ev.raw.note.length) || 0;
+        tip = (ev.label || 'Roma') + ' · ' + n + (n === 1 ? ' nota' : ' note');
       } else if (ev.kind === 'macchina') {
         tip = ev.person + ' · ' + (pickCliente(ev.raw) || '—');
       } else if (ev.kind === 'macchina_trasferta' || ev.kind === 'trasferta') {
@@ -1329,66 +1339,74 @@ function tappePerPrenotazione(p) {
 }
 
 function apriDettaglioOrdinaria(id) {
-  const n = filteredNoteOrdinarie.find(x => String(x.id) === String(id))
-    || rawNoteOrdinarie.find(x => String(x.id) === String(id));
-  if (!n) return;
+  const pool = filteredNoteOrdinarie.length ? filteredNoteOrdinarie : rawNoteOrdinarie;
+  const groups = (typeof SRNotaSpese !== 'undefined' && SRNotaSpese.groupNoteOrdinarieByDay)
+    ? SRNotaSpese.groupNoteOrdinarieByDay(pool)
+    : [];
+  const g = groups.find(x => x.day === String(id))
+    || { day: String(id), note: pool.filter(n => dayYmdRome(n.data || n.created_at) === String(id)) };
+  const list = g.note || [];
+  if (!list.length) return;
   document.getElementById('detail-modal').classList.remove('modal-wide', 'modal-org');
-  document.getElementById('detail-title').textContent = 'Nota spese ordinaria';
-  const col = colorPerson(n.dipendente);
-  const isKm = typeof SRNotaSpese !== 'undefined' && SRNotaSpese.isRimborsoKm(n);
-  const cat = typeof SRNotaSpese !== 'undefined'
-    ? SRNotaSpese.labelCategoria(n.categoria)
-    : (n.categoria || '—');
-  const voce = typeof SRNotaSpese !== 'undefined'
-    ? SRNotaSpese.labelVoce(n)
-    : (n.dettaglio || '—');
-  const tipo = String(n.tipo || '').toLowerCase() === 'fattura' ? 'Fattura'
-    : (String(n.tipo || '').toLowerCase() === 'rimborso' ? 'Rimborso km' : 'Scontrino');
-  let extra = '';
-  if (isKm) {
-    extra = `<dt>Chilometraggio</dt><dd>${esc(String(n.km))} km</dd>`;
-  } else {
-    const noteTxt = String(n.dettaglio || '').trim();
-    extra = (n.importo != null && n.importo !== '' ? `<dt>Importo</dt><dd>${esc(fmtEuroNota(n.importo))}</dd>` : '')
-      + (noteTxt ? `<dt>Note</dt><dd>${esc(noteTxt)}</dd>` : '')
-      + `<div class="sc-box"><div class="tappe-title">Giustificativo</div>
-        <button type="button" class="sc-item" id="ord-open-file" title="Apri giustificativo">
-          <span class="sc-ico-wrap">${typeof SRScontrini !== 'undefined' ? SRScontrini.ICO_RECEIPT : ''}</span>
-          <span class="ns-item-meta">${esc(tipo)}<span>${esc(voce)}</span></span>
-          <span class="ns-item-amt">${esc(fmtEuroNota(n.importo))}</span>
-        </button></div>`;
-  }
+  document.getElementById('detail-title').textContent = 'Nota spese ordinaria · ' + fmtDay(g.day);
+  const people = [];
+  list.forEach(n => {
+    const p = String(n.dipendente || '').trim();
+    if (p && !people.some(x => namesMatch(x, p))) people.push(p);
+  });
+  const col = colorPerson(people[0] || '');
+  const rows = list.map((n, i) => {
+    const isKm = typeof SRNotaSpese !== 'undefined' && SRNotaSpese.isRimborsoKm(n);
+    const cat = typeof SRNotaSpese !== 'undefined' ? SRNotaSpese.labelCategoria(n.categoria) : (n.categoria || '—');
+    const voce = typeof SRNotaSpese !== 'undefined' ? SRNotaSpese.labelVoce(n) : (n.dettaglio || '—');
+    const tipo = String(n.tipo || '').toLowerCase() === 'fattura' ? 'Fattura'
+      : (String(n.tipo || '').toLowerCase() === 'rimborso' ? 'Rimborso km' : 'Scontrino');
+    const amt = (typeof SRNotaSpese !== 'undefined' && SRNotaSpese.displayImporto)
+      ? esc(SRNotaSpese.displayImporto(n))
+      : (isKm ? (esc(String(n.km)) + ' km') : esc(fmtEuroNota(n.importo)));
+    const open = isKm ? '' : (' data-ord-idx="' + i + '"');
+    return `<button type="button" class="sc-item"${open} ${isKm ? 'style="cursor:default"' : 'title="Apri giustificativo"'}>
+        <span class="sc-ico-wrap">${typeof SRScontrini !== 'undefined' ? SRScontrini.ICO_RECEIPT : ''}</span>
+        <span class="ns-item-meta">${esc(n.dipendente || '—')} · ${esc(tipo)}<span>${esc(voce || cat)}</span></span>
+        <span class="ns-item-amt">${amt}</span>
+      </button>`;
+  }).join('');
   document.getElementById('detail-body').innerHTML = `
-    <button type="button" class="detail-op" id="detail-filter-op" data-op="${esc(n.dipendente)}">
+    <button type="button" class="detail-op" id="detail-filter-op" data-op="${esc(people[0] || '')}">
       <span class="detail-op-dot" style="background:${col}"></span>
-      ${esc(n.dipendente || '—')}
+      ${esc(people.join(' · ') || 'Roma e dintorni')}
     </button>
     <dl>
       <dt>Data</dt>
-      <dd>${esc(fmtDay(n.data || n.created_at))}</dd>
-      <dt>Tipo</dt>
-      <dd>${esc(tipo)}</dd>
-      <dt>Categoria</dt>
-      <dd>${esc(cat)}</dd>
-      ${extra}
-    </dl>`;
+      <dd>${esc(fmtDay(g.day))}</dd>
+    </dl>
+    <div class="sc-box"><div class="tappe-title">${list.length} giustificativ${list.length === 1 ? 'o' : 'i'}</div>
+      <div class="sc-list">${rows}</div></div>`;
   document.getElementById('detail-backdrop').classList.add('open');
-  wireDetailFilterOp(n.dipendente);
-  const openBtn = document.getElementById('ord-open-file');
-  if (openBtn) {
-    openBtn.addEventListener('click', () => apriNotaSpesaViewerAmm({
-      tipo: n.tipo,
-      categoria: n.categoria,
-      pasto: n.pasto,
-      mezzo: n.mezzo,
-      dettaglio: n.dettaglio,
-      importo: n.importo,
-      foto_id: n.foto_id,
-      foto_url: n.foto_url,
-      mime: n.mime,
-      created_at: n.created_at
-    }));
-  }
+  setDetailVerbale({
+    nominativo: people.join(' · '),
+    meseYmd: g.day,
+    voci: list
+  });
+  if (people[0]) wireDetailFilterOp(people[0]);
+  document.querySelectorAll('#detail-body [data-ord-idx]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const n = list[Number(btn.getAttribute('data-ord-idx'))];
+      if (!n) return;
+      apriNotaSpesaViewerAmm({
+        tipo: n.tipo,
+        categoria: n.categoria,
+        pasto: n.pasto,
+        mezzo: n.mezzo,
+        dettaglio: n.dettaglio,
+        importo: n.importo,
+        foto_id: n.foto_id,
+        foto_url: n.foto_url,
+        mime: n.mime,
+        created_at: n.created_at
+      });
+    });
+  });
 }
 
 function apriDettaglioMacchina(id) {
@@ -1454,6 +1472,7 @@ function apriDettaglioMacchina(id) {
     ${tappeHtml}
     ${scontriniHtml}`;
   document.getElementById('detail-backdrop').classList.add('open');
+  setDetailVerbale(null);
   wireDetailFilterOp(p.operatore);
   document.querySelectorAll('[data-sc-idx]').forEach(btn => {
     btn.addEventListener('click', () => apriScontrinoViewerAmm(scontrini[Number(btn.dataset.scIdx)]));
@@ -1718,11 +1737,13 @@ function fmtEuroNota(n) {
 
 function renderNotaItemChip(it, flatIdx) {
   const voce = SRNotaSpese.labelVoce(it);
-  const tipo = String(it.tipo || '') === 'fattura' ? 'Fattura' : 'Scontrino';
+  const isKm = SRNotaSpese.isRimborsoKm(it);
+  const tipo = isKm ? 'Rimborso km' : (String(it.tipo || '') === 'fattura' ? 'Fattura' : 'Scontrino');
+  const amt = SRNotaSpese.displayImporto ? SRNotaSpese.displayImporto(it) : fmtEuroNota(it.importo);
   return `<button type="button" class="ns-item" data-ns-idx="${flatIdx}" title="Apri giustificativo">
     <span class="sc-ico-wrap">${SRScontrini.ICO_RECEIPT}</span>
     <span class="ns-item-meta">${esc(tipo)}<span>${esc(voce)}</span></span>
-    <span class="ns-item-amt">${esc(fmtEuroNota(it.importo))}</span>
+    <span class="ns-item-amt">${esc(amt)}</span>
   </button>`;
 }
 
@@ -1792,6 +1813,25 @@ function renderScontriniTrasfertaBoard(tappe) {
 }
 
 let detailTappaCtx = null;
+let detailVerbale = null;
+
+function setDetailVerbale(ctx) {
+  detailVerbale = ctx && ctx.voci && ctx.voci.length ? ctx : null;
+  const btn = document.getElementById('detail-print-verbale');
+  if (btn) btn.hidden = !detailVerbale;
+}
+
+function stampaVerbaleDettaglio() {
+  if (!detailVerbale || typeof SRNotaSpese === 'undefined') return;
+  const model = SRNotaSpese.buildVerbaleModel({
+    nominativo: detailVerbale.nominativo,
+    meseYmd: detailVerbale.meseYmd,
+    voci: detailVerbale.voci,
+    logoUrl: SRNotaSpese.studioLogoUrl()
+  });
+  try { SRNotaSpese.printVerbale(model); }
+  catch (e) { alert(e.message || String(e)); }
+}
 
 function apriDettaglioTappa(id) {
   const t = filteredTappe.find(x => String(x.id) === String(id))
@@ -1900,6 +1940,15 @@ function renderDettaglioTappaBody() {
       }, 800);
     });
   });
+  if (tab === 'scontrini' && (ctx.flatNote || []).length) {
+    setDetailVerbale({
+      nominativo: t.nome_persona || '',
+      meseYmd: t.data_arrivo || t.data_partenza,
+      voci: ctx.flatNote
+    });
+  } else {
+    setDetailVerbale(null);
+  }
 }
 
 function apriNotaSpesaViewerAmm(it) {
@@ -2082,24 +2131,36 @@ function arcAllegato(a) {
 }
 
 function cardRoma(n) {
-  const isKm = typeof SRNotaSpese !== 'undefined' && SRNotaSpese.isRimborsoKm(n);
-  const cat = typeof SRNotaSpese !== 'undefined' ? SRNotaSpese.labelCategoria(n.categoria) : (n.categoria || '');
-  const voce = typeof SRNotaSpese !== 'undefined' ? SRNotaSpese.labelVoce(n) : (n.dettaglio || '');
-  const tipo = String(n.tipo_doc || n.tipo || '').toLowerCase() === 'fattura' ? 'Fattura'
-    : (String(n.tipo_doc || n.tipo || '').toLowerCase() === 'rimborso' ? 'Rimborso km' : 'Scontrino');
-  let box;
-  if (isKm) {
-    box = '<p class="arc-meta">Chilometraggio: <b>' + esc(String(n.km)) + ' km</b></p>';
-  } else {
-    const amt = n.importo != null && n.importo !== '' ? fmtEuroNota(n.importo) : '';
+  const items = Array.isArray(n.note) && n.note.length ? n.note : [n];
+  const people = [];
+  items.forEach(it => {
+    const p = String(it.dipendente || n.dipendente || '').trim();
+    if (p && people.indexOf(p) < 0) people.push(p);
+  });
+  const body = items.map(it => {
+    const isKm = typeof SRNotaSpese !== 'undefined' && SRNotaSpese.isRimborsoKm(it);
+    const voce = typeof SRNotaSpese !== 'undefined' ? SRNotaSpese.labelVoce(it) : (it.dettaglio || '');
+    const tipo = String(it.tipo_doc || it.tipo || '').toLowerCase() === 'fattura' ? 'Fattura'
+      : (String(it.tipo_doc || it.tipo || '').toLowerCase() === 'rimborso' ? 'Rimborso km' : 'Scontrino');
+    if (isKm) {
+      return '<div class="ns-item" style="cursor:default"><span class="ns-item-meta">'
+        + esc(it.dipendente || '—') + ' · ' + esc(tipo)
+        + '<span>' + esc(voce || 'Rimborso km') + '</span></span>'
+        + '<span class="ns-item-amt">' + esc(String(it.km)) + ' km</span></div>';
+    }
+    const amt = it.importo != null && it.importo !== '' ? fmtEuroNota(it.importo) : '';
     const inner = '<span class="sc-ico-wrap">' + SRScontrini.ICO_RECEIPT + '</span>'
-      + '<span class="ns-item-meta">' + esc(tipo) + '<span>' + esc(voce || cat) + '</span></span>'
+      + '<span class="ns-item-meta">' + esc(it.dipendente || '—') + ' · ' + esc(tipo)
+      + '<span>' + esc(voce) + '</span></span>'
       + (amt ? '<span class="ns-item-amt">' + esc(amt) + '</span>' : '');
-    box = '<div class="sc-box"><div class="tappe-title">Giustificativo</div>' + arcWrap(arcHref(n), inner) + '</div>';
-  }
-  return '<article class="arc-card"><h3>' + esc(n.dipendente || '—') + '<small>' + esc(String(n.id || '')) + ' · ' + esc(fmtDay(n.data)) + '</small></h3>'
-    + '<p class="arc-meta">' + esc(tipo) + (cat ? ' · ' + esc(cat) : '') + '</p>'
-    + box + '</article>';
+    return arcWrap(arcHref(it), inner);
+  }).join('');
+  return '<article class="arc-card"><h3>Roma e dintorni<small>'
+    + esc(String(n.id || '')) + ' · ' + esc(fmtDay(n.data || (items[0] && items[0].data)))
+    + (people.length ? ' · ' + esc(people.join(' · ')) : '')
+    + '</small></h3>'
+    + '<div class="sc-box"><div class="tappe-title">' + items.length + ' giustificativ'
+    + (items.length === 1 ? 'o' : 'i') + '</div>' + body + '</div></article>';
 }
 
 function cardMacchina(p) {
@@ -2147,7 +2208,10 @@ function popolaPersoneArchivio() {
   }
   (rawArchivio.macchina || []).forEach(p => add(p.operatore));
   (rawArchivio.trasferte || []).forEach(t => add(t.nome_persona));
-  (rawArchivio.roma_e_dintorni || []).forEach(n => add(n.dipendente));
+  (rawArchivio.roma_e_dintorni || []).forEach(n => {
+    add(n.dipendente);
+    (n.note || []).forEach(it => add(it.dipendente));
+  });
   names.sort((a, b) => a.localeCompare(b, 'it'));
   sel.innerHTML = '<option value="">— tutte —</option>' + names.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('');
   if (names.some(n => n === cur)) sel.value = cur;
@@ -2183,11 +2247,13 @@ function viewArchivioFiltrata() {
     if (tappe.length) trasferte.push(Object.assign({}, tr, { tappe: tappe }));
   });
   const roma_e_dintorni = (rawArchivio.roma_e_dintorni || []).filter(n => {
-    if (!personaMatch(n.dipendente, f.persona)) return false;
-    const d = dayYmdRome(n.data) || dayOnly(n.data);
+    const items = Array.isArray(n.note) && n.note.length ? n.note : [n];
+    if (f.persona && !items.some(it => personaMatch(it.dipendente || n.dipendente, f.persona))) return false;
+    const d = dayYmdRome(n.data || (items[0] && items[0].data)) || dayOnly(n.data);
     if (!passaFiltroDate(d, d, f)) return false;
     if (!f.q) return true;
-    return normName([n.dettaglio, n.categoria, n.tipo_doc, n.tipo, n.id].join(' ')).indexOf(f.q) >= 0;
+    const blob = normName(items.map(it => [it.dipendente, it.dettaglio, it.categoria, it.tipo_doc, it.tipo].join(' ')).concat([n.id]).join(' '));
+    return blob.indexOf(f.q) >= 0;
   });
   return { macchina: macchina, trasferte: trasferte, roma_e_dintorni: roma_e_dintorni };
 }
@@ -2338,6 +2404,7 @@ document.getElementById('month-close').addEventListener('click', () => {
   document.getElementById('month-panel').classList.remove('open');
   renderYearGrid();
 });
+document.getElementById('detail-print-verbale').addEventListener('click', stampaVerbaleDettaglio);
 document.getElementById('detail-close').addEventListener('click', () => {
   document.getElementById('detail-backdrop').classList.remove('open');
   document.getElementById('detail-modal').classList.remove('modal-wide', 'modal-org');

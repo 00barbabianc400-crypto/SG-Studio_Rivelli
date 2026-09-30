@@ -192,6 +192,14 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .app-loader-text { font-size: 14px; color: var(--text-2); }
 @keyframes app-spin { to { transform: rotate(360deg); } }
 .empty { font-size: 14px; color: var(--text-2); padding: 8px 0; }
+.km-rate-rule { font-size: 14px; color: var(--text-2); margin: 0 0 14px; line-height: 1.45; }
+.km-rate-card {
+  background: #fff; border: 1px solid var(--border); border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .06); padding: 16px 18px;
+}
+.km-rate-eq { font-size: 16px; font-weight: 500; }
+.km-rate-eq strong { color: var(--navy); }
+.km-rate-note { margin: 10px 0 0; font-size: 13px; color: var(--text-2); }
 </style>
 </head>
 <body>
@@ -285,6 +293,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
     <div class="modal-foot">
       <a class="btn btn-ghost btn-icon" id="ns-view-download" href="#" download title="Scarica" aria-label="Scarica"></a>
       <button type="button" class="btn btn-ghost btn-icon" id="ns-view-print" title="Stampa" aria-label="Stampa"></button>
+      <button type="button" class="btn btn-primary" id="ns-view-verbale">Stampa verbale</button>
       <button type="button" class="btn btn-chiudi" id="ns-view-chiudi">Chiudi</button>
     </div>
   </div>
@@ -295,13 +304,13 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js?v=86"></script>
-<script src="js/nota-spese.js?v=89"></script>
+<script src="js/nota-spese.js?v=91"></script>
 <script src="js/upload-file-guard.js?v=82"></script>
 <script src="js/scontrini.js?v=37"></script>
 <script src="js/auth.js?v=82"></script>
 <script>
 const state = {
-  phase: 'tipo', // tipo | dettaglio | km
+  phase: 'tipo', // tipo | dettaglio | km | km-confirm
   dest: 'ordinaria', // ordinaria | tappa
   categoria: null,
   pasto: null,
@@ -312,7 +321,8 @@ const state = {
   km: '',
   photo: null,
   tappa: null,
-  ordinarie: []
+  ordinarie: [],
+  viewerPool: []
 };
 
 function esc(s) {
@@ -503,11 +513,33 @@ function renderCompose() {
     return;
   }
 
+  if (state.phase === 'km-confirm') {
+    document.getElementById('compose-title').textContent = 'Conferma rimborso km';
+    back.textContent = 'Indietro';
+    next.style.display = '';
+    next.textContent = 'Salva';
+    let kmTxt = '—';
+    let euroTxt = '—';
+    try {
+      const km = SRNotaSpese.parseKm(state.km);
+      kmTxt = String(km).replace('.', ',') + ' km';
+      euroTxt = SRNotaSpese.fmtEuroIt(SRNotaSpese.roundEuro(km * SRNotaSpese.KM_EURO_RATE));
+    } catch (_) {}
+    const note = String(state.dettaglio || '').trim();
+    body.innerHTML =
+      '<p class="km-rate-rule">Il rimborso chilometrico equivale a <b>chilometri × 0,31 €</b>.</p>'
+      + '<div class="km-rate-card"><div class="km-rate-eq">'
+      + esc(kmTxt) + ' × 0,31 € = <strong>' + esc(euroTxt) + '</strong></div>'
+      + (note ? '<p class="km-rate-note">' + esc(note) + '</p>' : '')
+      + '</div>';
+    return;
+  }
+
   if (state.phase === 'km') {
     document.getElementById('compose-title').textContent = 'Rimborso chilometrico';
     back.textContent = 'Annulla';
     next.style.display = '';
-    next.textContent = 'Salva';
+    next.textContent = 'Avanti';
     const noteMax = (SRNotaSpese && SRNotaSpese.DETTAGLIO_MAX) || 120;
     body.innerHTML =
       '<div class="field-with-ico">'
@@ -586,9 +618,11 @@ function fillLista(boxId, list, emptyMsg) {
   }
   box.innerHTML = list.map((it, i) => {
     const isKm = SRNotaSpese.isRimborsoKm && SRNotaSpese.isRimborsoKm(it);
-    const amt = isKm
-      ? (String(it.km).replace('.', ',') + ' km')
-      : ('€ ' + Number(it.importo).toFixed(2).replace('.', ','));
+    const amt = SRNotaSpese.displayImporto
+      ? SRNotaSpese.displayImporto(it)
+      : (isKm
+        ? (String(it.km).replace('.', ',') + ' km')
+        : ('€ ' + Number(it.importo).toFixed(2).replace('.', ',')));
     const icoKey = it.pasto || it.mezzo || it.categoria || 'scontrino';
     const catIco = CHOICE_ICONS[icoKey] || CHOICE_ICONS.scontrino;
     const voce = (SRNotaSpese.labelVoce && SRNotaSpese.labelVoce(it))
@@ -602,7 +636,7 @@ function fillLista(boxId, list, emptyMsg) {
       + '</button>';
   }).join('');
   box.querySelectorAll('[data-view-idx]').forEach(btn => {
-    btn.addEventListener('click', () => apriNotaViewer(list[Number(btn.dataset.viewIdx)]));
+    btn.addEventListener('click', () => apriNotaViewer(list[Number(btn.dataset.viewIdx)], list));
   });
 }
 
@@ -614,8 +648,37 @@ function renderLista() {
   fillLista('lista-ordinaria', state.ordinarie.slice(), 'Nessun giustificativo su Roma e dintorni.');
 }
 
-function apriNotaViewer(it) {
+function nomeUtenteNota() {
+  const u = (SRAuth.getUser && SRAuth.getUser()) || {};
+  return String(u.name || u.displayName || u.nome || '').trim()
+    || String((state.ordinarie[0] && state.ordinarie[0].dipendente) || '').trim()
+    || String(u.email || '').trim()
+    || '—';
+}
+
+function stampaVerbaleDaLista(list, meseYmd) {
+  if (!list || !list.length) return toast('Nessuna voce da stampare', 'err');
+  const oggi = SRNotaSpese.todayYmdRome();
+  const ymd = meseYmd || oggi;
+  let voci = SRNotaSpese.vociDelMese ? SRNotaSpese.vociDelMese(list, ymd) : list;
+  if (!voci.length) {
+    const first = SRNotaSpese.dayYmdRomeOf(list[0].data || list[0].created_at);
+    voci = first && SRNotaSpese.vociDelMese ? SRNotaSpese.vociDelMese(list, first) : list.slice();
+  }
+  if (!voci.length) return toast('Nessuna voce da stampare', 'err');
+  const model = SRNotaSpese.buildVerbaleModel({
+    nominativo: nomeUtenteNota(),
+    meseYmd: SRNotaSpese.dayYmdRomeOf(voci[0].data || voci[0].created_at) || ymd,
+    voci: voci,
+    logoUrl: SRNotaSpese.studioLogoUrl()
+  });
+  try { SRNotaSpese.printVerbale(model); }
+  catch (e) { toast(e.message || String(e), 'err'); }
+}
+
+function apriNotaViewer(it, pool) {
   if (!it) return;
+  state.viewerPool = pool || [];
   const isKm = SRNotaSpese.isRimborsoKm && SRNotaSpese.isRimborsoKm(it);
   const img = document.getElementById('ns-view-img');
   img.onerror = () => { img.style.display = 'none'; };
@@ -630,10 +693,12 @@ function apriNotaViewer(it) {
   document.getElementById('ns-view-title').textContent = tipo;
   document.getElementById('ns-view-cat').textContent = SRNotaSpese.labelVoce(it, { includeNote: false });
   const impDt = document.getElementById('ns-view-importo-dt');
-  if (impDt) impDt.textContent = isKm ? 'Chilometri' : 'Importo';
-  document.getElementById('ns-view-importo').textContent = isKm
-    ? (String(it.km).replace('.', ',') + ' km')
-    : ('€ ' + Number(it.importo).toFixed(2).replace('.', ','));
+  if (impDt) impDt.textContent = isKm ? 'Rimborso' : 'Importo';
+  document.getElementById('ns-view-importo').textContent = SRNotaSpese.displayImporto
+    ? SRNotaSpese.displayImporto(it)
+    : (isKm
+      ? (String(it.km).replace('.', ',') + ' km')
+      : ('€ ' + Number(it.importo).toFixed(2).replace('.', ',')));
   const noteDt = document.getElementById('ns-view-note-dt');
   const noteDd = document.getElementById('ns-view-note');
   const noteTxt = String(it.categoria || '') !== 'altro' ? String(it.dettaglio || '').trim() : '';
@@ -725,7 +790,10 @@ async function caricaOrdinaria() {
   if (!resp.ok || data.ok === false || data.action === 'error') {
     throw new Error(data.message || ('Caricamento ordinaria fallito: ' + resp.status));
   }
-  state.ordinarie = SRNotaSpese.parseNotaSpeseJson(data.note || []);
+  if (!Array.isArray(data.note)) {
+    throw new Error('GET ordinaria: nello Switch, get_nota_ordinaria → Get many della DT (non Get by id) → Code GET.');
+  }
+  state.ordinarie = SRNotaSpese.parseNotaOrdinariaList(data.note);
 }
 
 async function salvaOrdinaria(item) {
@@ -738,7 +806,17 @@ async function salvaOrdinaria(item) {
   if (!resp.ok || data.ok === false || data.action === 'error') {
     throw new Error(data.message || ('Salvataggio ordinaria fallito: ' + resp.status));
   }
-  await caricaOrdinaria();
+  try {
+    await caricaOrdinaria();
+  } catch (e) {
+    if (item && !state.ordinarie.some(x => String(x.id) === String(item.id))) {
+      state.ordinarie = state.ordinarie.concat([item]);
+    }
+    throw e;
+  }
+  if (item && !state.ordinarie.some(x => String(x.id) === String(item.id))) {
+    state.ordinarie = state.ordinarie.concat([item]);
+  }
 }
 
 async function salvaKm() {
@@ -795,7 +873,7 @@ async function salvaKm() {
 }
 
 async function salva() {
-  if (state.categoria === 'rimborso_km' || state.phase === 'km') return salvaKm();
+  if (state.categoria === 'rimborso_km' || state.phase === 'km' || state.phase === 'km-confirm') return salvaKm();
   try { SRNotaSpese.parseImporto(state.importo); } catch {
     return toast('Inserisci un importo valido', 'err');
   }
@@ -888,6 +966,11 @@ document.getElementById('altro-backdrop').addEventListener('click', e => {
 });
 
 document.getElementById('compose-back').addEventListener('click', () => {
+  if (state.phase === 'km-confirm') {
+    state.phase = 'km';
+    renderCompose();
+    return;
+  }
   if (state.phase === 'dettaglio') {
     state.phase = 'tipo';
     state.importo = '';
@@ -898,13 +981,26 @@ document.getElementById('compose-back').addEventListener('click', () => {
   chiudiCompose();
 });
 document.getElementById('compose-next').addEventListener('click', () => {
-  if (state.phase === 'dettaglio' || state.phase === 'km') salva();
+  if (state.phase === 'km') {
+    try { SRNotaSpese.parseKm(state.km); }
+    catch { return toast('Inserisci i chilometri', 'err'); }
+    state.phase = 'km-confirm';
+    renderCompose();
+    return;
+  }
+  if (state.phase === 'dettaglio' || state.phase === 'km-confirm') salva();
 });
 document.getElementById('compose-backdrop').addEventListener('click', e => {
   if (e.target.id === 'compose-backdrop') chiudiCompose();
 });
 
 document.getElementById('ns-view-chiudi').addEventListener('click', () => closeBackdrop('nota-view-backdrop'));
+document.getElementById('ns-view-verbale').addEventListener('click', () => {
+  const pool = state.viewerPool && state.viewerPool.length
+    ? state.viewerPool
+    : state.ordinarie.slice();
+  stampaVerbaleDaLista(pool);
+});
 document.getElementById('nota-view-backdrop').addEventListener('click', e => {
   if (e.target.id === 'nota-view-backdrop') closeBackdrop('nota-view-backdrop');
 });

@@ -338,21 +338,24 @@
       values: ['Id', 'Dipendente', 'Data', 'Tipo', 'Categoria', 'Voce', 'Importo', 'Km', 'Link']
     }];
     (view && view.roma_e_dintorni || []).forEach(n => {
-      const kmRaw = n.km == null || n.km === '' ? '' : Number(n.km);
-      const km = typeof kmRaw === 'number' && Number.isFinite(kmRaw) ? kmRaw : '';
-      romaRows.push({
-        kind: 'tx',
-        values: [
-          cell(n.id || n.dt_id),
-          cell(n.dipendente),
-          cell(dayOnly(n.data)),
-          cell(n.tipo_doc || n.tipo),
-          cell(catOf(n)),
-          cell(voceOf(n)),
-          importoOf(n.importo),
-          km,
-          itemLink(n)
-        ]
+      const items = Array.isArray(n.note) && n.note.length ? n.note : [n];
+      items.forEach(it => {
+        const kmRaw = it.km == null || it.km === '' ? '' : Number(it.km);
+        const km = typeof kmRaw === 'number' && Number.isFinite(kmRaw) ? kmRaw : '';
+        romaRows.push({
+          kind: 'tx',
+          values: [
+            cell(n.id || it.dt_id || it.id),
+            cell(it.dipendente || n.dipendente),
+            cell(dayOnly(n.data || it.data)),
+            cell(it.tipo_doc || it.tipo),
+            cell(catOf(it)),
+            cell(voceOf(it)),
+            importoOf(it.importo),
+            km,
+            itemLink(it)
+          ]
+        });
       });
     });
 

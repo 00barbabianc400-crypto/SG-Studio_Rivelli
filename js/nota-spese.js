@@ -195,6 +195,34 @@
       && (obj.tipo || obj.categoria || obj.importo != null);
   }
 
+  function dayYmdRomeOf(v) {
+    const s = String(v || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const d = new Date(s);
+    if (!Number.isNaN(d.getTime())) return todayYmdRome(d);
+    return toYmd(v);
+  }
+
+  function parseNotaOrdinariaList(raw) {
+    const list = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? [raw] : []);
+    return list.filter(it => it && typeof it === 'object' && (
+      it.categoria || it.tipo || it.km != null || it.foto_id || it.foto_url || it.id != null
+    ));
+  }
+
+  function groupNoteOrdinarieByDay(rows) {
+    const map = new Map();
+    parseNotaOrdinariaList(rows).forEach(n => {
+      const day = dayYmdRomeOf(n.data || n.created_at);
+      if (!day) return;
+      if (!map.has(day)) map.set(day, []);
+      map.get(day).push(n);
+    });
+    return [...map.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([day, note]) => ({ day: day, note: note }));
+  }
+
   function parseNotaSpeseJson(raw) {
     if (raw == null || raw === '') return [];
     if (Array.isArray(raw)) return raw.filter(isNotaItem);
@@ -226,6 +254,67 @@
     const n = parseFloat(s.replace(/[^\d.-]/g, ''));
     if (!Number.isFinite(n) || n < 0) throw new Error('Importo non valido');
     return Math.round(n * 100) / 100;
+  }
+
+  const KM_EURO_RATE = 0.31;
+  const MESI_ESTESI = [
+    'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
+    'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'
+  ];
+
+  function roundEuro(n) {
+    return Math.round(Number(n) * 100) / 100;
+  }
+
+  function importoVoce(it) {
+    if (!it || typeof it !== 'object') return 0;
+    if (isRimborsoKm(it) || String(it.categoria || '') === 'rimborso_km') {
+      const km = Number(it.km);
+      if (!Number.isFinite(km) || km <= 0) return 0;
+      return roundEuro(km * KM_EURO_RATE);
+    }
+    try { return parseImporto(it.importo); } catch { return 0; }
+  }
+
+  function totaleVoci(list) {
+    return roundEuro((list || []).reduce((s, it) => s + importoVoce(it), 0));
+  }
+
+  function vociDelMese(list, meseYmd) {
+    const prefix = String(toYmd(meseYmd) || todayYmdRome()).slice(0, 7);
+    return (list || []).filter(it => {
+      const d = dayYmdRomeOf(it.data || it.created_at) || '';
+      return d.slice(0, 7) === prefix;
+    });
+  }
+
+  function meseEstesoFromYmd(ymd) {
+    const s = toYmd(ymd) || String(ymd || '').slice(0, 10);
+    const m = Number(s.slice(5, 7));
+    const y = s.slice(0, 4);
+    const nome = MESI_ESTESI[m - 1];
+    if (!nome || !/^\d{4}$/.test(y)) return '';
+    return nome + ' ' + y;
+  }
+
+  function fmtEuroIt(n) {
+    return roundEuro(n).toFixed(2).replace('.', ',') + ' €';
+  }
+
+  function displayImporto(it) {
+    if (isRimborsoKm(it)) {
+      const km = String(it.km).replace('.', ',');
+      return km + ' km · ' + fmtEuroIt(importoVoce(it));
+    }
+    return fmtEuroIt(importoVoce(it));
+  }
+
+  function escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   function uid() {
@@ -394,6 +483,119 @@
     return parts.join(' · ');
   }
 
+  function nominativiUnici(list) {
+    const out = [];
+    (list || []).forEach(it => {
+      const n = String(it && it.dipendente || '').trim();
+      if (n && out.indexOf(n) < 0) out.push(n);
+    });
+    return out;
+  }
+
+  function studioLogoUrl() {
+    try {
+      const base = (typeof document !== 'undefined' && document.baseURI)
+        || (typeof location !== 'undefined' && location.href)
+        || '';
+      return base ? new URL('assets/logo.jpg', base).href : 'assets/logo.jpg';
+    } catch {
+      return 'assets/logo.jpg';
+    }
+  }
+
+  function buildVerbaleModel(opts) {
+    const o = opts || {};
+    const voci = o.voci || [];
+    const names = nominativiUnici(voci);
+    const nominativo = String(o.nominativo || '').trim() || names.join(' · ');
+    const meseYmd = o.meseYmd
+      || dayYmdRomeOf(voci[0] && (voci[0].data || voci[0].created_at))
+      || todayYmdRome();
+    const dataPresenteYmd = o.dataPresenteYmd || todayYmdRome();
+    const blankRows = o.blankRows == null ? 3 : Math.max(0, Number(o.blankRows) || 0);
+    const logoUrl = o.logoUrl || studioLogoUrl();
+    const rows = voci.map(it => {
+      let descr = labelVoce(it);
+      if (isRimborsoKm(it)) descr += ' × 0,31 €/km';
+      return {
+        data: fmtDateIt(dayYmdRomeOf(it.data || it.created_at) || meseYmd),
+        nominativo: String(it.dipendente || nominativo || '').trim(),
+        descrizione: descr,
+        importo: importoVoce(it)
+      };
+    });
+    return {
+      titolo: 'Verbale di rimborso nota spese',
+      mese: meseEstesoFromYmd(meseYmd),
+      nominativo,
+      dataPresente: fmtDateIt(dataPresenteYmd),
+      rows,
+      blankRows,
+      totale: totaleVoci(voci),
+      vistoDirezione: 'Visto dalla direzione',
+      vistoContabilita: 'Visto dalla contabilità',
+      logoUrl
+    };
+  }
+
+  function verbalePrintHtml(model) {
+    const m = model || {};
+    const rows = m.rows || [];
+    let tr = rows.map(r => (
+      '<tr><td>' + escHtml(r.data) + '</td><td>' + escHtml(r.nominativo) + '</td><td>'
+      + escHtml(r.descrizione) + '</td><td class="num">' + escHtml(fmtEuroIt(r.importo)) + '</td></tr>'
+    )).join('');
+    const blanks = Number(m.blankRows) || 0;
+    for (let i = 0; i < blanks; i++) tr += '<tr class="blank"><td></td><td></td><td></td><td></td></tr>';
+    return '<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>'
+      + escHtml(m.titolo || 'Verbale') + '</title><style>'
+      + 'body{font-family:"DM Sans",Segoe UI,sans-serif;color:#1e293b;margin:0;padding:24px;background:#fff}'
+      + '.sheet{max-width:800px;margin:0 auto}'
+      + 'header{display:flex;align-items:center;gap:16px;margin-bottom:20px}'
+      + 'header img{height:52px;width:auto}'
+      + 'h1{font-size:18px;margin:0}'
+      + '.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin:16px 0 20px;font-size:13px}'
+      + '.meta span{display:block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b}'
+      + 'table{width:100%;border-collapse:collapse;font-size:13px}'
+      + 'th,td{border:1px solid #e2e8f0;padding:8px 10px;text-align:left}'
+      + 'th{background:#f8fafc;font-size:10px;text-transform:uppercase;letter-spacing:.04em}'
+      + 'td.num,.tot td{text-align:right;font-variant-numeric:tabular-nums}'
+      + 'tr.blank td{height:28px}'
+      + '.tot{font-weight:700}'
+      + '.signs,.visti{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px}'
+      + '.sign-box{border:1px solid #e2e8f0;border-radius:12px;padding:14px;min-height:88px}'
+      + '.sign-box span{display:block;font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:36px}'
+      + '@media print{body{padding:12mm}}'
+      + '</style></head><body><div class="sheet"><header>'
+      + '<img src="' + escHtml(m.logoUrl || 'assets/logo.jpg') + '" alt="Studio Rivelli Consulting">'
+      + '<div><h1>' + escHtml(m.titolo) + '</h1>'
+      + '<p style="margin:4px 0 0;font-size:13px;color:#64748b">Studio Rivelli Consulting</p></div></header>'
+      + '<div class="meta"><div><span>Mese di riferimento</span><b>' + escHtml(m.mese) + '</b></div>'
+      + '<div><span>Nominativo</span><b>' + escHtml(m.nominativo) + '</b></div></div>'
+      + '<table><thead><tr><th>Data</th><th>Nominativo</th><th>Voce</th><th>Importo</th></tr></thead><tbody>'
+      + tr + '</tbody><tfoot><tr class="tot"><td colspan="3">Totale rimborso</td><td class="num">'
+      + escHtml(fmtEuroIt(m.totale)) + '</td></tr></tfoot></table>'
+      + '<div class="signs"><div class="sign-box"><span>Data</span>' + escHtml(m.dataPresente) + '</div>'
+      + '<div class="sign-box"><span>Firma</span></div></div>'
+      + '<div class="visti"><div class="sign-box"><span>' + escHtml(m.vistoDirezione) + '</span></div>'
+      + '<div class="sign-box"><span>' + escHtml(m.vistoContabilita) + '</span></div></div>'
+      + '</div></body></html>';
+  }
+
+  function printVerbale(model) {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    const html = verbalePrintHtml(model);
+    const w = window.open('', '_blank', 'noopener,noreferrer');
+    if (!w) throw new Error('Consenti i popup per stampare il verbale');
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(function () {
+      try { w.print(); } catch (_) {}
+    }, 350);
+  }
+
   function tappeStessaTrasferta(rows, trasfertaId) {
     const tid = String(trasfertaId || '').trim();
     if (!tid) return [];
@@ -444,9 +646,24 @@
     notaSpeseMode,
     parseKm,
     isRimborsoKm,
+    KM_EURO_RATE,
+    roundEuro,
+    importoVoce,
+    totaleVoci,
+    vociDelMese,
+    meseEstesoFromYmd,
+    fmtEuroIt,
+    displayImporto,
+    buildVerbaleModel,
+    verbalePrintHtml,
+    printVerbale,
+    studioLogoUrl,
     labelTappa,
     fmtDateIt,
     parseNotaSpeseJson,
+    parseNotaOrdinariaList,
+    groupNoteOrdinarieByDay,
+    dayYmdRomeOf,
     appendNotaSpesa,
     stringify,
     extractTappeFromAuthRows,
