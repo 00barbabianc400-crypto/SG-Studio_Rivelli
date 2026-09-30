@@ -92,6 +92,13 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .choice-label { flex: 1; min-width: 0; }
 .field { margin-bottom: 14px; }
 .field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; margin-bottom: 6px; }
+.ns-consigliato {
+  appearance: none; display: inline-flex; align-items: center; margin-top: 8px;
+  border: 1.5px solid #c5d4f0; background: #f5f8ff; color: var(--blue);
+  font: inherit; font-size: 12px; font-weight: 600; border-radius: 999px;
+  padding: 6px 12px; cursor: pointer;
+}
+.ns-consigliato:hover { border-color: var(--blue-lt); background: #eef4ff; }
 .field input[type="text"],
 .field textarea {
   width: 100%; border: 1.5px solid var(--border); border-radius: var(--r2);
@@ -330,7 +337,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js?v=86"></script>
-<script src="js/nota-spese.js?v=94"></script>
+<script src="js/nota-spese.js?v=97"></script>
 <script src="js/upload-file-guard.js?v=82"></script>
 <script src="js/scontrini.js?v=37"></script>
 <script src="js/auth.js?v=82"></script>
@@ -345,6 +352,8 @@ const state = {
   tipo: null,
   importo: '',
   km: '',
+  cliente: '',
+  sede: '',
   photo: null,
   tappa: null,
   ordinarie: [],
@@ -418,7 +427,90 @@ function resetComposeFields() {
   state.tipo = null;
   state.importo = '';
   state.km = '';
+  state.cliente = '';
+  state.sede = '';
   state.photo = null;
+}
+
+function vociPerConsigli() {
+  if (isDestTappa()) {
+    return state.tappa ? SRNotaSpese.parseNotaSpeseJson(state.tappa.nota_spese_json) : [];
+  }
+  return state.ordinarie || [];
+}
+
+function fieldsClienteSedeHtml() {
+  const needSede = SRNotaSpese.requiresSede && SRNotaSpese.requiresSede(state.categoria, state.mezzo);
+  const maxC = (SRNotaSpese && SRNotaSpese.CLIENTE_MAX) || 80;
+  const maxS = (SRNotaSpese && SRNotaSpese.SEDE_MAX) || 80;
+  const sug = SRNotaSpese.suggerimentiClienteSedeGiorno
+    ? SRNotaSpese.suggerimentiClienteSedeGiorno(vociPerConsigli(), SRNotaSpese.todayYmdRome())
+    : { cliente: '', sede: '' };
+  let h = '<div class="field" style="margin-top:14px"><label for="ns-cliente">Cliente</label>'
+    + '<input type="text" id="ns-cliente" maxlength="' + maxC + '" placeholder="es. Nome cliente" autocomplete="off">';
+  if (sug.cliente) {
+    h += '<button type="button" class="ns-consigliato" id="ns-cons-cliente">Consigliato: ' + esc(sug.cliente) + '</button>';
+  }
+  h += '</div>';
+  if (needSede) {
+    h += '<div class="field" style="margin-top:14px"><label for="ns-sede">Sede di riferimento</label>'
+      + '<input type="text" id="ns-sede" maxlength="' + maxS + '" placeholder="es. Sede Roma" autocomplete="off">';
+    if (sug.sede) {
+      h += '<button type="button" class="ns-consigliato" id="ns-cons-sede">Consigliato: ' + esc(sug.sede) + '</button>';
+    }
+    h += '</div>';
+  }
+  return h;
+}
+
+function bindClienteSede() {
+  const sug = SRNotaSpese.suggerimentiClienteSedeGiorno
+    ? SRNotaSpese.suggerimentiClienteSedeGiorno(vociPerConsigli(), SRNotaSpese.todayYmdRome())
+    : { cliente: '', sede: '' };
+  const c = document.getElementById('ns-cliente');
+  if (c) {
+    if (!state.cliente && sug.cliente) state.cliente = sug.cliente;
+    c.value = state.cliente || '';
+    c.addEventListener('input', () => { state.cliente = c.value; });
+  }
+  const consC = document.getElementById('ns-cons-cliente');
+  if (consC && c && sug.cliente) {
+    consC.addEventListener('click', () => {
+      c.value = sug.cliente;
+      state.cliente = sug.cliente;
+      c.focus();
+    });
+  }
+  const s = document.getElementById('ns-sede');
+  if (s) {
+    if (!state.sede && sug.sede) state.sede = sug.sede;
+    s.value = state.sede || '';
+    s.addEventListener('input', () => { state.sede = s.value; });
+  }
+  const consS = document.getElementById('ns-cons-sede');
+  if (consS && s && sug.sede) {
+    consS.addEventListener('click', () => {
+      s.value = sug.sede;
+      state.sede = sug.sede;
+      s.focus();
+    });
+  }
+}
+
+function readClienteSedeOrToast() {
+  try {
+    state.cliente = SRNotaSpese.normalizeCliente(state.categoria, state.cliente);
+  } catch (e) {
+    toast(e.message || 'Cliente obbligatorio', 'err');
+    return false;
+  }
+  try {
+    state.sede = SRNotaSpese.normalizeSede(state.categoria, state.mezzo, state.sede);
+  } catch (e) {
+    toast(e.message || 'Sede di riferimento obbligatoria', 'err');
+    return false;
+  }
+  return true;
 }
 
 function selectionLabel() {
@@ -559,7 +651,9 @@ function renderCompose() {
       + '<div class="km-rate-card"><div class="km-rate-eq">'
       + esc(kmTxt) + ' × 0,31 € = <strong>' + esc(euroTxt) + '</strong></div>'
       + (note ? '<p class="km-rate-note">' + esc(note) + '</p>' : '')
-      + '</div>';
+      + '</div>'
+      + fieldsClienteSedeHtml();
+    bindClienteSede();
     return;
   }
 
@@ -577,12 +671,14 @@ function renderCompose() {
       + '<input type="text" id="ns-km" inputmode="decimal" placeholder="es. 18" value="'
       + (state.km || '') + '"></div></div>'
       + '<div class="field" style="margin-top:14px"><label for="ns-note">Note <span style="font-weight:500;text-transform:none;color:var(--text-3)">(facoltative)</span></label>'
-      + '<textarea id="ns-note" maxlength="' + noteMax + '" placeholder="es. Andata sede cliente…"></textarea></div>';
+      + '<textarea id="ns-note" maxlength="' + noteMax + '" placeholder="es. Andata sede cliente…"></textarea></div>'
+      + fieldsClienteSedeHtml();
     const inp = document.getElementById('ns-km');
     inp.addEventListener('input', () => { state.km = inp.value; });
     const noteEl = document.getElementById('ns-note');
     noteEl.value = state.dettaglio || '';
     noteEl.addEventListener('input', () => { state.dettaglio = noteEl.value; });
+    bindClienteSede();
     inp.focus();
     return;
   }
@@ -611,6 +707,7 @@ function renderCompose() {
     + '<button type="button" class="btn btn-gal btn-with-ico" id="btn-gal">' + CHOICE_ICONS.gallery + ' Galleria</button>'
     + '</div>'
     + noteHtml
+    + fieldsClienteSedeHtml()
     + prev;
   const inp = document.getElementById('ns-importo');
   inp.addEventListener('input', () => { state.importo = inp.value; });
@@ -619,6 +716,7 @@ function renderCompose() {
     noteEl.value = state.dettaglio || '';
     noteEl.addEventListener('input', () => { state.dettaglio = noteEl.value; });
   }
+  bindClienteSede();
   document.getElementById('btn-cam').onclick = () => document.getElementById('file-camera').click();
   document.getElementById('btn-gal').onclick = () => document.getElementById('file-gallery').click();
   inp.focus();
@@ -818,20 +916,19 @@ async function salvaOrdinaria(item) {
     }
     throw e;
   }
-  if (item && !state.ordinarie.some(x => String(x.id) === String(item.id))) {
-    state.ordinarie = state.ordinarie.concat([item]);
-  }
 }
 
 async function salvaKm() {
   try { SRNotaSpese.parseKm(state.km); } catch {
     return toast('Inserisci un numero di km maggiore di 0', 'err');
   }
+  if (!readClienteSedeOrToast()) return;
   const item = {
     id: SRNotaSpese.uid(),
     categoria: 'rimborso_km',
     km: state.km,
-    dettaglio: SRNotaSpese.normalizeDettaglio('rimborso_km', state.dettaglio)
+    dettaglio: SRNotaSpese.normalizeDettaglio('rimborso_km', state.dettaglio),
+    cliente: state.cliente
   };
   if (!isDestTappa()) {
     showLoader('Salvataggio in archivio…');
@@ -887,6 +984,7 @@ async function salva() {
     if (!body.ok) return toast(body.message || 'Immagine non valida', 'err');
   }
   if (!state.tipo) return toast('Scegli scontrino o fattura', 'err');
+  if (!readClienteSedeOrToast()) return;
 
   const u = SRAuth.getUser() || {};
   const ordinaria = !isDestTappa();
@@ -915,6 +1013,8 @@ async function salva() {
       dettaglio: state.categoria === 'altro'
         ? state.dettaglio
         : SRNotaSpese.normalizeDettaglio(state.categoria, state.dettaglio),
+      cliente: state.cliente,
+      sede: state.sede,
       importo: state.importo,
       foto_url: up.url,
       foto_id: up.fileId,

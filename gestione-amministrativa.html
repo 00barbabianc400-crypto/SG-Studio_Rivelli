@@ -787,7 +787,7 @@ body {
 <script src="js/config.js?v=84"></script>
 <script src="js/auth.js"></script>
 <script src="js/scontrini.js"></script>
-  <script src="js/nota-spese.js?v=94"></script>
+  <script src="js/nota-spese.js?v=97"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
   <script src="js/nota-spese-export.js?v=90"></script>
   <script src="js/servizi-tappa.js?v=58"></script>
@@ -1000,22 +1000,18 @@ function toCalEventsOrdinarie(rows) {
     ? SRNotaSpese.groupNoteOrdinarieByDay(rows)
     : [];
   return groups.map(g => {
-    const names = [];
-    (g.note || []).forEach(n => {
-      const p = String(n.dipendente || '').trim();
-      if (p && !names.some(x => namesMatch(x, p))) names.push(p);
-    });
-    const surnames = [...new Set(names.map(cognomeOperatore))];
+    const person = String(g.person || '').trim()
+      || String((g.note && g.note[0] && g.note[0].dipendente) || '').trim();
     return {
       kind: 'ordinaria',
-      uid: 'ord-' + g.day,
-      id: g.day,
+      uid: 'ord-' + g.day + '-' + (person || 'roma'),
+      id: g.day + '|' + person,
       data_da: g.day,
       data_a: g.day,
-      person: names[0] || '',
-      people: names,
-      label: surnames.length ? surnames.join(' · ') : 'Roma',
-      raw: { data: g.day, note: g.note }
+      person: person,
+      people: person ? [person] : [],
+      label: person ? cognomeOperatore(person) : 'Roma',
+      raw: { data: g.day, person: person, note: g.note }
     };
   });
 }
@@ -1365,18 +1361,16 @@ function apriDettaglioOrdinaria(id) {
   const groups = (typeof SRNotaSpese !== 'undefined' && SRNotaSpese.groupNoteOrdinarieByDay)
     ? SRNotaSpese.groupNoteOrdinarieByDay(pool)
     : [];
-  const g = groups.find(x => x.day === String(id))
-    || { day: String(id), note: pool.filter(n => dayYmdRome(n.data || n.created_at) === String(id)) };
+  const sid = String(id);
+  const g = groups.find(x => (x.day + '|' + (x.person || '')) === sid)
+    || groups.find(x => x.day === sid)
+    || { day: sid.split('|')[0], person: sid.split('|')[1] || '', note: [] };
   const list = g.note || [];
   if (!list.length) return;
   document.getElementById('detail-modal').classList.remove('modal-wide', 'modal-org');
   document.getElementById('detail-title').textContent = 'Nota spese ordinaria · ' + fmtDay(g.day);
-  const people = [];
-  list.forEach(n => {
-    const p = String(n.dipendente || '').trim();
-    if (p && !people.some(x => namesMatch(x, p))) people.push(p);
-  });
-  const col = colorPerson(people[0] || '');
+  const person = String(g.person || (list[0] && list[0].dipendente) || '').trim();
+  const col = colorPerson(person);
   const rows = list.map((n, i) => {
     const isKm = typeof SRNotaSpese !== 'undefined' && SRNotaSpese.isRimborsoKm(n);
     const cat = typeof SRNotaSpese !== 'undefined' ? SRNotaSpese.labelCategoria(n.categoria) : (n.categoria || '—');
@@ -1394,9 +1388,9 @@ function apriDettaglioOrdinaria(id) {
       </button>`;
   }).join('');
   document.getElementById('detail-body').innerHTML = `
-    <button type="button" class="detail-op" id="detail-filter-op" data-op="${esc(people[0] || '')}">
+    <button type="button" class="detail-op" id="detail-filter-op" data-op="${esc(person)}">
       <span class="detail-op-dot" style="background:${col}"></span>
-      ${esc(people.join(' · ') || 'Roma e dintorni')}
+      ${esc(person || 'Roma e dintorni')}
     </button>
     <dl>
       <dt>Data</dt>
@@ -1406,11 +1400,11 @@ function apriDettaglioOrdinaria(id) {
       <div class="sc-list">${rows}</div></div>`;
   document.getElementById('detail-backdrop').classList.add('open');
   setDetailVerbale({
-    nominativo: people.join(' · '),
+    nominativo: person,
     meseYmd: g.day,
     voci: list
   });
-  if (people[0]) wireDetailFilterOp(people[0]);
+  if (person) wireDetailFilterOp(person);
   document.querySelectorAll('#detail-body [data-ord-idx]').forEach(btn => {
     btn.addEventListener('click', () => {
       const n = list[Number(btn.getAttribute('data-ord-idx'))];

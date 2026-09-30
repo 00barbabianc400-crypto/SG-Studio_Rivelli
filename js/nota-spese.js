@@ -240,12 +240,15 @@
     parseNotaOrdinariaList(rows).forEach(n => {
       const day = dayYmdRomeOf(n.data || n.created_at);
       if (!day) return;
-      if (!map.has(day)) map.set(day, []);
-      map.get(day).push(n);
+      const person = String(n.dipendente || '').trim();
+      const key = day + '\t' + person.toLowerCase();
+      if (!map.has(key)) map.set(key, { day: day, person: person, note: [] });
+      const g = map.get(key);
+      if (!g.person && person) g.person = person;
+      g.note.push(n);
     });
-    return [...map.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([day, note]) => ({ day: day, note: note }));
+    return [...map.values()].sort((a, b) =>
+      a.day.localeCompare(b.day) || a.person.localeCompare(b.person, 'it'));
   }
 
   function parseNotaSpeseJson(raw) {
@@ -347,6 +350,56 @@
   }
 
   const DETTAGLIO_MAX = 120;
+  const CLIENTE_MAX = 80;
+  const SEDE_MAX = 80;
+
+  function clipText(raw, max) {
+    return String(raw == null ? '' : raw).trim().slice(0, max);
+  }
+
+  function requiresCliente(categoria) {
+    const cat = String(categoria || '').trim();
+    return cat === 'cibi_bevande' || cat === 'altro' || cat === 'mezzi' || cat === 'rimborso_km';
+  }
+
+  function requiresSede(categoria, mezzo) {
+    const cat = String(categoria || '').trim();
+    if (cat === 'rimborso_km' || String(mezzo || '') === 'benzina') return false;
+    return cat === 'cibi_bevande' || cat === 'altro' || cat === 'mezzi';
+  }
+
+  function normalizeCliente(categoria, raw) {
+    const s = clipText(raw, CLIENTE_MAX);
+    if (requiresCliente(categoria) && !s) throw new Error('Cliente obbligatorio');
+    return s || null;
+  }
+
+  function normalizeSede(categoria, mezzo, raw) {
+    const s = clipText(raw, SEDE_MAX);
+    if (requiresSede(categoria, mezzo) && !s) throw new Error('Sede di riferimento obbligatoria');
+    return requiresSede(categoria, mezzo) ? s : null;
+  }
+
+  function suggerimentiClienteSedeGiorno(list, ymd) {
+    const day = String(ymd || todayYmdRome()).slice(0, 10);
+    const items = Array.isArray(list) ? list.slice() : [];
+    const sameDay = items.filter((it) => dayYmdRomeOf(it && (it.data || it.created_at)) === day);
+    sameDay.sort((a, b) => {
+      const ta = Date.parse(a && a.created_at) || 0;
+      const tb = Date.parse(b && b.created_at) || 0;
+      if (ta !== tb) return ta - tb;
+      return String((a && a.id) || '').localeCompare(String((b && b.id) || ''));
+    });
+    let cliente = '';
+    let sede = '';
+    for (let i = 0; i < sameDay.length; i++) {
+      const c = clipText(sameDay[i] && sameDay[i].cliente, CLIENTE_MAX);
+      if (c) cliente = c;
+      const s = clipText(sameDay[i] && sameDay[i].sede, SEDE_MAX);
+      if (s) sede = s;
+    }
+    return { cliente, sede };
+  }
 
   function normalizeDettaglio(categoria, raw) {
     const cat = String(categoria || '').trim();
@@ -373,6 +426,8 @@
         pasto: null,
         mezzo: null,
         dettaglio: normalizeDettaglio(categoria, incoming.dettaglio),
+        cliente: normalizeCliente(categoria, incoming.cliente),
+        sede: null,
         km,
         importo: 0,
         foto_url: '',
@@ -412,6 +467,8 @@
       pasto,
       mezzo,
       dettaglio,
+      cliente: normalizeCliente(categoria, incoming.cliente),
+      sede: normalizeSede(categoria, mezzo, incoming.sede),
       importo: parseImporto(incoming.importo),
       foto_url: String(incoming.foto_url || incoming.url || '').trim(),
       foto_id: String(incoming.foto_id || incoming.fileId || '').trim(),
@@ -504,7 +561,7 @@
     if (sub) parts.push(sub);
     const includeNote = !opts || opts.includeNote !== false;
     const note = String(it.dettaglio || '').trim();
-    if (includeNote && note && (it.pasto || it.mezzo)) parts.push(note);
+    if (includeNote && note && parts.indexOf(note) < 0) parts.push(note);
     return parts.join(' · ');
   }
 
@@ -546,6 +603,8 @@
         data: fmtDateIt(dayYmdRomeOf(it.data || it.created_at) || meseYmd),
         nominativo: String(it.dipendente || nominativo || '').trim(),
         descrizione: descr,
+        cliente: String(it.cliente || '').trim(),
+        sede: String(it.sede || '').trim(),
         importo: importoVoce(it)
       };
     });
@@ -568,10 +627,11 @@
     const rows = m.rows || [];
     let tr = rows.map(r => (
       '<tr><td>' + escHtml(r.data) + '</td><td>' + escHtml(r.nominativo) + '</td><td>'
-      + escHtml(r.descrizione) + '</td><td class="num">' + escHtml(fmtEuroIt(r.importo)) + '</td></tr>'
+      + escHtml(r.descrizione) + '</td><td>' + escHtml(r.cliente || '—') + '</td><td>'
+      + escHtml(r.sede || '—') + '</td><td class="num">' + escHtml(fmtEuroIt(r.importo)) + '</td></tr>'
     )).join('');
     const blanks = Number(m.blankRows) || 0;
-    for (let i = 0; i < blanks; i++) tr += '<tr class="blank"><td></td><td></td><td></td><td></td></tr>';
+    for (let i = 0; i < blanks; i++) tr += '<tr class="blank"><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
     return '<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>'
       + escHtml(m.titolo || 'Verbale') + '</title><style>'
       + 'body{font-family:"DM Sans",Segoe UI,sans-serif;color:#1e293b;margin:0;padding:24px;background:#fff}'
@@ -597,8 +657,8 @@
       + '<p style="margin:4px 0 0;font-size:13px;color:#64748b">Studio Rivelli Consulting</p></div></header>'
       + '<div class="meta"><div><span>Mese di riferimento</span><b>' + escHtml(m.mese) + '</b></div>'
       + '<div><span>Nominativo</span><b>' + escHtml(m.nominativo) + '</b></div></div>'
-      + '<table><thead><tr><th>Data</th><th>Nominativo</th><th>Voce</th><th>Importo</th></tr></thead><tbody>'
-      + tr + '</tbody><tfoot><tr class="tot"><td colspan="3">Totale rimborso</td><td class="num">'
+      + '<table><thead><tr><th>Data</th><th>Nominativo</th><th>Voce</th><th>Cliente</th><th>Sede</th><th>Importo</th></tr></thead><tbody>'
+      + tr + '</tbody><tfoot><tr class="tot"><td colspan="5">Totale rimborso</td><td class="num">'
       + escHtml(fmtEuroIt(m.totale)) + '</td></tr></tfoot></table>'
       + '<div class="signs"><div class="sign-box"><span>Data</span>' + escHtml(m.dataPresente) + '</div>'
       + '<div class="sign-box"><span>Firma</span></div></div>'
@@ -720,6 +780,13 @@
     GRACE_DAYS_AFTER_END,
     uid,
     DETTAGLIO_MAX,
+    CLIENTE_MAX,
+    SEDE_MAX,
+    requiresCliente,
+    requiresSede,
+    normalizeCliente,
+    normalizeSede,
+    suggerimentiClienteSedeGiorno,
     normalizeDettaglio,
     CATEGORIE,
     PASTI,
