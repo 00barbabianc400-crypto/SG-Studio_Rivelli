@@ -1037,7 +1037,7 @@ async function salva() {
         : SRNotaSpese.normalizeDettaglio(state.categoria, state.dettaglio),
       cliente: state.cliente,
       sede: state.sede,
-      importo: state.importo,
+      importo: SRNotaSpese.parseImporto(state.importo),
       foto_url: up.url,
       foto_id: up.fileId,
       mime: up.mime || state.photo.mime
