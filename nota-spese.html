@@ -39,6 +39,16 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   padding: 12px 14px; font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 16px;
 }
 .tappa-ro small { display: block; font-weight: 500; color: var(--text-2); margin-top: 4px; font-size: 12px; }
+.dest-tabs {
+  display: flex; gap: 6px; margin-bottom: 12px; padding: 4px;
+  background: #eef2f8; border: 1px solid #d5deec; border-radius: 999px;
+}
+.dest-tab {
+  appearance: none; border: none; background: transparent; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 600; color: var(--text-2);
+  padding: 8px 12px; border-radius: 999px; flex: 1;
+}
+.dest-tab.is-active { background: #fff; color: var(--blue); box-shadow: var(--shadow-sm); }
 .step-label { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px; }
 .chip-section { margin-bottom: 18px; }
 .chip-section:last-child { margin-bottom: 0; }
@@ -191,25 +201,31 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 </div>
 
 <main class="shell">
-  <h1 class="page-title">Gestione trasferte</h1>
-  <p class="page-sub">Pannello di gestione nota spese — giustificativi della tappa in corso.</p>
+  <h1 class="page-title">Nota spese</h1>
+  <p class="page-sub">Giustificativi Roma e dintorni. Se hai una tappa in corso, puoi salvarli anche sulla trasferta.</p>
 
-  <div id="no-tappa" class="card hidden">
-    <p class="empty">Nessuna tappa in corso oggi. Torna all’home.</p>
-    <a class="btn btn-ghost" href="index.html">Torna all’home</a>
-  </div>
-
-  <div id="panel" class="hidden">
-    <div class="tappa-ro" id="tappa-label">—</div>
+  <div id="panel">
+    <div class="tappa-ro hidden" id="tappa-block">
+      <div id="tappa-label">—</div>
+    </div>
 
     <div class="card" id="chip-card">
       <div class="step-label">Aggiungi giustificativo</div>
+      <div class="dest-tabs hidden" id="dest-tabs" role="tablist" aria-label="Destinazione nota">
+        <button type="button" class="dest-tab is-active" data-dest="ordinaria">Roma e dintorni</button>
+        <button type="button" class="dest-tab" data-dest="tappa">Tappa in corso</button>
+      </div>
       <div id="chip-board"></div>
     </div>
 
+    <div class="card hidden" id="card-lista-tappa">
+      <div class="step-label">Già caricati · tappa</div>
+      <div id="lista-tappa"></div>
+    </div>
+
     <div class="card">
-      <div class="step-label">Già caricati</div>
-      <div id="lista-esistenti"></div>
+      <div class="step-label">Già caricati · Roma e dintorni</div>
+      <div id="lista-ordinaria"></div>
     </div>
   </div>
 </main>
@@ -279,14 +295,14 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js?v=86"></script>
-<script src="js/nota-spese.js?v=85"></script>
+<script src="js/nota-spese.js?v=89"></script>
 <script src="js/upload-file-guard.js?v=82"></script>
 <script src="js/scontrini.js?v=37"></script>
 <script src="js/auth.js?v=82"></script>
 <script>
 const state = {
   phase: 'tipo', // tipo | dettaglio | km
-  mode: 'ordinaria', // trasferta | ordinaria
+  dest: 'ordinaria', // ordinaria | tappa
   categoria: null,
   pasto: null,
   mezzo: null,
@@ -557,20 +573,15 @@ function chiudiCompose() {
   resetComposeFields();
 }
 
-function listaCorrente() {
-  if (state.mode === 'trasferta') {
-    return SRNotaSpese.parseNotaSpeseJson(state.tappa && state.tappa.nota_spese_json);
-  }
-  return state.ordinarie.slice();
+function isDestTappa() {
+  return state.dest === 'tappa' && state.tappa;
 }
 
-function renderLista() {
-  const box = document.getElementById('lista-esistenti');
-  const list = listaCorrente();
+function fillLista(boxId, list, emptyMsg) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
   if (!list.length) {
-    box.innerHTML = state.mode === 'trasferta'
-      ? '<p class="empty">Nessun giustificativo su questa tappa.</p>'
-      : '<p class="empty">Nessun giustificativo su Roma e dintorni.</p>';
+    box.innerHTML = '<p class="empty">' + emptyMsg + '</p>';
     return;
   }
   box.innerHTML = list.map((it, i) => {
@@ -593,6 +604,14 @@ function renderLista() {
   box.querySelectorAll('[data-view-idx]').forEach(btn => {
     btn.addEventListener('click', () => apriNotaViewer(list[Number(btn.dataset.viewIdx)]));
   });
+}
+
+function renderLista() {
+  const tappaList = state.tappa
+    ? SRNotaSpese.parseNotaSpeseJson(state.tappa.nota_spese_json)
+    : [];
+  fillLista('lista-tappa', tappaList, 'Nessun giustificativo su questa tappa.');
+  fillLista('lista-ordinaria', state.ordinarie.slice(), 'Nessun giustificativo su Roma e dintorni.');
 }
 
 function apriNotaViewer(it) {
@@ -732,7 +751,7 @@ async function salvaKm() {
     km: state.km,
     dettaglio: SRNotaSpese.normalizeDettaglio('rimborso_km', state.dettaglio)
   };
-  if (state.mode !== 'trasferta' || !state.tappa) {
+  if (!isDestTappa()) {
     showLoader('Salvataggio in archivio…');
     try {
       await salvaOrdinaria(item);
@@ -788,7 +807,7 @@ async function salva() {
   if (!state.tipo) return toast('Scegli scontrino o fattura', 'err');
 
   const u = SRAuth.getUser() || {};
-  const ordinaria = state.mode !== 'trasferta' || !state.tappa;
+  const ordinaria = !isDestTappa();
   showLoader('Caricamento foto su Drive…');
   try {
     const up = await postGoogleScript(ordinaria
@@ -889,6 +908,14 @@ document.getElementById('ns-view-chiudi').addEventListener('click', () => closeB
 document.getElementById('nota-view-backdrop').addEventListener('click', e => {
   if (e.target.id === 'nota-view-backdrop') closeBackdrop('nota-view-backdrop');
 });
+document.querySelectorAll('#dest-tabs .dest-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.dest = btn.dataset.dest === 'tappa' ? 'tappa' : 'ordinaria';
+    document.querySelectorAll('#dest-tabs .dest-tab').forEach(b => {
+      b.classList.toggle('is-active', b === btn);
+    });
+  });
+});
 
 (async function boot() {
   try {
@@ -902,27 +929,24 @@ document.getElementById('nota-view-backdrop').addEventListener('click', e => {
     }
     const tappe = SRAuth.getTrasferteTappe();
     const tappa = SRNotaSpese.tappaAttuale(tappe);
-    state.mode = SRNotaSpese.notaSpeseMode(tappe);
-    document.getElementById('panel').classList.remove('hidden');
-    document.getElementById('no-tappa').classList.add('hidden');
-    const title = document.querySelector('.page-title');
-    const sub = document.querySelector('.page-sub');
-    if (state.mode === 'trasferta' && tappa) {
-      state.tappa = tappa;
-      if (title) title.textContent = 'Gestione trasferte';
-      if (sub) sub.textContent = 'Pannello di gestione nota spese — giustificativi della tappa in corso.';
+    state.dest = 'ordinaria';
+    state.tappa = tappa || null;
+    const tappaBlock = document.getElementById('tappa-block');
+    const destTabs = document.getElementById('dest-tabs');
+    const cardTappa = document.getElementById('card-lista-tappa');
+    if (tappa) {
+      tappaBlock.classList.remove('hidden');
+      destTabs.classList.remove('hidden');
+      cardTappa.classList.remove('hidden');
       document.getElementById('tappa-label').innerHTML =
         SRNotaSpese.labelTappa(tappa)
         + '<small>' + (tappa.trasferta_id || '') + (tappa.cliente_tappa ? ' · ' + tappa.cliente_tappa : '') + '</small>';
     } else {
-      state.tappa = null;
-      state.mode = 'ordinaria';
-      if (title) title.textContent = 'Nota spese ordinaria · Roma e dintorni';
-      if (sub) sub.textContent = 'Giustificativi senza trasferta attiva — stesse voci della trasferta, più rimborso chilometrico.';
-      document.getElementById('tappa-label').innerHTML =
-        'Roma e dintorni<small>Nessuna trasferta in corso.</small>';
-      await caricaOrdinaria();
+      tappaBlock.classList.add('hidden');
+      destTabs.classList.add('hidden');
+      cardTappa.classList.add('hidden');
     }
+    await caricaOrdinaria();
     renderChipBoard();
     renderLista();
   } catch (ex) {
