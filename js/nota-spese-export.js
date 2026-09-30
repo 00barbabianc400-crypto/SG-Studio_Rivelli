@@ -333,10 +333,34 @@
       });
     });
 
+    const romaRows = [{
+      kind: 'header',
+      values: ['Id', 'Dipendente', 'Data', 'Tipo', 'Categoria', 'Voce', 'Importo', 'Km', 'Link']
+    }];
+    (view && view.roma_e_dintorni || []).forEach(n => {
+      const kmRaw = n.km == null || n.km === '' ? '' : Number(n.km);
+      const km = typeof kmRaw === 'number' && Number.isFinite(kmRaw) ? kmRaw : '';
+      romaRows.push({
+        kind: 'tx',
+        values: [
+          cell(n.id || n.dt_id),
+          cell(n.dipendente),
+          cell(dayOnly(n.data)),
+          cell(n.tipo_doc || n.tipo),
+          cell(catOf(n)),
+          cell(voceOf(n)),
+          importoOf(n.importo),
+          km,
+          itemLink(n)
+        ]
+      });
+    });
+
     return {
       filename: 'archivio_storico.xlsx',
       macchina: macchinaRows,
-      trasferte: trasferteRows
+      trasferte: trasferteRows,
+      roma_e_dintorni: romaRows
     };
   }
 
@@ -376,6 +400,7 @@
     }
     addSheet('Macchina', built.macchina);
     addSheet('Trasferte', built.trasferte, 10);
+    addSheet('Roma e dintorni', built.roma_e_dintorni, 7);
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);

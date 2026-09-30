@@ -320,6 +320,7 @@ body {
   padding: 8px 14px; border-radius: var(--radius-pill); transition: background .15s, color .15s;
 }
 .seg-tab.is-active { background: #fff; color: var(--accent); box-shadow: var(--shadow-sm); }
+#arc-modal .seg-tabs { flex-wrap: wrap; }
 .ns-board {
   display: flex; gap: 8px; overflow: hidden; width: 100%;
   align-items: stretch;
@@ -496,7 +497,37 @@ body {
   animation: load-spin .7s linear infinite;
 }
 @keyframes load-spin { to { transform: rotate(360deg); } }
-.arc-head-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.arc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px 14px;
+}
+#arc-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+.arc-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.arc-head-actions .soft-btn { white-space: nowrap; }
+.btn-icon-x {
+  width: 40px; height: 40px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.btn-icon-x svg {
+  width: 18px; height: 18px; stroke: currentColor; fill: none;
+  stroke-width: 1.75; stroke-linecap: round;
+}
 .arc-tools { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
 .arc-filters { display: flex; align-items: flex-end; gap: 8px; }
 .arc-filters .field { min-width: 0; flex: 1 1 0; margin: 0; }
@@ -554,7 +585,7 @@ body {
   <div class="page-head page-head-row">
     <div>
       <h1 class="page-title">Gestione amministrativa</h1>
-      <p class="page-sub">Prenotazioni auto e trasferte sul calendario · filtra per persona e restringi per date</p>
+      <p class="page-sub">Prenotazioni auto, trasferte e note spese ordinarie sul calendario · filtra per persona e restringi per date</p>
     </div>
     <button type="button" class="soft-btn" id="btn-archivio">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7z"/><path d="M4 7l2-3h12l2 3"/><path d="M9 12h6"/></svg>
@@ -619,6 +650,10 @@ body {
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8.2 16.2c3.5-2.5 4.1-7.5 7.8-10.2"/></svg>
           Macchina / trasferta
         </span>
+        <span class="legend-item">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12v17l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3.5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+          Nota spese Roma e dintorni
+        </span>
       </div>
       <div class="year-nav">
         <h2 id="year-label">—</h2>
@@ -682,8 +717,14 @@ body {
     <div class="modal-head arc-head">
       <h2 id="arc-title">Archivio storico</h2>
       <div class="arc-head-actions">
-        <button type="button" class="soft-btn" id="btn-arc-export">Export excel dell'archivio</button>
+        <button type="button" class="soft-btn" id="btn-arc-export">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12"/><path d="M7 12l5 5 5-5"/><path d="M5 20h14"/></svg>
+          Export excel
+        </button>
         <button type="button" class="soft-btn btn-chiudi" id="arc-close">Chiudi</button>
+        <button type="button" class="soft-btn btn-icon-x" id="arc-close-x" aria-label="Chiudi">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
       </div>
     </div>
     <div class="modal-body">
@@ -691,6 +732,7 @@ body {
         <div class="seg-tabs" role="tablist" aria-label="Tipo archivio">
           <button type="button" class="arc-tab seg-tab is-active" data-arc="macchina">Archivio macchina</button>
           <button type="button" class="arc-tab seg-tab" data-arc="trasferte">Archivio trasferte</button>
+          <button type="button" class="arc-tab seg-tab" data-arc="roma">Archivio Roma e dintorni</button>
         </div>
         <div class="arc-filters">
           <div class="field field-date">
@@ -707,7 +749,7 @@ body {
           </div>
           <div class="field field-q">
             <label for="arc-q">Città o cliente</label>
-            <input type="search" id="arc-q" placeholder="Città o cliente" autocomplete="off">
+            <input type="search" id="arc-q" placeholder="Città, cliente o dettaglio" autocomplete="off">
           </div>
           <button type="button" class="soft-btn" id="btn-arc-reset">Resetta filtri</button>
         </div>
@@ -724,9 +766,9 @@ body {
 <script src="js/config.js?v=84"></script>
 <script src="js/auth.js"></script>
 <script src="js/scontrini.js"></script>
-  <script src="js/nota-spese.js?v=58"></script>
+  <script src="js/nota-spese.js?v=88"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
-  <script src="js/nota-spese-export.js?v=84"></script>
+  <script src="js/nota-spese-export.js?v=88"></script>
   <script src="js/servizi-tappa.js?v=58"></script>
   <script src="js/slot-auto-trasferta.js?v=75"></script>
 <script>
@@ -739,14 +781,17 @@ const OP_PALETTE = ['#2563eb','#0d9488','#7c3aed','#b45309','#db2777','#0891b2',
 
 const ICON_CAR = '<svg class="oc-bar-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16l1.5-6h11L19 16"/><path d="M4 16h16v2a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H10a2 2 0 0 1-4 0H5a1 1 0 0 1-1-1v-2z"/><path d="M7.5 10l1-3h7l1 3"/></svg>';
 const ICON_ROUTE = '<svg class="oc-bar-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8.2 16.2c3.5-2.5 4.1-7.5 7.8-10.2"/></svg>';
+const ICON_NS = '<svg class="oc-bar-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12v17l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3.5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>';
 
 let rawPrenotazioni = [];
 let rawTappe = [];
-let rawArchivio = { macchina: [], trasferte: [] };
+let rawNoteOrdinarie = [];
+let rawArchivio = { macchina: [], trasferte: [], roma_e_dintorni: [] };
 let archivioLoaded = false;
 let archivioLoading = null;
 let filteredMacchina = [];
 let filteredTappe = [];
+let filteredNoteOrdinarie = [];
 let calendarEvents = [];
 let viewYear = new Date().getFullYear();
 let openMonth = null;
@@ -849,6 +894,14 @@ function isTappaTrasferta(row) {
   return !!(row && (row.trasferta_id != null || (row.nome_persona != null && row.citta != null)));
 }
 
+function isNotaOrdinaria(row) {
+  if (!row || row.trasferta_id != null && String(row.trasferta_id).trim() !== '') return false;
+  if (row.tipo_utilizzo != null || (row.operatore != null && row.data_da != null)) return false;
+  const tipo = String(row.tipo || '').toLowerCase();
+  const cat = String(row.categoria || '').trim();
+  return !!(cat || tipo === 'scontrino' || tipo === 'fattura' || tipo === 'rimborso');
+}
+
 function isArchivioEnvelope(row) {
   return !!(row && Array.isArray(row.prenotazioni) && Array.isArray(row.tappe) && row.archivio);
 }
@@ -861,12 +914,15 @@ function splitPayload(data) {
     const arc = env.archivio || {};
     split.archivio = {
       macchina: Array.isArray(arc.macchina) ? arc.macchina : [],
-      trasferte: Array.isArray(arc.trasferte) ? arc.trasferte : []
+      trasferte: Array.isArray(arc.trasferte) ? arc.trasferte : [],
+      roma_e_dintorni: Array.isArray(arc.roma_e_dintorni) ? arc.roma_e_dintorni : []
     };
+    split.note_ordinarie = Array.isArray(env.note_ordinarie) ? env.note_ordinarie : [];
     return split;
   }
   const prenotazioni = [];
   const tappe = [];
+  const note_ordinarie = [];
   rows.forEach(r => {
     if (isPrenotazioneMacchina(r)) {
       prenotazioni.push({
@@ -883,9 +939,11 @@ function splitPayload(data) {
         data_partenza: pickDateField(r, ['data_partenza', 'dataPartenza', 'partenza', 'data_a', 'al'])
           || pickDateField(r, ['data_arrivo', 'dataArrivo', 'arrivo', 'data_da', 'dal'])
       });
+    } else if (isNotaOrdinaria(r)) {
+      note_ordinarie.push(r);
     }
   });
-  return { prenotazioni, tappe, archivio: { macchina: [], trasferte: [] } };
+  return { prenotazioni, tappe, note_ordinarie, archivio: { macchina: [], trasferte: [], roma_e_dintorni: [] } };
 }
 
 function toISO(y, m, d) {
@@ -903,6 +961,31 @@ function passaFiltroDate(da, a, f) {
   if (f.dal) return !!(a && a >= f.dal);
   if (f.al) return !!(da && da <= f.al);
   return true;
+}
+
+function dayYmdRome(v) {
+  const s = String(v || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) {
+    const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : '';
+  }
+  return d.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
+}
+
+function toCalEventOrdinaria(n) {
+  const day = dayYmdRome(n.data || n.created_at);
+  return {
+    kind: 'ordinaria',
+    uid: 'ord-' + n.id,
+    id: n.id,
+    data_da: day,
+    data_a: day,
+    person: n.dipendente,
+    label: cognomeOperatore(n.dipendente),
+    raw: n
+  };
 }
 
 function toCalEventMacchina(p) {
@@ -971,9 +1054,10 @@ function toCalEventsTrasferte(tappe) {
 function rebuildCalendarEvents() {
   const macchina = filteredMacchina.map(toCalEventMacchina);
   const trasferte = toCalEventsTrasferte(filteredTappe);
-  calendarEvents = (typeof SRSlotAutoTrasferta !== 'undefined')
+  const merged = (typeof SRSlotAutoTrasferta !== 'undefined')
     ? SRSlotAutoTrasferta.mergeCalendarEvents(macchina, trasferte)
     : [...macchina, ...trasferte];
+  calendarEvents = merged.concat(filteredNoteOrdinarie.map(toCalEventOrdinaria).filter(ev => ev.data_da));
 }
 
 function cognomeOperatore(name) {
@@ -1014,16 +1098,23 @@ function applyFilters() {
     if (f.operatore && !namesMatch(t.nome_persona, f.operatore)) return false;
     return passaFiltroDate(t.data_arrivo, t.data_partenza, f);
   });
+  filteredNoteOrdinarie = rawNoteOrdinarie.filter(n => {
+    if (f.operatore && !namesMatch(n.dipendente, f.operatore)) return false;
+    const d = dayYmdRome(n.data || n.created_at);
+    return passaFiltroDate(d, d, f);
+  });
   rebuildCalendarEvents();
   const nm = filteredMacchina.length;
   const nTrfIds = new Set(filteredTappe.map(t => String(t.trasferta_id || '').trim()).filter(Boolean));
   const nOrphan = filteredTappe.filter(t => !String(t.trasferta_id || '').trim()).length;
   const nt = nTrfIds.size + nOrphan;
+  const no = filteredNoteOrdinarie.length;
   const bits = [];
   if (f.operatore) bits.push(f.operatore);
   if (f.dal || f.al) bits.push((f.dal || '…') + ' → ' + (f.al || '…'));
   setStatus(
     nm + ' auto · ' + nt + ' trasfert' + (nt === 1 ? 'a' : 'e')
+    + ' · ' + no + ' not' + (no === 1 ? 'a' : 'e') + ' ordinaria'
     + (bits.length ? ' · ' + bits.join(' · ') : '')
   );
   renderYearGrid();
@@ -1040,6 +1131,12 @@ function popolaOperatoriDaRecord() {
   });
   rawTappe.forEach(t => {
     const name = String(t.nome_persona || '').trim();
+    if (!name) return;
+    const key = normName(name);
+    if (!set.has(key)) set.set(key, name);
+  });
+  rawNoteOrdinarie.forEach(n => {
+    const name = String(n.dipendente || '').trim();
     if (!name) return;
     const key = normName(name);
     if (!set.has(key)) set.set(key, name);
@@ -1184,11 +1281,16 @@ function renderMonthCalendar(month) {
       const top = lane * (barH + barGap);
       const col = colorPerson(ev.person);
       const rCls = (seg.roundL ? ' round-l' : '') + (seg.roundR ? ' round-r' : '');
-      const ico = ev.kind === 'macchina'
-        ? ICON_CAR
-        : (ev.kind === 'macchina_trasferta' ? ICON_CAR + ICON_ROUTE : ICON_ROUTE);
+      const ico = ev.kind === 'ordinaria'
+        ? ICON_NS
+        : (ev.kind === 'macchina'
+          ? ICON_CAR
+          : (ev.kind === 'macchina_trasferta' ? ICON_CAR + ICON_ROUTE : ICON_ROUTE));
       let tip;
-      if (ev.kind === 'macchina') {
+      if (ev.kind === 'ordinaria') {
+        const km = typeof SRNotaSpese !== 'undefined' && SRNotaSpese.isRimborsoKm(ev.raw);
+        tip = ev.person + (km ? ' · ' + ev.raw.km + ' km' : ' · nota spese');
+      } else if (ev.kind === 'macchina') {
         tip = ev.person + ' · ' + (pickCliente(ev.raw) || '—');
       } else if (ev.kind === 'macchina_trasferta' || ev.kind === 'trasferta') {
         const n = ev.tappeCount || 1;
@@ -1211,6 +1313,7 @@ function renderMonthCalendar(month) {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       if (btn.dataset.kind === 'macchina') apriDettaglioMacchina(btn.dataset.id);
+      else if (btn.dataset.kind === 'ordinaria') apriDettaglioOrdinaria(btn.dataset.id);
       else apriDettaglioTappa(btn.dataset.id);
     });
   });
@@ -1223,6 +1326,69 @@ function tappePerPrenotazione(p) {
       && rangesOverlap(p.data_da, p.data_a, t.data_arrivo, t.data_partenza))
     .sort((a, b) => Number(a.tappa_numero || 0) - Number(b.tappa_numero || 0)
       || (a.data_arrivo || '').localeCompare(b.data_arrivo || ''));
+}
+
+function apriDettaglioOrdinaria(id) {
+  const n = filteredNoteOrdinarie.find(x => String(x.id) === String(id))
+    || rawNoteOrdinarie.find(x => String(x.id) === String(id));
+  if (!n) return;
+  document.getElementById('detail-modal').classList.remove('modal-wide', 'modal-org');
+  document.getElementById('detail-title').textContent = 'Nota spese ordinaria';
+  const col = colorPerson(n.dipendente);
+  const isKm = typeof SRNotaSpese !== 'undefined' && SRNotaSpese.isRimborsoKm(n);
+  const cat = typeof SRNotaSpese !== 'undefined'
+    ? SRNotaSpese.labelCategoria(n.categoria)
+    : (n.categoria || '—');
+  const voce = typeof SRNotaSpese !== 'undefined'
+    ? SRNotaSpese.labelVoce(n)
+    : (n.dettaglio || '—');
+  const tipo = String(n.tipo || '').toLowerCase() === 'fattura' ? 'Fattura'
+    : (String(n.tipo || '').toLowerCase() === 'rimborso' ? 'Rimborso km' : 'Scontrino');
+  let extra = '';
+  if (isKm) {
+    extra = `<dt>Chilometraggio</dt><dd>${esc(String(n.km))} km</dd>`;
+  } else {
+    const noteTxt = String(n.dettaglio || '').trim();
+    extra = (n.importo != null && n.importo !== '' ? `<dt>Importo</dt><dd>${esc(fmtEuroNota(n.importo))}</dd>` : '')
+      + (noteTxt ? `<dt>Note</dt><dd>${esc(noteTxt)}</dd>` : '')
+      + `<div class="sc-box"><div class="tappe-title">Giustificativo</div>
+        <button type="button" class="sc-item" id="ord-open-file" title="Apri giustificativo">
+          <span class="sc-ico-wrap">${typeof SRScontrini !== 'undefined' ? SRScontrini.ICO_RECEIPT : ''}</span>
+          <span class="ns-item-meta">${esc(tipo)}<span>${esc(voce)}</span></span>
+          <span class="ns-item-amt">${esc(fmtEuroNota(n.importo))}</span>
+        </button></div>`;
+  }
+  document.getElementById('detail-body').innerHTML = `
+    <button type="button" class="detail-op" id="detail-filter-op" data-op="${esc(n.dipendente)}">
+      <span class="detail-op-dot" style="background:${col}"></span>
+      ${esc(n.dipendente || '—')}
+    </button>
+    <dl>
+      <dt>Data</dt>
+      <dd>${esc(fmtDay(n.data || n.created_at))}</dd>
+      <dt>Tipo</dt>
+      <dd>${esc(tipo)}</dd>
+      <dt>Categoria</dt>
+      <dd>${esc(cat)}</dd>
+      ${extra}
+    </dl>`;
+  document.getElementById('detail-backdrop').classList.add('open');
+  wireDetailFilterOp(n.dipendente);
+  const openBtn = document.getElementById('ord-open-file');
+  if (openBtn) {
+    openBtn.addEventListener('click', () => apriNotaSpesaViewerAmm({
+      tipo: n.tipo,
+      categoria: n.categoria,
+      pasto: n.pasto,
+      mezzo: n.mezzo,
+      dettaglio: n.dettaglio,
+      importo: n.importo,
+      foto_id: n.foto_id,
+      foto_url: n.foto_url,
+      mime: n.mime,
+      created_at: n.created_at
+    }));
+  }
 }
 
 function apriDettaglioMacchina(id) {
@@ -1838,7 +2004,7 @@ function dayOnly(v) {
 }
 
 function fmtDay(v) {
-  const d = dayOnly(v);
+  const d = dayYmdRome(v) || dayOnly(v);
   if (!d) return '—';
   const p = d.split('-');
   return p[2] + '/' + p[1] + '/' + p[0];
@@ -1915,6 +2081,27 @@ function arcAllegato(a) {
     + open + '</div>';
 }
 
+function cardRoma(n) {
+  const isKm = typeof SRNotaSpese !== 'undefined' && SRNotaSpese.isRimborsoKm(n);
+  const cat = typeof SRNotaSpese !== 'undefined' ? SRNotaSpese.labelCategoria(n.categoria) : (n.categoria || '');
+  const voce = typeof SRNotaSpese !== 'undefined' ? SRNotaSpese.labelVoce(n) : (n.dettaglio || '');
+  const tipo = String(n.tipo_doc || n.tipo || '').toLowerCase() === 'fattura' ? 'Fattura'
+    : (String(n.tipo_doc || n.tipo || '').toLowerCase() === 'rimborso' ? 'Rimborso km' : 'Scontrino');
+  let box;
+  if (isKm) {
+    box = '<p class="arc-meta">Chilometraggio: <b>' + esc(String(n.km)) + ' km</b></p>';
+  } else {
+    const amt = n.importo != null && n.importo !== '' ? fmtEuroNota(n.importo) : '';
+    const inner = '<span class="sc-ico-wrap">' + SRScontrini.ICO_RECEIPT + '</span>'
+      + '<span class="ns-item-meta">' + esc(tipo) + '<span>' + esc(voce || cat) + '</span></span>'
+      + (amt ? '<span class="ns-item-amt">' + esc(amt) + '</span>' : '');
+    box = '<div class="sc-box"><div class="tappe-title">Giustificativo</div>' + arcWrap(arcHref(n), inner) + '</div>';
+  }
+  return '<article class="arc-card"><h3>' + esc(n.dipendente || '—') + '<small>' + esc(String(n.id || '')) + ' · ' + esc(fmtDay(n.data)) + '</small></h3>'
+    + '<p class="arc-meta">' + esc(tipo) + (cat ? ' · ' + esc(cat) : '') + '</p>'
+    + box + '</article>';
+}
+
 function cardMacchina(p) {
   const quando = fmtDay(p.data_da) + (dayOnly(p.data_a) && dayOnly(p.data_a) !== dayOnly(p.data_da) ? ' → ' + fmtDay(p.data_a) : '');
   const files = (p.scontrini || []).map((sc, i) => {
@@ -1960,6 +2147,7 @@ function popolaPersoneArchivio() {
   }
   (rawArchivio.macchina || []).forEach(p => add(p.operatore));
   (rawArchivio.trasferte || []).forEach(t => add(t.nome_persona));
+  (rawArchivio.roma_e_dintorni || []).forEach(n => add(n.dipendente));
   names.sort((a, b) => a.localeCompare(b, 'it'));
   sel.innerHTML = '<option value="">— tutte —</option>' + names.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('');
   if (names.some(n => n === cur)) sel.value = cur;
@@ -1994,7 +2182,14 @@ function viewArchivioFiltrata() {
     });
     if (tappe.length) trasferte.push(Object.assign({}, tr, { tappe: tappe }));
   });
-  return { macchina: macchina, trasferte: trasferte };
+  const roma_e_dintorni = (rawArchivio.roma_e_dintorni || []).filter(n => {
+    if (!personaMatch(n.dipendente, f.persona)) return false;
+    const d = dayYmdRome(n.data) || dayOnly(n.data);
+    if (!passaFiltroDate(d, d, f)) return false;
+    if (!f.q) return true;
+    return normName([n.dettaglio, n.categoria, n.tipo_doc, n.tipo, n.id].join(' ')).indexOf(f.q) >= 0;
+  });
+  return { macchina: macchina, trasferte: trasferte, roma_e_dintorni: roma_e_dintorni };
 }
 
 function renderArchivio() {
@@ -2004,6 +2199,11 @@ function renderArchivio() {
   if (arcKind === 'macchina') {
     count.textContent = view.macchina.length + (view.macchina.length === 1 ? ' prenotazione' : ' prenotazioni');
     host.innerHTML = view.macchina.length ? view.macchina.map(cardMacchina).join('') : '<p class="arc-empty">Nessuna scheda per questi filtri.</p>';
+    return;
+  }
+  if (arcKind === 'roma') {
+    count.textContent = view.roma_e_dintorni.length + (view.roma_e_dintorni.length === 1 ? ' nota' : ' note');
+    host.innerHTML = view.roma_e_dintorni.length ? view.roma_e_dintorni.map(cardRoma).join('') : '<p class="arc-empty">Nessuna scheda per questi filtri.</p>';
     return;
   }
   count.textContent = view.trasferte.length + (view.trasferte.length === 1 ? ' trasferta' : ' trasferte');
@@ -2030,7 +2230,8 @@ async function caricaArchivio() {
     const arc = (env && env.archivio) || env || {};
     rawArchivio = {
       macchina: Array.isArray(arc.macchina) ? arc.macchina : [],
-      trasferte: Array.isArray(arc.trasferte) ? arc.trasferte : []
+      trasferte: Array.isArray(arc.trasferte) ? arc.trasferte : [],
+      roma_e_dintorni: Array.isArray(arc.roma_e_dintorni) ? arc.roma_e_dintorni : []
     };
     archivioLoaded = true;
   })();
@@ -2074,6 +2275,7 @@ async function caricaDati() {
     const split = splitPayload(data);
     rawPrenotazioni = split.prenotazioni;
     rawTappe = split.tappe;
+    rawNoteOrdinarie = split.note_ordinarie || [];
     popolaOperatoriDaRecord();
     applyFilters();
   } catch (e) {
@@ -2158,6 +2360,9 @@ document.getElementById('scontrino-view-backdrop').addEventListener('click', e =
 });
 document.getElementById('btn-archivio').addEventListener('click', apriArchivio);
 document.getElementById('arc-close').addEventListener('click', () => {
+  document.getElementById('arc-backdrop').classList.remove('open');
+});
+document.getElementById('arc-close-x').addEventListener('click', () => {
   document.getElementById('arc-backdrop').classList.remove('open');
 });
 document.getElementById('arc-backdrop').addEventListener('click', e => {

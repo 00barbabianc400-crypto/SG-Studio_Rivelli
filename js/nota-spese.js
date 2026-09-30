@@ -131,6 +131,10 @@
     });
   }
 
+  function notaSpeseMode(rows, ymd) {
+    return tappaAttuale(rows, ymd) ? 'trasferta' : 'ordinaria';
+  }
+
   function tappaAttuale(rows, ymd) {
     const day = ymd || todayYmdRome();
     const inCorso = tappeAttiveOggi(rows, day);
@@ -178,9 +182,17 @@
     return 'Tappa ' + n + ' · ' + citta + ' · ' + da + (a !== da ? ' – ' + a : '');
   }
 
+  function isRimborsoKm(obj) {
+    return !!(obj && typeof obj === 'object'
+      && String(obj.categoria || '') === 'rimborso_km'
+      && Number(obj.km) > 0);
+  }
+
   function isNotaItem(obj) {
-    return !!(obj && typeof obj === 'object' && (obj.foto_id || obj.foto_url || obj.fileId)
-      && (obj.tipo || obj.categoria || obj.importo != null));
+    if (!obj || typeof obj !== 'object') return false;
+    if (isRimborsoKm(obj)) return true;
+    return !!(obj.foto_id || obj.foto_url || obj.fileId)
+      && (obj.tipo || obj.categoria || obj.importo != null);
   }
 
   function parseNotaSpeseJson(raw) {
@@ -198,6 +210,14 @@
       return [];
     }
     return [];
+  }
+
+  function parseKm(v) {
+    if (typeof v === 'number' && Number.isFinite(v) && v > 0) return Math.round(v * 10) / 10;
+    const s = String(v == null ? '' : v).trim().replace(/\s/g, '').replace(',', '.');
+    const n = parseFloat(s.replace(/[^\d.-]/g, ''));
+    if (!Number.isFinite(n) || n <= 0) throw new Error('Chilometri non validi');
+    return Math.round(n * 10) / 10;
   }
 
   function parseImporto(v) {
@@ -226,12 +246,32 @@
 
   function appendNotaSpesa(existingRaw, incoming) {
     const list = parseNotaSpeseJson(existingRaw);
+    const categoria = String(incoming.categoria || '').trim();
+    if (!categoria) throw new Error('Categoria obbligatoria');
+
+    if (categoria === 'rimborso_km') {
+      const km = parseKm(incoming.km);
+      list.push({
+        id: incoming.id || uid(),
+        created_at: incoming.created_at || new Date().toISOString(),
+        tipo: 'rimborso',
+        categoria: 'rimborso_km',
+        pasto: null,
+        mezzo: null,
+        dettaglio: normalizeDettaglio(categoria, incoming.dettaglio),
+        km,
+        importo: 0,
+        foto_url: '',
+        foto_id: '',
+        mime: ''
+      });
+      return list;
+    }
+
     const tipo = String(incoming.tipo || '').trim().toLowerCase();
     if (tipo !== 'scontrino' && tipo !== 'fattura') {
       throw new Error('Tipo documento non valido');
     }
-    const categoria = String(incoming.categoria || '').trim();
-    if (!categoria) throw new Error('Categoria obbligatoria');
 
     let pasto = incoming.pasto ? String(incoming.pasto).trim() : null;
     let mezzo = incoming.mezzo ? String(incoming.mezzo).trim() : null;
@@ -295,6 +335,7 @@
       let n = 0;
       try { n = parseImporto(it && it.importo); } catch { n = 0; }
       const tipo = String(it && it.tipo || '').toLowerCase();
+      if (tipo === 'rimborso' || String(it && it.categoria || '') === 'rimborso_km') return;
       if (tipo === 'fattura') out.fattura += n;
       else out.scontrino += n;
       out.totale += n;
@@ -333,6 +374,10 @@
       const m = MEZZI.find(x => x.id === it.mezzo);
       return m ? m.label : String(it.mezzo);
     }
+    if (it.km != null && Number(it.km) > 0) {
+      const km = String(it.km).replace('.', ',');
+      return km + ' km';
+    }
     if (it.dettaglio) return String(it.dettaglio).trim();
     return '';
   }
@@ -370,7 +415,8 @@
   const CATEGORIE = [
     { id: 'cibi_bevande', label: 'Cibi e bevande' },
     { id: 'mezzi', label: 'Mezzi' },
-    { id: 'altro', label: 'Altro' }
+    { id: 'altro', label: 'Altro' },
+    { id: 'rimborso_km', label: 'Rimborso chilometrico' }
   ];
   const PASTI = [
     { id: 'colazione', label: 'Colazione' },
@@ -395,6 +441,9 @@
     tappeAttiveOggi,
     hasTrasfertaInCorso,
     tappaAttuale,
+    notaSpeseMode,
+    parseKm,
+    isRimborsoKm,
     labelTappa,
     fmtDateIt,
     parseNotaSpeseJson,
