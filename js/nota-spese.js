@@ -607,6 +607,14 @@
       + '</div></body></html>';
   }
 
+  function verbaleFileName(model) {
+    const mese = String(model && model.mese || 'nota-spese')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-zA-Z0-9\-]/g, '');
+    return 'verbale-rimborso-' + (mese || 'nota-spese') + '.html';
+  }
+
   function printVerbale(model) {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
     const html = verbalePrintHtml(model);
@@ -681,6 +689,7 @@
     displayImporto,
     buildVerbaleModel,
     verbalePrintHtml,
+    verbaleFileName,
     printVerbale,
     studioLogoUrl,
     labelTappa,

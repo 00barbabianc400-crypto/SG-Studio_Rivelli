@@ -250,6 +250,7 @@ body {
   position: fixed; inset: 0; background: rgba(17, 24, 39, .4); z-index: 1000;
   display: none; align-items: center; justify-content: center; padding: 20px;
 }
+#verbale-view-backdrop { z-index: 1100; }
 .modal-backdrop.open { display: flex; }
 .modal {
   background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
@@ -413,6 +414,12 @@ body {
 .btn-icon { width: 42px; height: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 .btn-chiudi { background: #fde8e8; border: 1px solid #f5c2c2; color: #b42318; }
 .modal-sc { width: min(520px, calc(100vw - 32px)) !important; }
+.modal-verbale { width: min(820px, calc(100vw - 24px)) !important; max-height: min(92vh, 900px); }
+.verbale-frame {
+  width: 100%; height: min(68vh, 640px); border: 1px solid var(--border);
+  border-radius: 16px; background: #fff; display: block;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .06);
+}
 .svc-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .svc-card {
   background: var(--hover); border: 1px solid var(--border);
@@ -713,6 +720,20 @@ body {
   </div>
 </div>
 
+<div class="modal-backdrop" id="verbale-view-backdrop" role="dialog" aria-modal="true" aria-labelledby="verbale-view-title">
+  <div class="modal modal-verbale">
+    <div class="modal-head"><h2 id="verbale-view-title">Verbale di rimborso</h2></div>
+    <div class="modal-body">
+      <iframe id="verbale-frame" class="verbale-frame" title="Anteprima verbale di rimborso"></iframe>
+    </div>
+    <div class="modal-foot">
+      <a class="soft-btn btn-icon" id="verbale-view-download" href="#" download title="Scarica" aria-label="Scarica"></a>
+      <button type="button" class="soft-btn btn-icon" id="verbale-view-print" title="Stampa" aria-label="Stampa"></button>
+      <button type="button" class="soft-btn btn-chiudi" id="verbale-view-chiudi">Chiudi</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="arc-backdrop" role="dialog" aria-modal="true" aria-labelledby="arc-title">
   <div class="modal modal-wide" id="arc-modal">
     <div class="modal-head arc-head">
@@ -767,7 +788,7 @@ body {
 <script src="js/config.js?v=84"></script>
 <script src="js/auth.js"></script>
 <script src="js/scontrini.js"></script>
-  <script src="js/nota-spese.js?v=92"></script>
+  <script src="js/nota-spese.js?v=93"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
   <script src="js/nota-spese-export.js?v=90"></script>
   <script src="js/servizi-tappa.js?v=58"></script>
@@ -1823,6 +1844,46 @@ function setDetailVerbale(ctx) {
   if (btn) btn.hidden = !detailVerbale;
 }
 
+let verbaleBlobUrl = null;
+
+function chiudiVerbaleViewer() {
+  document.getElementById('verbale-view-backdrop').classList.remove('open');
+  const frame = document.getElementById('verbale-frame');
+  if (frame) {
+    frame.removeAttribute('srcdoc');
+    try { frame.src = 'about:blank'; } catch (_) {}
+  }
+  if (verbaleBlobUrl) {
+    URL.revokeObjectURL(verbaleBlobUrl);
+    verbaleBlobUrl = null;
+  }
+}
+
+function apriVerbaleViewer(html, fileName) {
+  const frame = document.getElementById('verbale-frame');
+  const a = document.getElementById('verbale-view-download');
+  const printBtn = document.getElementById('verbale-view-print');
+  if (!frame) return;
+  frame.srcdoc = html;
+  if (verbaleBlobUrl) URL.revokeObjectURL(verbaleBlobUrl);
+  verbaleBlobUrl = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+  a.href = verbaleBlobUrl;
+  a.setAttribute('download', fileName || 'verbale-rimborso.html');
+  a.innerHTML = (typeof SRScontrini !== 'undefined') ? SRScontrini.ICO_DOWNLOAD : '↓';
+  printBtn.innerHTML = (typeof SRScontrini !== 'undefined') ? SRScontrini.ICO_PRINT : 'P';
+  printBtn.onclick = () => {
+    try {
+      const w = frame.contentWindow;
+      if (!w) return;
+      w.focus();
+      w.print();
+    } catch (e) {
+      alert('Stampa non riuscita: ' + (e.message || e));
+    }
+  };
+  document.getElementById('verbale-view-backdrop').classList.add('open');
+}
+
 function stampaVerbaleDettaglio() {
   if (!detailVerbale || typeof SRNotaSpese === 'undefined') return;
   const model = SRNotaSpese.buildVerbaleModel({
@@ -1831,8 +1892,10 @@ function stampaVerbaleDettaglio() {
     voci: detailVerbale.voci,
     logoUrl: SRNotaSpese.studioLogoUrl()
   });
-  try { SRNotaSpese.printVerbale(model); }
-  catch (e) { alert(e.message || String(e)); }
+  apriVerbaleViewer(
+    SRNotaSpese.verbalePrintHtml(model),
+    SRNotaSpese.verbaleFileName ? SRNotaSpese.verbaleFileName(model) : 'verbale-rimborso.html'
+  );
 }
 
 function apriDettaglioTappa(id) {
@@ -2416,6 +2479,10 @@ document.getElementById('detail-backdrop').addEventListener('click', e => {
     e.currentTarget.classList.remove('open');
     document.getElementById('detail-modal').classList.remove('modal-wide', 'modal-org');
   }
+});
+document.getElementById('verbale-view-chiudi').addEventListener('click', chiudiVerbaleViewer);
+document.getElementById('verbale-view-backdrop').addEventListener('click', e => {
+  if (e.target.id === 'verbale-view-backdrop') chiudiVerbaleViewer();
 });
 document.getElementById('sc-view-chiudi').addEventListener('click', () => {
   document.getElementById('scontrino-view-backdrop').classList.remove('open');
