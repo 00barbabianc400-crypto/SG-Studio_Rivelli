@@ -319,7 +319,7 @@
     const y = s.slice(0, 4);
     const nome = MESI_ESTESI[m - 1];
     if (!nome || !/^\d{4}$/.test(y)) return '';
-    return nome + ' ' + y;
+    return nome.charAt(0).toUpperCase() + nome.slice(1) + ' ' + y;
   }
 
   function fmtEuroIt(n) {
@@ -587,9 +587,9 @@
       + 'td.num,.tot td{text-align:right;font-variant-numeric:tabular-nums}'
       + 'tr.blank td{height:28px}'
       + '.tot{font-weight:700}'
-      + '.signs,.visti{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px}'
-      + '.sign-box{border:1px solid #e2e8f0;border-radius:12px;padding:14px;min-height:88px}'
-      + '.sign-box span{display:block;font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:36px}'
+      + '.signs,.visti{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}'
+      + '.sign-box{border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;min-height:34px;font-size:12px}'
+      + '.sign-box span{display:block;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#64748b;margin-bottom:4px}'
       + '@media print{body{padding:12mm}}'
       + '</style></head><body><div class="sheet"><header>'
       + '<img src="' + escHtml(m.logoUrl || 'assets/logo.jpg') + '" alt="Studio Rivelli Consulting">'

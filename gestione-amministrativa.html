@@ -727,7 +727,6 @@ body {
       <iframe id="verbale-frame" class="verbale-frame" title="Anteprima verbale di rimborso"></iframe>
     </div>
     <div class="modal-foot">
-      <a class="soft-btn btn-icon" id="verbale-view-download" href="#" download title="Scarica" aria-label="Scarica"></a>
       <button type="button" class="soft-btn btn-icon" id="verbale-view-print" title="Stampa" aria-label="Stampa"></button>
       <button type="button" class="soft-btn btn-chiudi" id="verbale-view-chiudi">Chiudi</button>
     </div>
@@ -788,7 +787,7 @@ body {
 <script src="js/config.js?v=84"></script>
 <script src="js/auth.js"></script>
 <script src="js/scontrini.js"></script>
-  <script src="js/nota-spese.js?v=93"></script>
+  <script src="js/nota-spese.js?v=94"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
   <script src="js/nota-spese-export.js?v=90"></script>
   <script src="js/servizi-tappa.js?v=58"></script>
@@ -1853,23 +1852,13 @@ function chiudiVerbaleViewer() {
     frame.removeAttribute('srcdoc');
     try { frame.src = 'about:blank'; } catch (_) {}
   }
-  if (verbaleBlobUrl) {
-    URL.revokeObjectURL(verbaleBlobUrl);
-    verbaleBlobUrl = null;
-  }
 }
 
-function apriVerbaleViewer(html, fileName) {
+function apriVerbaleViewer(html) {
   const frame = document.getElementById('verbale-frame');
-  const a = document.getElementById('verbale-view-download');
   const printBtn = document.getElementById('verbale-view-print');
   if (!frame) return;
   frame.srcdoc = html;
-  if (verbaleBlobUrl) URL.revokeObjectURL(verbaleBlobUrl);
-  verbaleBlobUrl = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
-  a.href = verbaleBlobUrl;
-  a.setAttribute('download', fileName || 'verbale-rimborso.html');
-  a.innerHTML = (typeof SRScontrini !== 'undefined') ? SRScontrini.ICO_DOWNLOAD : '↓';
   printBtn.innerHTML = (typeof SRScontrini !== 'undefined') ? SRScontrini.ICO_PRINT : 'P';
   printBtn.onclick = () => {
     try {
@@ -1892,10 +1881,7 @@ function stampaVerbaleDettaglio() {
     voci: detailVerbale.voci,
     logoUrl: SRNotaSpese.studioLogoUrl()
   });
-  apriVerbaleViewer(
-    SRNotaSpese.verbalePrintHtml(model),
-    SRNotaSpese.verbaleFileName ? SRNotaSpese.verbaleFileName(model) : 'verbale-rimborso.html'
-  );
+  apriVerbaleViewer(SRNotaSpese.verbalePrintHtml(model));
 }
 
 function apriDettaglioTappa(id) {

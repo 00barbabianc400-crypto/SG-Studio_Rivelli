@@ -192,6 +192,24 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .app-loader-text { font-size: 14px; color: var(--text-2); }
 @keyframes app-spin { to { transform: rotate(360deg); } }
 .empty { font-size: 14px; color: var(--text-2); padding: 8px 0; }
+.load-buffer {
+  position: fixed; inset: 0; z-index: 1500;
+  background: rgba(247, 249, 252, .78);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.load-buffer[hidden] { display: none; }
+.load-card {
+  display: inline-flex; align-items: center; gap: 12px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r3); box-shadow: var(--shadow-sm);
+  padding: 14px 18px; font-size: 14px; font-weight: 600; color: var(--navy);
+}
+.load-spin {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--border); border-top-color: var(--blue-lt);
+  animation: load-spin .7s linear infinite;
+}
+@keyframes load-spin { to { transform: rotate(360deg); } }
 .km-rate-rule { font-size: 14px; color: var(--text-2); margin: 0 0 14px; line-height: 1.45; }
 .km-rate-card {
   background: #fff; border: 1px solid var(--border); border-radius: 16px;
@@ -203,6 +221,9 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 </style>
 </head>
 <body>
+<div class="load-buffer" id="load-buffer" role="status" aria-live="polite">
+  <div class="load-card"><span class="load-spin" aria-hidden="true"></span>Caricamento categorie</div>
+</div>
 <div class="topbar">
   <a class="topbar-home" href="index.html">← Home</a>
   <span class="topbar-name">Nota spese</span>
@@ -303,7 +324,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js?v=86"></script>
-<script src="js/nota-spese.js?v=93"></script>
+<script src="js/nota-spese.js?v=94"></script>
 <script src="js/upload-file-guard.js?v=82"></script>
 <script src="js/scontrini.js?v=37"></script>
 <script src="js/auth.js?v=82"></script>
@@ -1030,6 +1051,9 @@ document.querySelectorAll('#dest-tabs .dest-tab').forEach(btn => {
       '<div style="margin:16px;padding:14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;color:#b42318;font:14px DM Sans,sans-serif">'
       + 'Errore apertura Nota spese: ' + msg.replace(/[<>&]/g, '')
       + '<br><a href="index.html">Torna alla home</a></div>');
+  } finally {
+    const buf = document.getElementById('load-buffer');
+    if (buf) buf.hidden = true;
   }
 })();
 </script>
