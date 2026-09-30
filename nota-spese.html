@@ -316,6 +316,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
       <dl class="sc-view-dl">
         <dt>Voce</dt>
         <dd id="ns-view-cat">—</dd>
+        <dt id="ns-view-cliente-dt" class="hidden">Cliente</dt>
+        <dd id="ns-view-cliente" class="hidden">—</dd>
+        <dt id="ns-view-sede-dt" class="hidden">Sede di riferimento</dt>
+        <dd id="ns-view-sede" class="hidden">—</dd>
         <dt id="ns-view-importo-dt">Importo</dt>
         <dd id="ns-view-importo">—</dd>
         <dt id="ns-view-note-dt" class="hidden">Note</dt>
@@ -337,10 +341,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js?v=86"></script>
-<script src="js/nota-spese.js?v=97"></script>
+<script src="js/nota-spese.js?v=98"></script>
 <script src="js/upload-file-guard.js?v=82"></script>
 <script src="js/scontrini.js?v=37"></script>
-<script src="js/auth.js?v=82"></script>
+<script src="js/auth.js?v=83"></script>
 <script>
 const state = {
   phase: 'tipo', // tipo | dettaglio | km | km-confirm
@@ -791,6 +795,23 @@ function apriNotaViewer(it, pool) {
   const tipo = isKm ? 'Rimborso chilometrico' : (String(it.tipo || '').toLowerCase() === 'fattura' ? 'Fattura' : 'Scontrino');
   document.getElementById('ns-view-title').textContent = tipo;
   document.getElementById('ns-view-cat').textContent = SRNotaSpese.labelVoce(it, { includeNote: false });
+  const cs = SRNotaSpese.viewerClienteSede ? SRNotaSpese.viewerClienteSede(it) : { cliente: '', sede: '' };
+  function nsMetaRow(dtId, ddId, val) {
+    const dt = document.getElementById(dtId);
+    const dd = document.getElementById(ddId);
+    if (!dt || !dd) return;
+    if (val) {
+      dt.classList.remove('hidden');
+      dd.classList.remove('hidden');
+      dd.textContent = val;
+    } else {
+      dt.classList.add('hidden');
+      dd.classList.add('hidden');
+      dd.textContent = '—';
+    }
+  }
+  nsMetaRow('ns-view-cliente-dt', 'ns-view-cliente', cs.cliente);
+  nsMetaRow('ns-view-sede-dt', 'ns-view-sede', cs.sede);
   const impDt = document.getElementById('ns-view-importo-dt');
   if (impDt) impDt.textContent = isKm ? 'Rimborso' : 'Importo';
   document.getElementById('ns-view-importo').textContent = SRNotaSpese.displayImporto

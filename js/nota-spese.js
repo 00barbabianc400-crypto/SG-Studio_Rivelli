@@ -401,6 +401,13 @@
     return { cliente, sede };
   }
 
+  function viewerClienteSede(it) {
+    return {
+      cliente: clipText(it && it.cliente, CLIENTE_MAX),
+      sede: clipText(it && it.sede, SEDE_MAX)
+    };
+  }
+
   function normalizeDettaglio(categoria, raw) {
     const cat = String(categoria || '').trim();
     const clipped = String(raw == null ? '' : raw).trim().slice(0, DETTAGLIO_MAX);
@@ -787,6 +794,7 @@
     normalizeCliente,
     normalizeSede,
     suggerimentiClienteSedeGiorno,
+    viewerClienteSede,
     normalizeDettaglio,
     CATEGORIE,
     PASTI,
