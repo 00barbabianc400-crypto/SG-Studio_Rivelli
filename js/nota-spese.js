@@ -362,10 +362,8 @@
     return cat === 'cibi_bevande' || cat === 'altro' || cat === 'mezzi' || cat === 'rimborso_km';
   }
 
-  function requiresSede(categoria, mezzo) {
-    const cat = String(categoria || '').trim();
-    if (cat === 'rimborso_km' || String(mezzo || '') === 'benzina') return false;
-    return cat === 'cibi_bevande' || cat === 'altro' || cat === 'mezzi';
+  function requiresSede(categoria) {
+    return requiresCliente(categoria);
   }
 
   function normalizeCliente(categoria, raw) {
@@ -376,8 +374,8 @@
 
   function normalizeSede(categoria, mezzo, raw) {
     const s = clipText(raw, SEDE_MAX);
-    if (requiresSede(categoria, mezzo) && !s) throw new Error('Sede di riferimento obbligatoria');
-    return requiresSede(categoria, mezzo) ? s : null;
+    if (requiresSede(categoria) && !s) throw new Error('Sede di riferimento obbligatoria');
+    return requiresSede(categoria) ? s : null;
   }
 
   function suggerimentiClienteSedeGiorno(list, ymd) {
@@ -434,7 +432,7 @@
         mezzo: null,
         dettaglio: normalizeDettaglio(categoria, incoming.dettaglio),
         cliente: normalizeCliente(categoria, incoming.cliente),
-        sede: null,
+        sede: normalizeSede(categoria, null, incoming.sede),
         km,
         importo: 0,
         foto_url: '',
