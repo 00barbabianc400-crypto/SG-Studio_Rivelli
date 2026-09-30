@@ -210,6 +210,31 @@
     ));
   }
 
+  function unwrapGetNotaOrdinaria(data) {
+    let root = data;
+    if (Array.isArray(root)) {
+      const hit = root.find(x => x && (
+        Array.isArray(x.note)
+        || x.action === 'get_nota_ordinaria'
+        || x.action === 'error'
+        || (x.json && typeof x.json === 'object')
+      ));
+      root = hit || root[0] || {};
+    }
+    if (root && root.json && typeof root.json === 'object'
+      && (Array.isArray(root.json.note) || root.json.action)) {
+      root = root.json;
+    }
+    const note = root && Array.isArray(root.note) ? root.note : null;
+    const failed = !!(root && (root.ok === false || root.action === 'error'));
+    return {
+      ok: !failed,
+      action: root && root.action,
+      message: root && root.message,
+      note
+    };
+  }
+
   function groupNoteOrdinarieByDay(rows) {
     const map = new Map();
     parseNotaOrdinariaList(rows).forEach(n => {
@@ -662,6 +687,7 @@
     fmtDateIt,
     parseNotaSpeseJson,
     parseNotaOrdinariaList,
+    unwrapGetNotaOrdinaria,
     groupNoteOrdinarieByDay,
     dayYmdRomeOf,
     appendNotaSpesa,

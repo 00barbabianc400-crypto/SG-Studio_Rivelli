@@ -304,7 +304,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js?v=86"></script>
-<script src="js/nota-spese.js?v=91"></script>
+<script src="js/nota-spese.js?v=92"></script>
 <script src="js/upload-file-guard.js?v=82"></script>
 <script src="js/scontrini.js?v=37"></script>
 <script src="js/auth.js?v=82"></script>
@@ -787,13 +787,16 @@ async function caricaOrdinaria() {
     body: JSON.stringify({ action: 'get_nota_ordinaria' })
   });
   const data = await resp.json().catch(() => ({}));
-  if (!resp.ok || data.ok === false || data.action === 'error') {
-    throw new Error(data.message || ('Caricamento ordinaria fallito: ' + resp.status));
+  const env = (SRNotaSpese.unwrapGetNotaOrdinaria
+    ? SRNotaSpese.unwrapGetNotaOrdinaria(data)
+    : { ok: data && data.ok !== false, note: data && data.note, message: data && data.message });
+  if (!resp.ok || env.ok === false) {
+    throw new Error(env.message || data.message || ('Caricamento ordinaria fallito: ' + resp.status));
   }
-  if (!Array.isArray(data.note)) {
+  if (!Array.isArray(env.note)) {
     throw new Error('GET ordinaria: nello Switch, get_nota_ordinaria → Get many della DT (non Get by id) → Code GET.');
   }
-  state.ordinarie = SRNotaSpese.parseNotaOrdinariaList(data.note);
+  state.ordinarie = SRNotaSpese.parseNotaOrdinariaList(env.note);
 }
 
 async function salvaOrdinaria(item) {
