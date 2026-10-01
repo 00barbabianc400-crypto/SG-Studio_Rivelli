@@ -353,7 +353,7 @@
             cell(voceOf(it)),
             importoOf(it.importo),
             km,
-            itemLink(it)
+            itemLink(it) || itemLink(n)
           ]
         });
       });

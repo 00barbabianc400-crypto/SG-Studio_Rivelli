@@ -748,9 +748,6 @@ body {
           Export excel
         </button>
         <button type="button" class="soft-btn btn-chiudi" id="arc-close">Chiudi</button>
-        <button type="button" class="soft-btn btn-icon-x" id="arc-close-x" aria-label="Chiudi">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
       </div>
     </div>
     <div class="modal-body">
@@ -794,7 +791,7 @@ body {
 <script src="js/scontrini.js"></script>
   <script src="js/nota-spese.js?v=99"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
-  <script src="js/nota-spese-export.js?v=90"></script>
+  <script src="js/nota-spese-export.js?v=91"></script>
   <script src="js/servizi-tappa.js?v=58"></script>
   <script src="js/slot-auto-trasferta.js?v=75"></script>
 <script>
@@ -2494,9 +2491,6 @@ document.getElementById('scontrino-view-backdrop').addEventListener('click', e =
 });
 document.getElementById('btn-archivio').addEventListener('click', apriArchivio);
 document.getElementById('arc-close').addEventListener('click', () => {
-  document.getElementById('arc-backdrop').classList.remove('open');
-});
-document.getElementById('arc-close-x').addEventListener('click', () => {
   document.getElementById('arc-backdrop').classList.remove('open');
 });
 document.getElementById('arc-backdrop').addEventListener('click', e => {
