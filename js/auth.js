@@ -58,7 +58,7 @@
     timesheet: ['Dipendente', 'HSE', 'Admin'],
     macchina: ['Dipendente', 'HSE', 'Formazione', 'Admin'],
     modulo: ['Dipendente', 'Amministrazione', 'HSE', 'Formazione', 'Sorveglianza Sanitaria', 'Admin'],
-    nota_spese: ['Dipendente', 'HSE', 'Admin'],
+    nota_spese: ['Dipendente', 'HSE', 'Formazione', 'Admin'],
     amm: ['Amministrazione', 'Admin'],
     trasferte: ['Formazione', 'Admin'],
     utenti: ['Admin'],
