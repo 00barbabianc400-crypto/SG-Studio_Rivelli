@@ -316,6 +316,27 @@
     });
   }
 
+  function noteOrdinarieAmbitoVerbale(list, ymd, person) {
+    const day = dayYmdRomeOf(ymd) || String(ymd || '').slice(0, 10);
+    const prefix = day.slice(0, 7);
+    const want = String(person || '').trim().toLowerCase();
+    const monthNotes = (list || []).filter(it => {
+      const d = dayYmdRomeOf(it && (it.data || it.created_at)) || '';
+      if (!prefix || d.slice(0, 7) !== prefix) return false;
+      if (!want) return true;
+      return String(it.dipendente || '').trim().toLowerCase() === want;
+    }).slice();
+    monthNotes.sort((a, b) => {
+      const da = dayYmdRomeOf(a && (a.data || a.created_at)) || '';
+      const db = dayYmdRomeOf(b && (b.data || b.created_at)) || '';
+      if (da !== db) return da.localeCompare(db);
+      return String((a && a.created_at) || '').localeCompare(String((b && b.created_at) || ''));
+    });
+    const dayNotes = monthNotes.filter(it => (dayYmdRomeOf(it.data || it.created_at) || '') === day);
+    const hasOtherDays = monthNotes.some(it => (dayYmdRomeOf(it.data || it.created_at) || '') !== day);
+    return { day, prefix, dayNotes, monthNotes, hasOtherDays };
+  }
+
   function meseEstesoFromYmd(ymd) {
     const s = toYmd(ymd) || String(ymd || '').slice(0, 10);
     const m = Number(s.slice(5, 7));
@@ -749,6 +770,7 @@
     importoVoce,
     totaleVoci,
     vociDelMese,
+    noteOrdinarieAmbitoVerbale,
     meseEstesoFromYmd,
     fmtEuroIt,
     displayImporto,

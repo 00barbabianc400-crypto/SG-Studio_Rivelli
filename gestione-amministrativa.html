@@ -252,6 +252,7 @@ body {
   display: none; align-items: center; justify-content: center; padding: 20px;
 }
 #verbale-view-backdrop { z-index: 1100; }
+#verbale-scope-backdrop { z-index: 1120; }
 .modal-backdrop.open { display: flex; }
 .modal {
   background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
@@ -697,6 +698,19 @@ body {
   </div>
 </div>
 
+<div class="modal-backdrop" id="verbale-scope-backdrop" role="dialog" aria-modal="true" aria-labelledby="verbale-scope-title">
+  <div class="modal" id="verbale-scope-modal">
+    <div class="modal-head"><h2 id="verbale-scope-title">Ambito verbale</h2></div>
+    <div class="modal-body">
+      <p id="verbale-scope-body" style="font-size:14px;color:var(--text);line-height:1.5;margin:0"></p>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="soft-btn" id="verbale-scope-day">Solo questa giornata</button>
+      <button type="button" class="soft-btn primary" id="verbale-scope-month">Tutto il mese</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="scontrino-view-backdrop" role="dialog" aria-modal="true">
   <div class="modal modal-sc">
     <div class="modal-head"><h2 id="sc-view-title">Scontrino</h2></div>
@@ -789,7 +803,7 @@ body {
 <script src="js/config.js?v=84"></script>
 <script src="js/auth.js"></script>
 <script src="js/scontrini.js"></script>
-  <script src="js/nota-spese.js?v=99"></script>
+  <script src="js/nota-spese.js?v=100"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
   <script src="js/nota-spese-export.js?v=91"></script>
   <script src="js/servizi-tappa.js?v=58"></script>
@@ -1402,8 +1416,10 @@ function apriDettaglioOrdinaria(id) {
       <div class="sc-list">${rows}</div></div>`;
   document.getElementById('detail-backdrop').classList.add('open');
   setDetailVerbale({
+    fonte: 'ordinaria',
     nominativo: person,
     meseYmd: g.day,
+    dayYmd: g.day,
     voci: list
   });
   if (person) wireDetailFilterOp(person);
@@ -1858,15 +1874,61 @@ function apriVerbaleViewer(html) {
   document.getElementById('verbale-view-backdrop').classList.add('open');
 }
 
-function stampaVerbaleDettaglio() {
+function emettiVerbale(voci) {
   if (!detailVerbale || typeof SRNotaSpese === 'undefined') return;
   const model = SRNotaSpese.buildVerbaleModel({
     nominativo: detailVerbale.nominativo,
     meseYmd: detailVerbale.meseYmd,
-    voci: detailVerbale.voci,
+    dataPresenteYmd: SRNotaSpese.todayYmdRome(),
+    voci: voci || detailVerbale.voci,
     logoUrl: SRNotaSpese.studioLogoUrl()
   });
   apriVerbaleViewer(SRNotaSpese.verbalePrintHtml(model));
+}
+
+function chiudiVerbaleScope() {
+  const el = document.getElementById('verbale-scope-backdrop');
+  if (el) el.classList.remove('open');
+}
+
+function stampaVerbaleDettaglio() {
+  if (!detailVerbale || typeof SRNotaSpese === 'undefined') return;
+  if (detailVerbale.fonte === 'ordinaria' && SRNotaSpese.noteOrdinarieAmbitoVerbale) {
+    const person = detailVerbale.nominativo || '';
+    const day = detailVerbale.dayYmd || detailVerbale.meseYmd;
+    const pool = (rawNoteOrdinarie || []).filter(n => !person || namesMatch(n.dipendente, person));
+    const ambito = SRNotaSpese.noteOrdinarieAmbitoVerbale(pool, day, '');
+    if (ambito.hasOtherDays) {
+      const mese = SRNotaSpese.meseEstesoFromYmd(day) || '';
+      const body = document.getElementById('verbale-scope-body');
+      if (body) {
+        body.textContent = 'Ci sono altre note spese ordinarie di '
+          + (person || 'questo nominativo')
+          + (mese ? (' in ' + mese) : ' nello stesso mese')
+          + '. Vuoi il verbale solo per il '
+          + fmtDay(day)
+          + ' oppure per tutto il mese?';
+      }
+      const bd = document.getElementById('verbale-scope-backdrop');
+      if (bd) bd.classList.add('open');
+      const dayBtn = document.getElementById('verbale-scope-day');
+      const monthBtn = document.getElementById('verbale-scope-month');
+      if (dayBtn) {
+        dayBtn.onclick = () => {
+          chiudiVerbaleScope();
+          emettiVerbale(ambito.dayNotes.length ? ambito.dayNotes : detailVerbale.voci);
+        };
+      }
+      if (monthBtn) {
+        monthBtn.onclick = () => {
+          chiudiVerbaleScope();
+          emettiVerbale(ambito.monthNotes);
+        };
+      }
+      return;
+    }
+  }
+  emettiVerbale(detailVerbale.voci);
 }
 
 function apriDettaglioTappa(id) {
@@ -1978,6 +2040,7 @@ function renderDettaglioTappaBody() {
   });
   if (tab === 'scontrini' && (ctx.flatNote || []).length) {
     setDetailVerbale({
+      fonte: 'tappa',
       nominativo: t.nome_persona || '',
       meseYmd: t.data_arrivo || t.data_partenza,
       voci: ctx.flatNote
@@ -2465,6 +2528,9 @@ document.getElementById('month-close').addEventListener('click', () => {
   renderYearGrid();
 });
 document.getElementById('detail-print-verbale').addEventListener('click', stampaVerbaleDettaglio);
+document.getElementById('verbale-scope-backdrop').addEventListener('click', e => {
+  if (e.target.id === 'verbale-scope-backdrop') chiudiVerbaleScope();
+});
 document.getElementById('detail-close').addEventListener('click', () => {
   document.getElementById('detail-backdrop').classList.remove('open');
   document.getElementById('detail-modal').classList.remove('modal-wide', 'modal-org');
