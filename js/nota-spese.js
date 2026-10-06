@@ -622,10 +622,12 @@
     const dataPresenteYmd = o.dataPresenteYmd || todayYmdRome();
     const blankRows = o.blankRows == null ? 3 : Math.max(0, Number(o.blankRows) || 0);
     const logoUrl = o.logoUrl || studioLogoUrl();
-    const rows = voci.map(it => {
+    const mapped = voci.map(it => {
+      const km = isRimborsoKm(it);
       let descr = labelVoce(it);
-      if (isRimborsoKm(it)) descr += ' × 0,31 €/km';
+      if (km) descr += ' × 0,31 €/km';
       return {
+        kind: km ? 'km' : 'spesa',
         data: fmtDateIt(dayYmdRomeOf(it.data || it.created_at) || meseYmd),
         nominativo: String(it.dipendente || nominativo || '').trim(),
         descrizione: descr,
@@ -634,14 +636,19 @@
         importo: importoVoce(it)
       };
     });
+    const rowsKm = mapped.filter(r => r.kind === 'km');
+    const rowsSpesa = mapped.filter(r => r.kind === 'spesa');
     return {
       titolo: 'Verbale di rimborso nota spese',
       mese: meseEstesoFromYmd(meseYmd),
       nominativo,
       dataPresente: fmtDateIt(dataPresenteYmd),
-      rows,
+      rows: mapped,
+      rowsKm,
+      rowsSpesa,
       blankRows,
-      totale: totaleVoci(voci),
+      totale: totaleVoci(voci.filter(it => !isRimborsoKm(it))),
+      totaleCartaCarburante: totaleVoci(voci.filter(it => isRimborsoKm(it))),
       vistoDirezione: 'Visto dalla direzione',
       vistoContabilita: 'Visto dalla contabilità',
       logoUrl
@@ -650,14 +657,41 @@
 
   function verbalePrintHtml(model) {
     const m = model || {};
-    const rows = m.rows || [];
-    let tr = rows.map(r => (
-      '<tr><td>' + escHtml(r.data) + '</td><td>' + escHtml(r.nominativo) + '</td><td>'
-      + escHtml(r.descrizione) + '</td><td>' + escHtml(r.cliente || '—') + '</td><td>'
-      + escHtml(r.sede || '—') + '</td><td class="num">' + escHtml(fmtEuroIt(r.importo)) + '</td></tr>'
-    )).join('');
-    const blanks = Number(m.blankRows) || 0;
-    for (let i = 0; i < blanks; i++) tr += '<tr class="blank"><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+    const rowsKm = m.rowsKm || (m.rows || []).filter(r => r && r.kind === 'km');
+    const rowsSpesa = m.rowsSpesa || (m.rows || []).filter(r => r && r.kind !== 'km');
+    function trOf(list) {
+      return (list || []).map(r => (
+        '<tr><td class="d">' + escHtml(r.data) + '</td><td>' + escHtml(r.nominativo) + '</td><td>'
+        + escHtml(r.descrizione) + '</td><td>' + escHtml(r.cliente || '—') + '</td><td>'
+        + escHtml(r.sede || '—') + '</td><td class="num">' + escHtml(fmtEuroIt(r.importo)) + '</td></tr>'
+      )).join('');
+    }
+    function section(title, rows, foot, amt, blanks) {
+      if (!(rows && rows.length)) return '';
+      let body = trOf(rows);
+      const n = Number(blanks) || 0;
+      for (let i = 0; i < n; i++) {
+        body += '<tr class="blank"><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+      }
+      return '<h2>' + escHtml(title) + '</h2>'
+        + '<table><thead><tr><th>Data</th><th>Nominativo</th><th>Voce</th><th>Cliente</th><th>Sede</th><th>Importo</th></tr></thead><tbody>'
+        + body + '</tbody><tfoot><tr class="tot"><td colspan="5">' + escHtml(foot)
+        + '</td><td class="num">' + escHtml(fmtEuroIt(amt)) + '</td></tr></tfoot></table>';
+    }
+    const kmBlock = section(
+      'Rimborsi chilometrici',
+      rowsKm,
+      'Totale da poter utilizzare con la carta carburante',
+      m.totaleCartaCarburante,
+      0
+    );
+    const spBlock = section(
+      'Rimborsi spesa',
+      rowsSpesa,
+      'Totale rimborso',
+      m.totale,
+      m.blankRows
+    );
     return '<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>'
       + escHtml(m.titolo || 'Verbale') + '</title><style>'
       + 'body{font-family:"DM Sans",Segoe UI,sans-serif;color:#1e293b;margin:0;padding:24px;background:#fff}'
@@ -665,11 +699,13 @@
       + 'header{display:flex;align-items:center;gap:16px;margin-bottom:20px}'
       + 'header img{height:52px;width:auto}'
       + 'h1{font-size:18px;margin:0}'
-      + '.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin:16px 0 20px;font-size:13px}'
+      + 'h2{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#334155;margin:22px 0 8px}'
+      + '.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin:16px 0 8px;font-size:13px}'
       + '.meta span{display:block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b}'
       + 'table{width:100%;border-collapse:collapse;font-size:13px}'
       + 'th,td{border:1px solid #e2e8f0;padding:8px 10px;text-align:left}'
       + 'th{background:#f8fafc;font-size:10px;text-transform:uppercase;letter-spacing:.04em}'
+      + 'td.d{white-space:nowrap}'
       + 'td.num,.tot td{text-align:right;font-variant-numeric:tabular-nums}'
       + 'tr.blank td{height:28px}'
       + '.tot{font-weight:700}'
@@ -683,9 +719,7 @@
       + '<p style="margin:4px 0 0;font-size:13px;color:#64748b">Studio Rivelli Consulting</p></div></header>'
       + '<div class="meta"><div><span>Mese di riferimento</span><b>' + escHtml(m.mese) + '</b></div>'
       + '<div><span>Nominativo</span><b>' + escHtml(m.nominativo) + '</b></div></div>'
-      + '<table><thead><tr><th>Data</th><th>Nominativo</th><th>Voce</th><th>Cliente</th><th>Sede</th><th>Importo</th></tr></thead><tbody>'
-      + tr + '</tbody><tfoot><tr class="tot"><td colspan="5">Totale rimborso</td><td class="num">'
-      + escHtml(fmtEuroIt(m.totale)) + '</td></tr></tfoot></table>'
+      + kmBlock + spBlock
       + '<div class="signs"><div class="sign-box"><span>Data</span>' + escHtml(m.dataPresente) + '</div>'
       + '<div class="sign-box"><span>Firma</span></div></div>'
       + '<div class="visti"><div class="sign-box"><span>' + escHtml(m.vistoDirezione) + '</span></div>'
