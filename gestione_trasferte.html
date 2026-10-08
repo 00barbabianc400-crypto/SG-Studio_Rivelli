@@ -909,7 +909,7 @@
 <script src="js/auth.js"></script>
 <script src="js/dipendenti-list.js"></script>
 <script src="js/range-trasferta.js?v=58"></script>
-<script src="js/servizi-tappa.js?v=60"></script>
+<script src="js/servizi-tappa.js?v=61"></script>
 <script src="js/upload-file-guard.js?v=82"></script>
 <script src="js/trasferta-avviso-email.js?v=79"></script>
 <script>
@@ -1607,7 +1607,8 @@ function bindAllegatiOnCard(card) {
 
 /** Converte righe flat n8n (una riga = una tappa) nel formato usato dalla UI */
 function normalizzaDaRigheN8n(righe) {
-  const rows = righe.filter(isRigaTabellaN8n).slice().sort((a, b) => {
+  const packed = ST().dedupeRighePerTappaNumero((righe || []).filter(isRigaTabellaN8n));
+  const rows = packed.rows.slice().sort((a, b) => {
     return Number(a.tappa_numero) - Number(b.tappa_numero);
   });
   if (!rows.length) return null;
@@ -1632,7 +1633,7 @@ function normalizzaDaRigheN8n(righe) {
       costo_tappa_totale_db: row.costo_tappa_totale || '',
       costo_tappa_calcolato: calc,
       costo_tappa_disallineato: dbTot > 0 && Math.abs(calc - dbTot) > 0.01,
-      _db_id: row.id
+      _db_id: ST().parseDtId(row.id)
     };
   });
 
@@ -1657,7 +1658,8 @@ function normalizzaDaRigheN8n(righe) {
       data_creazione: rows[0].data_creazione,
       formato: 'n8n_righe'
     },
-    _righe_db: rows
+    _righe_db: rows,
+    _tappe_eliminate: packed.orphanIds.slice()
   };
 }
 
@@ -2992,7 +2994,8 @@ function buildRigheDbDaTrasferta(trasferta, prenotazioni) {
   const dataCreazione = orig[0]?.data_creazione || sessionTrasferta.meta?.data_creazione || '';
 
   return (trasferta.itinerario || []).map(tappa => {
-    const base = tappa._db_id ? (byId[String(tappa._db_id)] || {}) : {};
+    const idDb = ST().resolveRigaDbId(tappa, orig);
+    const base = idDb != null ? (byId[String(idDb)] || {}) : {};
     const n = tappa.tappa;
     const row = {
       trasferta_id: sessionTrasfertaId,
@@ -3014,8 +3017,7 @@ function buildRigheDbDaTrasferta(trasferta, prenotazioni) {
       stato_prenotazioni: statoPrenotazioniPerTappa(n, prenotazioni),
       servizi_json: serviziJsonPerTappa(tappa)
     };
-    const idDb = base.id != null ? base.id : tappa._db_id;
-    if (idDb != null && idDb !== '') row.id = idDb;
+    if (idDb != null) row.id = idDb;
     else row._nuova_riga = true;
     const agg = ST().costiAggregati(tappa.servizi);
     Object.entries(CAMPI_COSTO_SERVIZIO).forEach(([campo, key]) => {
@@ -3172,7 +3174,10 @@ async function salvaProgresso() {
       }
     } else {
       sessionTrasferta._righe_db = payload.righe_db;
-      sessionTrasferta.itinerario = payload.trasferta.itinerario;
+      sessionTrasferta.itinerario = (payload.trasferta.itinerario || []).map(t => ({
+        ...t,
+        _db_id: ST().resolveRigaDbId(t, payload.righe_db)
+      }));
       if (payload.trasferta.anagrafica) sessionTrasferta.anagrafica = payload.trasferta.anagrafica;
     }
     showToast('Progresso salvato', 'success');

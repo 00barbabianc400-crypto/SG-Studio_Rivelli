@@ -303,8 +303,53 @@
     }
   }
 
+  function parseDtId(v) {
+    if (v == null || v === '') return null;
+    const n = Number(v);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return Math.floor(n);
+  }
+
+  function resolveRigaDbId(tappa, origRows) {
+    const direct = parseDtId(tappa && tappa._db_id);
+    if (direct) return direct;
+    const n = String(tappa && (tappa.tappa != null ? tappa.tappa : tappa.tappa_numero) || '');
+    if (!n) return null;
+    const hits = (Array.isArray(origRows) ? origRows : []).filter(r => String(r.tappa_numero) === n);
+    if (!hits.length) return null;
+    hits.sort((a, b) => (parseDtId(a.id) || 0) - (parseDtId(b.id) || 0));
+    return parseDtId(hits[hits.length - 1].id);
+  }
+
+  function dedupeRighePerTappaNumero(rows) {
+    const list = Array.isArray(rows) ? rows.slice() : [];
+    list.sort((a, b) => (parseDtId(a && a.id) || 0) - (parseDtId(b && b.id) || 0));
+    const byN = new Map();
+    const orphanIds = [];
+    list.forEach(r => {
+      if (!r || r.tappa_numero == null) return;
+      const n = String(r.tappa_numero);
+      const prev = byN.get(n);
+      if (!prev) {
+        byN.set(n, { ...r });
+        return;
+      }
+      const winner = { ...r };
+      if (!String(winner.email || '').trim()) winner.email = prev.email || '';
+      if (!String(winner.nota_spese_json || '').trim()) winner.nota_spese_json = prev.nota_spese_json || '';
+      const oid = parseDtId(prev.id);
+      if (oid) orphanIds.push(oid);
+      byN.set(n, winner);
+    });
+    const out = [...byN.values()].sort((a, b) => Number(a.tappa_numero) - Number(b.tappa_numero));
+    return { rows: out, orphanIds };
+  }
+
   global.SRServiziTappa = {
     uidSrv,
+    parseDtId,
+    resolveRigaDbId,
+    dedupeRighePerTappaNumero,
     parseCosto,
     formatCostoIt,
     normalizeServizi,
