@@ -380,7 +380,7 @@
 
   function requiresCliente(categoria) {
     const cat = String(categoria || '').trim();
-    return cat === 'cibi_bevande' || cat === 'altro' || cat === 'mezzi' || cat === 'rimborso_km';
+    return cat === 'cibi_bevande' || cat === 'altro' || cat === 'mezzi' || cat === 'rimborso_km' || cat === 'parcheggio';
   }
 
   function requiresSede(categoria) {
@@ -478,7 +478,7 @@
     } else if (categoria === 'mezzi') {
       pasto = null;
       if (!mezzo) throw new Error('Mezzo obbligatorio');
-    } else if (categoria === 'altro') {
+    } else if (categoria === 'altro' || categoria === 'parcheggio') {
       pasto = null;
       mezzo = null;
     } else {
@@ -770,6 +770,7 @@
   const CATEGORIE = [
     { id: 'cibi_bevande', label: 'Cibi e bevande' },
     { id: 'mezzi', label: 'Mezzi' },
+    { id: 'parcheggio', label: 'Parcheggio' },
     { id: 'altro', label: 'Altro' },
     { id: 'rimborso_km', label: 'Rimborso chilometrico' }
   ];
