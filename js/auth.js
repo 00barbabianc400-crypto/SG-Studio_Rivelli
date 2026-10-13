@@ -353,8 +353,9 @@
 
     let tappe = [];
     const userEmail = String((authObj.user || data.user || {}).email || '').trim().toLowerCase();
-    if (rows && global.SRNotaSpese && typeof global.SRNotaSpese.extractTappeFromAuthRows === 'function') {
-      tappe = global.SRNotaSpese.extractTappeFromAuthRows(rows, userEmail);
+    const payloadForTappe = rows || data;
+    if (global.SRNotaSpese && typeof global.SRNotaSpese.collectTappeFromAuthPayload === 'function') {
+      tappe = global.SRNotaSpese.collectTappeFromAuthPayload(payloadForTappe, userEmail);
     } else if (rows) {
       tappe = rows.filter(r =>
         r && typeof r === 'object'
@@ -363,9 +364,9 @@
         && !(r.endpoint && (r.p256dh || (r.keys && r.keys.p256dh)))
         && (!userEmail || !r.email || String(r.email).trim().toLowerCase() === userEmail)
       );
-    } else if (Array.isArray(authObj.tappe)) {
+    } else if (Array.isArray(authObj.tappe) && authObj.tappe.length) {
       tappe = authObj.tappe;
-    } else if (Array.isArray(data.tappe)) {
+    } else if (Array.isArray(data.tappe) && data.tappe.length) {
       tappe = data.tappe;
     }
     if (userEmail && global.SRNotaSpese && typeof global.SRNotaSpese.extractTappeFromAuthRows === 'function') {

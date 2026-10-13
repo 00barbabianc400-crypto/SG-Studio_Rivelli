@@ -135,6 +135,10 @@
     return tappaAttuale(rows, ymd) ? 'trasferta' : 'ordinaria';
   }
 
+  function defaultDest(rows, ymd) {
+    return tappaAttuale(rows, ymd) ? 'tappa' : 'ordinaria';
+  }
+
   function tappaAttuale(rows, ymd) {
     const day = ymd || todayYmdRome();
     const inCorso = tappeAttiveOggi(rows, day);
@@ -526,6 +530,39 @@
     });
   }
 
+  /** n8n a volte manda { json: row } oppure JWT con tappe:[] + righe DT sorelle. */
+  function flattenAuthItems(raw) {
+    if (raw == null) return [];
+    let data = raw;
+    if (data.json && typeof data.json === 'object' && !data.trasferta_id) data = data.json;
+    const arr = Array.isArray(data)
+      ? data
+      : (Array.isArray(data.body) ? data.body
+        : (Array.isArray(data.data) ? data.data : [data]));
+    return arr.map(r => {
+      if (!r || typeof r !== 'object') return null;
+      if (r.json && typeof r.json === 'object' && !r.trasferta_id
+        && (r.json.token || r.json.trasferta_id != null || Array.isArray(r.json.tappe))) {
+        return r.json;
+      }
+      return r;
+    }).filter(Boolean);
+  }
+
+  function collectTappeFromAuthPayload(raw, userEmail) {
+    const items = flattenAuthItems(raw);
+    const fromRows = extractTappeFromAuthRows(items, userEmail);
+    if (fromRows.length) return fromRows;
+    for (let i = 0; i < items.length; i++) {
+      const nested = items[i] && items[i].tappe;
+      if (Array.isArray(nested) && nested.length) {
+        const got = extractTappeFromAuthRows(nested, userEmail);
+        if (got.length) return got;
+      }
+    }
+    return [];
+  }
+
   function sumImportiByTipo(list) {
     const out = { scontrino: 0, fattura: 0, totale: 0 };
     (list || []).forEach(it => {
@@ -798,6 +835,7 @@
     hasTrasfertaInCorso,
     tappaAttuale,
     notaSpeseMode,
+    defaultDest,
     parseKm,
     isRimborsoKm,
     KM_EURO_RATE,
@@ -824,6 +862,7 @@
     appendNotaSpesa,
     stringify,
     extractTappeFromAuthRows,
+    collectTappeFromAuthPayload,
     parseImporto,
     sumImportiByTipo,
     groupByCategoria,

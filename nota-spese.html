@@ -244,7 +244,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
 <main class="shell">
   <h1 class="page-title">Nota spese</h1>
-  <p class="page-sub">Giustificativi Roma e dintorni.</p>
+  <p class="page-sub" id="ns-page-sub">Giustificativi Roma e dintorni.</p>
 
   <div id="panel">
     <div class="tappa-ro hidden" id="tappa-block">
@@ -341,10 +341,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js?v=86"></script>
-<script src="js/nota-spese.js?v=102"></script>
+<script src="js/nota-spese.js?v=104"></script>
 <script src="js/upload-file-guard.js?v=82"></script>
 <script src="js/scontrini.js?v=37"></script>
-<script src="js/auth.js?v=84"></script>
+<script src="js/auth.js?v=85"></script>
 <script>
 const state = {
   phase: 'tipo', // tipo | dettaglio | km | km-confirm
@@ -1133,12 +1133,22 @@ document.getElementById('ns-view-chiudi').addEventListener('click', () => closeB
 document.getElementById('nota-view-backdrop').addEventListener('click', e => {
   if (e.target.id === 'nota-view-backdrop') closeBackdrop('nota-view-backdrop');
 });
+function applicaDestUi() {
+  const sub = document.getElementById('ns-page-sub');
+  if (sub) {
+    sub.textContent = state.dest === 'tappa'
+      ? 'Giustificativi della tappa in corso.'
+      : 'Giustificativi Roma e dintorni.';
+  }
+  document.querySelectorAll('#dest-tabs .dest-tab').forEach(b => {
+    b.classList.toggle('is-active', b.dataset.dest === state.dest);
+  });
+}
+
 document.querySelectorAll('#dest-tabs .dest-tab').forEach(btn => {
   btn.addEventListener('click', () => {
     state.dest = btn.dataset.dest === 'tappa' ? 'tappa' : 'ordinaria';
-    document.querySelectorAll('#dest-tabs .dest-tab').forEach(b => {
-      b.classList.toggle('is-active', b === btn);
-    });
+    applicaDestUi();
   });
 });
 
@@ -1152,9 +1162,14 @@ document.querySelectorAll('#dest-tabs .dest-tab').forEach(btn => {
       location.replace('index.html');
       return;
     }
-    const tappe = SRAuth.getTrasferteTappe();
-    const tappa = SRNotaSpese.tappaAttuale(tappe);
-    state.dest = 'ordinaria';
+    let tappe = SRAuth.getTrasferteTappe();
+    let tappa = SRNotaSpese.tappaAttuale(tappe);
+    if (!tappa) {
+      await SRAuth.ensureN8nSession({ force: true });
+      tappe = SRAuth.getTrasferteTappe();
+      tappa = SRNotaSpese.tappaAttuale(tappe);
+    }
+    state.dest = SRNotaSpese.defaultDest(tappe);
     state.tappa = tappa || null;
     const tappaBlock = document.getElementById('tappa-block');
     const destTabs = document.getElementById('dest-tabs');
@@ -1171,6 +1186,7 @@ document.querySelectorAll('#dest-tabs .dest-tab').forEach(btn => {
       destTabs.classList.add('hidden');
       cardTappa.classList.add('hidden');
     }
+    applicaDestUi();
     await caricaOrdinaria();
     renderChipBoard();
     renderLista();
