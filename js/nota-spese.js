@@ -139,6 +139,15 @@
     return tappaAttuale(rows, ymd) ? 'tappa' : 'ordinaria';
   }
 
+  /** In trasferta: solo tappa. Fuori: solo Roma. Mai entrambe. */
+  function showOrdinariaUi(rows, ymd) {
+    return !tappaAttuale(rows, ymd);
+  }
+
+  function showDestTabs() {
+    return false;
+  }
+
   function tappaAttuale(rows, ymd) {
     const day = ymd || todayYmdRome();
     const inCorso = tappeAttiveOggi(rows, day);
@@ -836,6 +845,8 @@
     tappaAttuale,
     notaSpeseMode,
     defaultDest,
+    showOrdinariaUi,
+    showDestTabs,
     parseKm,
     isRimborsoKm,
     KM_EURO_RATE,

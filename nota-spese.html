@@ -265,7 +265,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
       <div id="lista-tappa"></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="card-lista-ordinaria">
       <div class="step-label">Già caricati · Roma e dintorni</div>
       <div id="lista-ordinaria"></div>
     </div>
@@ -341,7 +341,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js?v=86"></script>
-<script src="js/nota-spese.js?v=104"></script>
+<script src="js/nota-spese.js?v=105"></script>
 <script src="js/upload-file-guard.js?v=82"></script>
 <script src="js/scontrini.js?v=37"></script>
 <script src="js/auth.js?v=85"></script>
@@ -1134,15 +1134,19 @@ document.getElementById('nota-view-backdrop').addEventListener('click', e => {
   if (e.target.id === 'nota-view-backdrop') closeBackdrop('nota-view-backdrop');
 });
 function applicaDestUi() {
+  const inTappa = !!(state.tappa && state.dest === 'tappa');
   const sub = document.getElementById('ns-page-sub');
   if (sub) {
-    sub.textContent = state.dest === 'tappa'
+    sub.textContent = inTappa
       ? 'Giustificativi della tappa in corso.'
       : 'Giustificativi Roma e dintorni.';
   }
-  document.querySelectorAll('#dest-tabs .dest-tab').forEach(b => {
-    b.classList.toggle('is-active', b.dataset.dest === state.dest);
-  });
+  const destTabs = document.getElementById('dest-tabs');
+  if (destTabs) destTabs.classList.add('hidden');
+  const cardTappa = document.getElementById('card-lista-tappa');
+  const cardOrd = document.getElementById('card-lista-ordinaria');
+  if (cardTappa) cardTappa.classList.toggle('hidden', !inTappa);
+  if (cardOrd) cardOrd.classList.toggle('hidden', inTappa);
 }
 
 document.querySelectorAll('#dest-tabs .dest-tab').forEach(btn => {
@@ -1172,22 +1176,16 @@ document.querySelectorAll('#dest-tabs .dest-tab').forEach(btn => {
     state.dest = SRNotaSpese.defaultDest(tappe);
     state.tappa = tappa || null;
     const tappaBlock = document.getElementById('tappa-block');
-    const destTabs = document.getElementById('dest-tabs');
-    const cardTappa = document.getElementById('card-lista-tappa');
     if (tappa) {
       tappaBlock.classList.remove('hidden');
-      destTabs.classList.remove('hidden');
-      cardTappa.classList.remove('hidden');
       document.getElementById('tappa-label').innerHTML =
         SRNotaSpese.labelTappa(tappa)
         + '<small>' + (tappa.trasferta_id || '') + (tappa.cliente_tappa ? ' · ' + tappa.cliente_tappa : '') + '</small>';
     } else {
       tappaBlock.classList.add('hidden');
-      destTabs.classList.add('hidden');
-      cardTappa.classList.add('hidden');
     }
     applicaDestUi();
-    await caricaOrdinaria();
+    if (SRNotaSpese.showOrdinariaUi(tappe)) await caricaOrdinaria();
     renderChipBoard();
     renderLista();
   } catch (ex) {
