@@ -715,7 +715,10 @@ body {
   <div class="modal modal-sc">
     <div class="modal-head"><h2 id="sc-view-title">Scontrino</h2></div>
     <div class="modal-body">
-      <img id="sc-view-img" class="sc-view-img" alt="Giustificativo">
+      <div class="sc-view-foto" id="sc-view-foto">
+        <img id="sc-view-img" class="sc-view-img" alt="Giustificativo">
+        <span class="sc-view-zoom-hint"><span>Clicca per zoomare</span></span>
+      </div>
       <dl class="sc-view-dl">
         <dt id="sc-view-dt1">Luogo</dt>
         <dd id="sc-view-luogo">—</dd>
@@ -802,7 +805,7 @@ body {
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js?v=84"></script>
 <script src="js/auth.js"></script>
-<script src="js/scontrini.js"></script>
+<script src="js/scontrini.js?v=38"></script>
   <script src="js/nota-spese.js?v=105"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
   <script src="js/nota-spese-export.js?v=91"></script>
@@ -2041,12 +2044,20 @@ function renderDettaglioTappaBody() {
   setDetailVerbale(null);
 }
 
+function scViewModal() {
+  return document.querySelector('#scontrino-view-backdrop .modal-sc');
+}
+
 function apriNotaSpesaViewerAmm(it) {
   if (!it) return;
   const img = document.getElementById('sc-view-img');
-  img.onerror = () => { img.style.display = 'none'; };
+  img.onerror = () => {
+    img.style.display = 'none';
+    SRScontrini.syncFotoZoomWrap(document.getElementById('sc-view-foto'), img);
+  };
   img.style.display = '';
   img.src = SRScontrini.thumbnailUrl(it);
+  SRScontrini.resetFotoViewer(scViewModal(), document.getElementById('sc-view-foto'), img);
   document.getElementById('sc-view-title').textContent =
     (String(it.tipo).toLowerCase() === 'fattura' ? 'Fattura' : 'Scontrino') + ' · trasferta';
   document.getElementById('sc-view-dt1').textContent = 'Voce';
@@ -2122,9 +2133,13 @@ function wireDetailFilterOp(name) {
 function apriScontrinoViewerAmm(sc) {
   if (!sc) return;
   const img = document.getElementById('sc-view-img');
-  img.onerror = () => { img.style.display = 'none'; };
+  img.onerror = () => {
+    img.style.display = 'none';
+    SRScontrini.syncFotoZoomWrap(document.getElementById('sc-view-foto'), img);
+  };
   img.style.display = '';
   img.src = SRScontrini.thumbnailUrl(sc);
+  SRScontrini.resetFotoViewer(scViewModal(), document.getElementById('sc-view-foto'), img);
   document.getElementById('sc-view-title').textContent = 'Scontrino benzina';
   document.getElementById('sc-view-dt1').textContent = 'Luogo';
   document.getElementById('sc-view-luogo').textContent = sc.indirizzo || '—';
@@ -2537,14 +2552,20 @@ document.getElementById('verbale-view-backdrop').addEventListener('click', e => 
   if (e.target.id === 'verbale-view-backdrop') chiudiVerbaleViewer();
 });
 document.getElementById('sc-view-chiudi').addEventListener('click', () => {
+  if (SRScontrini.handleFotoChiudi(scViewModal()) === 'unzoom') return;
   document.getElementById('scontrino-view-backdrop').classList.remove('open');
   document.getElementById('sc-view-img').removeAttribute('src');
 });
 document.getElementById('scontrino-view-backdrop').addEventListener('click', e => {
-  if (e.target.id === 'scontrino-view-backdrop') {
-    e.currentTarget.classList.remove('open');
-    document.getElementById('sc-view-img').removeAttribute('src');
-  }
+  if (e.target.id !== 'scontrino-view-backdrop') return;
+  if (SRScontrini.handleFotoChiudi(scViewModal()) === 'unzoom') return;
+  e.currentTarget.classList.remove('open');
+  document.getElementById('sc-view-img').removeAttribute('src');
+});
+SRScontrini.bindFotoZoom({
+  wrap: document.getElementById('sc-view-foto'),
+  img: document.getElementById('sc-view-img'),
+  modal: scViewModal()
 });
 document.getElementById('btn-archivio').addEventListener('click', apriArchivio);
 document.getElementById('arc-close').addEventListener('click', () => {

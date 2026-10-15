@@ -312,7 +312,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   <div class="modal-sc" role="dialog" aria-modal="true" aria-labelledby="ns-view-title">
     <div class="modal-head"><h2 id="ns-view-title">Giustificativo</h2></div>
     <div class="modal-body">
-      <img id="ns-view-img" class="sc-view-img" alt="Giustificativo">
+      <div class="sc-view-foto" id="ns-view-foto">
+        <img id="ns-view-img" class="sc-view-img" alt="Giustificativo">
+        <span class="sc-view-zoom-hint"><span>Clicca per zoomare</span></span>
+      </div>
       <dl class="sc-view-dl">
         <dt>Voce</dt>
         <dd id="ns-view-cat">—</dd>
@@ -343,7 +346,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 <script src="js/config.js?v=86"></script>
 <script src="js/nota-spese.js?v=105"></script>
 <script src="js/upload-file-guard.js?v=82"></script>
-<script src="js/scontrini.js?v=37"></script>
+<script src="js/scontrini.js?v=38"></script>
 <script src="js/auth.js?v=85"></script>
 <script>
 const state = {
@@ -793,7 +796,10 @@ function apriNotaViewer(it, pool) {
   state.viewerPool = pool || [];
   const isKm = SRNotaSpese.isRimborsoKm && SRNotaSpese.isRimborsoKm(it);
   const img = document.getElementById('ns-view-img');
-  img.onerror = () => { img.style.display = 'none'; };
+  img.onerror = () => {
+    img.style.display = 'none';
+    SRScontrini.syncFotoZoomWrap(document.getElementById('ns-view-foto'), img);
+  };
   if (isKm) {
     img.style.display = 'none';
     img.removeAttribute('src');
@@ -801,6 +807,8 @@ function apriNotaViewer(it, pool) {
     img.style.display = '';
     img.src = SRScontrini.thumbnailUrl(it);
   }
+  const nsModal = document.querySelector('#nota-view-backdrop .modal-sc');
+  SRScontrini.resetFotoViewer(nsModal, document.getElementById('ns-view-foto'), img);
   const tipo = isKm ? 'Rimborso chilometrico' : (String(it.tipo || '').toLowerCase() === 'fattura' ? 'Fattura' : 'Scontrino');
   document.getElementById('ns-view-title').textContent = tipo;
   document.getElementById('ns-view-cat').textContent = SRNotaSpese.labelVoce(it, { includeNote: false });
@@ -1129,9 +1137,21 @@ document.getElementById('compose-backdrop').addEventListener('click', e => {
   if (e.target.id === 'compose-backdrop') chiudiCompose();
 });
 
-document.getElementById('ns-view-chiudi').addEventListener('click', () => closeBackdrop('nota-view-backdrop'));
+document.getElementById('ns-view-chiudi').addEventListener('click', () => {
+  const modal = document.querySelector('#nota-view-backdrop .modal-sc');
+  if (SRScontrini.handleFotoChiudi(modal) === 'unzoom') return;
+  closeBackdrop('nota-view-backdrop');
+});
 document.getElementById('nota-view-backdrop').addEventListener('click', e => {
-  if (e.target.id === 'nota-view-backdrop') closeBackdrop('nota-view-backdrop');
+  if (e.target.id !== 'nota-view-backdrop') return;
+  const modal = document.querySelector('#nota-view-backdrop .modal-sc');
+  if (SRScontrini.handleFotoChiudi(modal) === 'unzoom') return;
+  closeBackdrop('nota-view-backdrop');
+});
+SRScontrini.bindFotoZoom({
+  wrap: document.getElementById('ns-view-foto'),
+  img: document.getElementById('ns-view-img'),
+  modal: document.querySelector('#nota-view-backdrop .modal-sc')
 });
 function applicaDestUi() {
   const inTappa = !!(state.tappa && state.dest === 'tappa');

@@ -745,7 +745,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   <div class="modal modal-sc" role="dialog">
     <div class="modal-head"><h2>Scontrino benzina</h2></div>
     <div class="modal-body">
-      <img id="sc-view-img" class="sc-view-img" alt="Scontrino">
+      <div class="sc-view-foto" id="sc-view-foto">
+        <img id="sc-view-img" class="sc-view-img" alt="Scontrino">
+        <span class="sc-view-zoom-hint"><span>Clicca per zoomare</span></span>
+      </div>
       <dl class="sc-view-dl">
         <dt>Luogo</dt>
         <dd id="sc-view-luogo">—</dd>
@@ -775,7 +778,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/scontrini.js"></script>
+<script src="js/scontrini.js?v=38"></script>
 <script src="js/prenotazione-auto.js?v=1"></script>
 <script src="js/servizi-tappa.js?v=75"></script>
 <script src="js/slot-auto-trasferta.js?v=75"></script>
@@ -1325,11 +1328,19 @@ async function salvaScontrino() {
   }
 }
 
+function scViewModal() {
+  return document.querySelector('#scontrino-view-backdrop .modal-sc');
+}
+
 function apriScontrinoViewer(sc) {
   const img = document.getElementById('sc-view-img');
-  img.onerror = () => { img.style.display = 'none'; };
+  img.onerror = () => {
+    img.style.display = 'none';
+    SRScontrini.syncFotoZoomWrap(document.getElementById('sc-view-foto'), img);
+  };
   img.style.display = '';
   img.src = SRScontrini.thumbnailUrl(sc);
+  SRScontrini.resetFotoViewer(scViewModal(), document.getElementById('sc-view-foto'), img);
   document.getElementById('sc-view-luogo').textContent = sc.indirizzo || '—';
   document.getElementById('sc-view-orario').textContent = fmtScWhen(sc.created_at) || '—';
   const a = document.getElementById('sc-view-download');
@@ -1955,8 +1966,14 @@ document.getElementById('sc-btn-gallery').addEventListener('click', () => docume
 document.getElementById('sc-file-camera').addEventListener('change', e => onScontrinoFile(e.target.files && e.target.files[0]));
 document.getElementById('sc-file-gallery').addEventListener('change', e => onScontrinoFile(e.target.files && e.target.files[0]));
 document.getElementById('sc-view-chiudi').addEventListener('click', () => {
+  if (SRScontrini.handleFotoChiudi(scViewModal()) === 'unzoom') return;
   document.getElementById('scontrino-view-backdrop').classList.remove('open');
   document.getElementById('sc-view-img').removeAttribute('src');
+});
+SRScontrini.bindFotoZoom({
+  wrap: document.getElementById('sc-view-foto'),
+  img: document.getElementById('sc-view-img'),
+  modal: scViewModal()
 });
 
 let resizeTimer;

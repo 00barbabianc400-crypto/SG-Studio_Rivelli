@@ -88,6 +88,74 @@
   const ICO_DOWNLOAD = '<svg class="sc-ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 4v12"/><path d="M7 12l5 5 5-5"/><path d="M5 20h14"/></svg>';
   const ICO_PRINT = '<svg class="sc-ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M7 8V4h10v4"/><path d="M7 16H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><path d="M7 12h10v8H7z"/></svg>';
 
+  const FOTO_ZOOM_HINT = 'Clicca per zoomare';
+  const FOTO_ZOOM_CLASS = 'is-foto-zoom';
+
+  function isFotoZoomed(modal) {
+    return !!(modal && modal.classList && modal.classList.contains(FOTO_ZOOM_CLASS));
+  }
+
+  function setFotoZoom(modal, on) {
+    if (!modal || !modal.classList) return false;
+    modal.classList.toggle(FOTO_ZOOM_CLASS, !!on);
+    return isFotoZoomed(modal);
+  }
+
+  function handleFotoChiudi(modal) {
+    if (isFotoZoomed(modal)) {
+      setFotoZoom(modal, false);
+      return 'unzoom';
+    }
+    return 'close';
+  }
+
+  function syncFotoZoomWrap(wrap, img) {
+    if (!wrap || !img) return;
+    const hidden = img.style.display === 'none' || !String(img.getAttribute('src') || img.src || '').trim();
+    wrap.classList.toggle('hidden', hidden);
+  }
+
+  function resetFotoViewer(modal, wrap, img) {
+    setFotoZoom(modal, false);
+    syncFotoZoomWrap(wrap, img);
+  }
+
+  function ensureFotoZoomStyles() {
+    if (typeof document === 'undefined' || !document.head) return;
+    if (document.getElementById('sr-foto-zoom-css')) return;
+    const st = document.createElement('style');
+    st.id = 'sr-foto-zoom-css';
+    st.textContent =
+      '.sc-view-foto{position:relative;border-radius:16px;overflow:hidden;background:#f3f4f6;cursor:zoom-in;border:1px solid #eceef2}'
+      + '.sc-view-foto.hidden{display:none!important}'
+      + '.sc-view-foto .sc-view-img{width:100%;max-height:min(52vh,420px);object-fit:contain;display:block;background:#f3f4f6}'
+      + '.sc-view-zoom-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.72);opacity:0;transition:opacity .15s;pointer-events:none}'
+      + '.sc-view-zoom-hint span{background:#fff;color:#2563eb;border:1px solid #eceef2;box-shadow:0 2px 8px rgba(17,24,39,.06);border-radius:999px;padding:10px 16px;font-size:13px;font-weight:600}'
+      + '.sc-view-foto:hover .sc-view-zoom-hint{opacity:1}'
+      + '@media (hover:none){.sc-view-zoom-hint{opacity:1;background:linear-gradient(to top,rgba(255,255,255,.92),rgba(255,255,255,0) 55%);align-items:flex-end;padding-bottom:14px}}'
+      + '.modal-sc.is-foto-zoom .sc-view-dl{display:none!important}'
+      + '.modal-sc.is-foto-zoom .sc-view-zoom-hint{display:none}'
+      + '.modal-sc.is-foto-zoom .sc-view-foto{cursor:default}'
+      + '.modal-sc.is-foto-zoom .sc-view-foto .sc-view-img{max-height:min(78vh,760px)}'
+      + '.modal-sc.is-foto-zoom .modal-foot a,.modal-sc.is-foto-zoom .modal-foot .btn-icon{display:none!important}';
+    document.head.appendChild(st);
+  }
+
+  function bindFotoZoom(opts) {
+    const wrap = opts && opts.wrap;
+    const img = (opts && opts.img) || (wrap && wrap.querySelector && wrap.querySelector('img'));
+    const modal = opts && opts.modal;
+    if (!wrap || !img || !modal) return;
+    ensureFotoZoomStyles();
+    if (wrap.getAttribute('data-sr-foto-zoom') === '1') return;
+    wrap.setAttribute('data-sr-foto-zoom', '1');
+    wrap.addEventListener('click', () => {
+      if (img.style.display === 'none') return;
+      if (isFotoZoomed(modal)) return;
+      setFotoZoom(modal, true);
+    });
+  }
+
   global.SRScontrini = {
     parseScontriniJson,
     appendScontrino,
@@ -101,6 +169,13 @@
     ICO_PENCIL,
     ICO_DOWNLOAD,
     ICO_PRINT,
-    uid
+    uid,
+    FOTO_ZOOM_HINT,
+    isFotoZoomed,
+    setFotoZoom,
+    handleFotoChiudi,
+    syncFotoZoomWrap,
+    resetFotoViewer,
+    bindFotoZoom
   };
 })(typeof window !== 'undefined' ? window : globalThis);
