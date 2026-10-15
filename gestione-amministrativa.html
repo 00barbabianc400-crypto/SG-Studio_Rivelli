@@ -2038,16 +2038,7 @@ function renderDettaglioTappaBody() {
       }, 800);
     });
   });
-  if (tab === 'scontrini' && (ctx.flatNote || []).length) {
-    setDetailVerbale({
-      fonte: 'tappa',
-      nominativo: t.nome_persona || '',
-      meseYmd: t.data_arrivo || t.data_partenza,
-      voci: ctx.flatNote
-    });
-  } else {
-    setDetailVerbale(null);
-  }
+  setDetailVerbale(null);
 }
 
 function apriNotaSpesaViewerAmm(it) {
