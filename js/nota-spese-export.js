@@ -168,52 +168,91 @@
     return true;
   }
 
-  async function defaultFetchBytes(url) {
-    const resp = await fetch(url, { mode: 'cors', credentials: 'omit' });
-    if (!resp.ok) throw new Error(String(resp.status));
-    const u8 = new Uint8Array(await resp.arrayBuffer());
-    if (!looksLikeBinaryFile(u8)) throw new Error('not a file');
-    return u8;
+  function bundlePrintItems(tappe) {
+    const S = global.SRScontrini;
+    const ST = global.SRServiziTappa;
+    const N = NS();
+    const out = [];
+    (Array.isArray(tappe) ? tappe : []).forEach(t => {
+      const notes = N && typeof N.parseNotaSpeseJson === 'function'
+        ? N.parseNotaSpeseJson(t && t.nota_spese_json)
+        : [];
+      notes.forEach(it => {
+        const hasFoto = S && typeof S.itemsWithFoto === 'function'
+          ? S.itemsWithFoto([it]).length > 0
+          : !!(it && (it.foto_id || it.foto_url || it.fileId));
+        if (hasFoto) out.push(it);
+      });
+      const servizi = ST && typeof ST.normalizeServizi === 'function'
+        ? ST.normalizeServizi(t && (t.servizi_json != null ? t.servizi_json : t.servizi))
+        : [];
+      servizi.forEach(sv => {
+        const allegati = ST && typeof ST.normalizeAllegati === 'function'
+          ? ST.normalizeAllegati(sv && sv.allegati)
+          : [];
+        const tipoSrv = String(sv && sv.tipo || 'servizio').trim() || 'servizio';
+        let importo = sv && sv.costo;
+        allegati.forEach(a => {
+          const id = ST && typeof ST.driveFileId === 'function'
+            ? ST.driveFileId(a)
+            : String((a && (a.fileId || a.foto_id)) || '');
+          if (!id) return;
+          out.push({
+            tipo: 'allegato',
+            tipoLabel: 'Allegato · ' + tipoSrv,
+            importo: importo,
+            foto_id: id,
+            fileId: id,
+            mime: a.mime || '',
+            dettaglio: a.nome || ''
+          });
+        });
+      });
+    });
+    return out;
+  }
+
+  function triggerNativeDownloads(files) {
+    if (typeof document === 'undefined') return;
+    (files || []).forEach((f, i) => {
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = f.url;
+        a.setAttribute('download', f.name || 'allegato');
+        a.rel = 'noopener';
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }, i * 400);
+    });
+  }
+
+  function openPrintBundle(items) {
+    const S = global.SRScontrini;
+    if (typeof window === 'undefined' || !S || typeof S.printBundleHtml !== 'function') return false;
+    if (!(items || []).length) return false;
+    const w = window.open('', '_blank');
+    if (!w) throw new Error('Consenti i popup per il PDF dei giustificativi');
+    w.document.write(S.printBundleHtml(items));
+    w.document.close();
+    return true;
   }
 
   async function downloadTransazioniPacchetto(tappe, opts) {
-    const fetchBytes = (opts && opts.fetchBytes) || defaultFetchBytes;
-    const { sheet, buffer } = await buildWorkbookBuffer(tappe);
-    const xlsx = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-    const entries = [{ path: 'Transazioni.xlsx', bytes: xlsx }];
-    const skipped = [];
-    const files = collectPacchettoFiles(tappe);
-    for (let i = 0; i < files.length; i++) {
-      const f = files[i];
-      const zipPath = f.folder + '/' + f.name;
-      try {
-        entries.push({ path: zipPath, bytes: await fetchBytes(f.url) });
-      } catch {
-        skipped.push(zipPath + '\n' + f.url);
-      }
-    }
-    if (skipped.length) {
-      const txt = 'File non scaricabili dal browser (apri il link):\n\n' + skipped.join('\n\n');
-      entries.push({
-        path: 'Collegamenti_non_scaricati.txt',
-        bytes: new TextEncoder().encode(txt)
-      });
-    }
-    const zip = zipStore(entries);
-    const tid = (tappe && tappe[0] && tappe[0].trasferta_id) || 'trasferta';
-    const filename = 'pacchetto_' + safeFilenamePart(tid) + '.zip';
-    if (typeof document !== 'undefined') {
-      const blob = new Blob([zip], { type: 'application/zip' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1500);
-    }
-    return { filename, skipped: skipped.length, files, sheet };
+    const onProgress = (opts && opts.onProgress) || function () {};
+    onProgress('Excel…');
+    const sheet = await downloadTransazioniExcel(tappe);
+    const printItems = bundlePrintItems(tappe);
+    const allegati = collectPacchettoFiles(tappe).filter(f => f.kind === 'allegato');
+    onProgress('Foto e allegati…');
+    openPrintBundle(printItems);
+    triggerNativeDownloads(allegati);
+    return {
+      sheet,
+      photos: printItems.filter(it => it.tipo !== 'allegato').length,
+      allegati: allegati.length
+    };
   }
 
   function NS() {
@@ -622,6 +661,7 @@
     buildWorkbookBuffer,
     downloadTransazioniExcel,
     collectPacchettoFiles,
+    bundlePrintItems,
     zipStore,
     downloadTransazioniPacchetto,
     buildArchivioSheets,

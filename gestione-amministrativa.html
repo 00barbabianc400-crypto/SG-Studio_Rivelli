@@ -253,6 +253,20 @@ body {
 }
 #verbale-view-backdrop { z-index: 1100; }
 #verbale-scope-backdrop { z-index: 1120; }
+.app-loader {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(243, 244, 246, .94); backdrop-filter: blur(6px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  transition: opacity .35s ease, visibility .35s ease;
+}
+.app-loader.is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.app-loader-spinner {
+  width: 46px; height: 46px; border-radius: 50%;
+  border: 3px solid var(--border); border-top-color: var(--accent);
+  animation: app-spin .7s linear infinite;
+}
+.app-loader-text { font-size: 14px; color: var(--muted); margin: 0; }
+@keyframes app-spin { to { transform: rotate(360deg); } }
 .modal-backdrop.open { display: flex; }
 .modal {
   background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
@@ -801,14 +815,18 @@ body {
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="app-loader is-hidden" id="app-loader" aria-live="polite" aria-busy="false">
+  <div class="app-loader-spinner" role="status" aria-label="Esportazione in corso"></div>
+  <p class="app-loader-text">Esportazione in corso…</p>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js?v=84"></script>
 <script src="js/auth.js"></script>
-<script src="js/scontrini.js?v=41"></script>
+<script src="js/scontrini.js?v=42"></script>
   <script src="js/nota-spese.js?v=105"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
-  <script src="js/nota-spese-export.js?v=92"></script>
+  <script src="js/nota-spese-export.js?v=93"></script>
   <script src="js/servizi-tappa.js?v=58"></script>
   <script src="js/slot-auto-trasferta.js?v=75"></script>
 <script>
@@ -848,6 +866,22 @@ function showToast(msg, type) {
   t.className = 'toast show' + (type ? ' ' + type : '');
   clearTimeout(t._h);
   t._h = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+function showExportLoader(text) {
+  const el = document.getElementById('app-loader');
+  if (!el) return;
+  const t = el.querySelector('.app-loader-text');
+  if (t && text) t.textContent = text;
+  el.classList.remove('is-hidden');
+  el.setAttribute('aria-busy', 'true');
+}
+
+function hideExportLoader() {
+  const el = document.getElementById('app-loader');
+  if (!el) return;
+  el.classList.add('is-hidden');
+  el.setAttribute('aria-busy', 'false');
 }
 
 function normalizeDateStr(val) {
@@ -2006,6 +2040,7 @@ function renderDettaglioTappaBody() {
     if (!detailTappaCtx || typeof SRNotaSpeseExport === 'undefined') return;
     const btn = document.getElementById('btn-export-ns');
     if (btn) btn.disabled = true;
+    showExportLoader('Esportazione in corso…');
     try {
       const base = detailTappaCtx.siblings.length ? detailTappaCtx.siblings : [detailTappaCtx.tappa];
       const rows = base.map(t => {
@@ -2016,14 +2051,14 @@ function renderDettaglioTappaBody() {
         );
         return { ...t, nota_spese_json: JSON.stringify(notes) };
       });
-      const pack = await SRNotaSpeseExport.downloadTransazioniPacchetto(rows);
-      if (pack && pack.skipped) {
-        showToast('ZIP pronto. ' + pack.skipped + ' file solo come link (Drive ha bloccato il download diretto).', 'warn');
-      }
+      await SRNotaSpeseExport.downloadTransazioniPacchetto(rows, {
+        onProgress: showExportLoader
+      });
     } catch (e) {
       console.error('export transazioni:', e);
-      alert('Export ZIP non riuscito: ' + (e.message || e));
+      alert('Export non riuscito: ' + (e.message || e));
     } finally {
+      hideExportLoader();
       if (btn) btn.disabled = false;
     }
   });

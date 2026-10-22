@@ -112,11 +112,14 @@
   function bundleCaption(it) {
     if (!it) return '';
     const tipo = String(it.tipo || '').toLowerCase();
-    let tipoLabel = '';
-    if (tipo === 'fattura') tipoLabel = 'Fattura';
-    else if (tipo === 'scontrino') tipoLabel = 'Scontrino';
-    else if (tipo === 'rimborso') tipoLabel = 'Rimborso';
-    else if (it.indirizzo) tipoLabel = 'Scontrino benzina';
+    let tipoLabel = String(it.tipoLabel || '').trim();
+    if (!tipoLabel) {
+      if (tipo === 'fattura') tipoLabel = 'Fattura';
+      else if (tipo === 'scontrino') tipoLabel = 'Scontrino';
+      else if (tipo === 'rimborso') tipoLabel = 'Rimborso';
+      else if (tipo === 'allegato') tipoLabel = 'Allegato';
+      else if (it.indirizzo) tipoLabel = 'Scontrino benzina';
+    }
     let importo = '';
     if (it.importo != null && it.importo !== '') {
       const n = Number(it.importo);
