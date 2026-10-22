@@ -117,42 +117,39 @@
     else if (tipo === 'scontrino') tipoLabel = 'Scontrino';
     else if (tipo === 'rimborso') tipoLabel = 'Rimborso';
     else if (it.indirizzo) tipoLabel = 'Scontrino benzina';
-    const voce = [it.categoria, it.pasto, it.mezzo, it.dettaglio]
-      .map(x => String(x || '').trim()).filter(Boolean).join(' · ');
     let importo = '';
     if (it.importo != null && it.importo !== '') {
       const n = Number(it.importo);
       if (Number.isFinite(n)) importo = n.toFixed(2).replace('.', ',') + ' €';
     }
-    let orario = '';
-    const rawWhen = it.created_at || it.data || '';
-    if (rawWhen) {
-      const d = new Date(rawWhen);
-      orario = Number.isNaN(d.getTime()) ? String(rawWhen) : d.toLocaleString('it-IT');
-    }
-    const rif = it.id != null && String(it.id).trim() !== '' ? String(it.id) : '';
-    return '<figcaption style="margin:12px 0 0;padding:12px 14px;background:#f3f4f6;border:1px solid #eceef2;border-radius:12px">'
-      + bundleRow('Rif.', rif)
+    return '<figcaption>'
       + bundleRow('Tipo', tipoLabel)
-      + bundleRow('Voce', voce)
-      + bundleRow('Cliente', it.cliente)
-      + bundleRow('Sede', it.sede)
-      + bundleRow('Luogo', it.indirizzo)
       + bundleRow('Importo', importo)
-      + bundleRow('Orario', orario)
       + '</figcaption>';
   }
 
   function printBundleHtml(items) {
     const figs = itemsWithFoto(items).map(it => {
       const src = String(thumbnailUrl(it) || '').replace(/"/g, '');
-      return '<figure style="page-break-after:always;margin:0 0 24px">'
-        + '<img src="' + src + '" style="max-width:100%;height:auto" alt="">'
+      return '<figure>'
+        + '<img src="' + src + '" alt="" decoding="async">'
         + bundleCaption(it)
         + '</figure>';
     }).join('');
-    return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Giustificativi</title></head>'
-      + '<body style="margin:16px;font-family:\'DM Sans\',sans-serif">' + figs + '</body></html>';
+    const css = 'html,body{margin:0;padding:0;font-family:\'DM Sans\',sans-serif;color:#111827}'
+      + '@page{margin:12mm}'
+      + 'figure{page-break-after:always;page-break-inside:avoid;margin:0 0 12mm;display:flex;flex-direction:column;align-items:center}'
+      + 'figure:last-child{page-break-after:auto}'
+      + 'img{max-width:100%;max-height:180mm;width:auto;height:auto;object-fit:contain;display:block}'
+      + 'figcaption{flex-shrink:0;width:100%;margin-top:8px;padding:10px 12px;background:#f3f4f6;border:1px solid #eceef2;border-radius:12px;box-sizing:border-box}';
+    const wait = '<script>(function(){var imgs=[].slice.call(document.images),left=imgs.length;'
+      + 'function go(){try{window.focus();window.print();}catch(e){}}'
+      + 'function tick(){left--;if(left<=0)setTimeout(go,80);}'
+      + 'if(!imgs.length){go();return;}'
+      + 'imgs.forEach(function(img){if(img.complete)tick();else{img.onload=tick;img.onerror=tick;}});'
+      + 'setTimeout(function(){if(left>0){left=0;go();}},20000);})();</' + 'script>';
+    return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Giustificativi</title>'
+      + '<style>' + css + '</style></head><body>' + figs + wait + '</body></html>';
   }
 
   const ICO_RECEIPT = '<svg class="sc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M6 3.5h12v17l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3.5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>';
