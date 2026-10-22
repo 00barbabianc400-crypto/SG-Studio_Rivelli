@@ -253,6 +253,7 @@ body {
 }
 #verbale-view-backdrop { z-index: 1100; }
 #verbale-scope-backdrop { z-index: 1120; }
+#sc-dl-choice-backdrop { z-index: 1130; }
 .modal-backdrop.open { display: flex; }
 .modal {
   background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
@@ -711,6 +712,19 @@ body {
   </div>
 </div>
 
+<div class="modal-backdrop" id="sc-dl-choice-backdrop" role="dialog" aria-modal="true" aria-labelledby="sc-dl-choice-title">
+  <div class="modal" id="sc-dl-choice-modal">
+    <div class="modal-head"><h2 id="sc-dl-choice-title">Scarica giustificativo</h2></div>
+    <div class="modal-body">
+      <p id="sc-dl-choice-body" style="font-size:14px;color:var(--text);line-height:1.5;margin:0">Vuoi scaricare solo questo, o tutti insieme in un unico file?</p>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="soft-btn" id="sc-dl-choice-one">Solo questo</button>
+      <button type="button" class="soft-btn primary" id="sc-dl-choice-all">Tutti in un unico file</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="scontrino-view-backdrop" role="dialog" aria-modal="true">
   <div class="modal modal-sc">
     <div class="modal-head"><h2 id="sc-view-title">Scontrino</h2></div>
@@ -805,7 +819,7 @@ body {
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js?v=84"></script>
 <script src="js/auth.js"></script>
-<script src="js/scontrini.js?v=38"></script>
+<script src="js/scontrini.js?v=40"></script>
   <script src="js/nota-spese.js?v=105"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
   <script src="js/nota-spese-export.js?v=91"></script>
@@ -1430,7 +1444,7 @@ function apriDettaglioOrdinaria(id) {
     btn.addEventListener('click', () => {
       const n = list[Number(btn.getAttribute('data-ord-idx'))];
       if (!n) return;
-      apriNotaSpesaViewerAmm(n);
+      apriNotaSpesaViewerAmm(n, list);
     });
   });
 }
@@ -1501,7 +1515,7 @@ function apriDettaglioMacchina(id) {
   setDetailVerbale(null);
   wireDetailFilterOp(p.operatore);
   document.querySelectorAll('[data-sc-idx]').forEach(btn => {
-    btn.addEventListener('click', () => apriScontrinoViewerAmm(scontrini[Number(btn.dataset.scIdx)]));
+    btn.addEventListener('click', () => apriScontrinoViewerAmm(scontrini[Number(btn.dataset.scIdx)], scontrini));
   });
 }
 
@@ -2027,7 +2041,7 @@ function renderDettaglioTappaBody() {
   document.querySelectorAll('[data-ns-idx]').forEach(btn => {
     btn.addEventListener('click', () => {
       const it = detailTappaCtx.flatNote[Number(btn.dataset.nsIdx)];
-      apriNotaSpesaViewerAmm(it);
+      apriNotaSpesaViewerAmm(it, detailTappaCtx.flatNote);
     });
   });
   document.querySelectorAll('.svc-all-print').forEach(btn => {
@@ -2048,7 +2062,61 @@ function scViewModal() {
   return document.querySelector('#scontrino-view-backdrop .modal-sc');
 }
 
-function apriNotaSpesaViewerAmm(it) {
+let scDownloadCtx = { current: null, pool: [] };
+
+function wireScDownload(current, pool) {
+  scDownloadCtx = { current: current || null, pool: Array.isArray(pool) ? pool : (current ? [current] : []) };
+  const a = document.getElementById('sc-view-download');
+  if (!a || !current) return;
+  a.innerHTML = SRScontrini.ICO_DOWNLOAD;
+  a.href = SRScontrini.downloadUrl(current);
+  a.setAttribute('download', 'giustificativo.png');
+}
+
+function chiudiScDownloadChoice() {
+  const el = document.getElementById('sc-dl-choice-backdrop');
+  if (el) el.classList.remove('open');
+}
+
+function apriScDownloadChoice() {
+  const n = SRScontrini.itemsWithFoto(scDownloadCtx.pool).length;
+  const body = document.getElementById('sc-dl-choice-body');
+  if (body) {
+    body.textContent = 'Ci sono ' + n + ' giustificativi con foto. Vuoi scaricare solo questo, o tutti insieme in un unico file (PDF)?';
+  }
+  const el = document.getElementById('sc-dl-choice-backdrop');
+  if (el) el.classList.add('open');
+}
+
+function scaricaScCorrente() {
+  const it = scDownloadCtx.current;
+  if (!it) return;
+  const a = document.createElement('a');
+  a.href = SRScontrini.downloadUrl(it);
+  a.setAttribute('download', 'giustificativo.png');
+  a.rel = 'noopener';
+  a.target = '_blank';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function scaricaScTutti() {
+  const list = SRScontrini.itemsWithFoto(scDownloadCtx.pool);
+  if (!list.length) return;
+  const w = window.open('', '_blank');
+  if (!w) {
+    alert('Consenti i popup per scaricare tutti i giustificativi in un unico file.');
+    return;
+  }
+  w.document.write(SRScontrini.printBundleHtml(list));
+  w.document.close();
+  setTimeout(() => {
+    try { w.focus(); w.print(); } catch (_) {}
+  }, 600);
+}
+
+function apriNotaSpesaViewerAmm(it, pool) {
   if (!it) return;
   const img = document.getElementById('sc-view-img');
   img.onerror = () => {
@@ -2102,10 +2170,7 @@ function apriNotaSpesaViewerAmm(it) {
       noteDd.textContent = '—';
     }
   }
-  const a = document.getElementById('sc-view-download');
-  a.innerHTML = SRScontrini.ICO_DOWNLOAD;
-  a.href = SRScontrini.downloadUrl(it);
-  a.setAttribute('download', 'giustificativo.png');
+  wireScDownload(it, pool);
   const printBtn = document.getElementById('sc-view-print');
   printBtn.innerHTML = SRScontrini.ICO_PRINT;
   printBtn.onclick = () => {
@@ -2130,7 +2195,7 @@ function wireDetailFilterOp(name) {
   });
 }
 
-function apriScontrinoViewerAmm(sc) {
+function apriScontrinoViewerAmm(sc, pool) {
   if (!sc) return;
   const img = document.getElementById('sc-view-img');
   img.onerror = () => {
@@ -2156,10 +2221,7 @@ function apriScontrinoViewerAmm(sc) {
   hideCs('sc-view-cliente');
   hideCs('sc-view-dt-sede');
   hideCs('sc-view-sede');
-  const a = document.getElementById('sc-view-download');
-  a.innerHTML = SRScontrini.ICO_DOWNLOAD;
-  a.href = SRScontrini.downloadUrl(sc);
-  a.setAttribute('download', 'scontrino.png');
+  wireScDownload(sc, pool);
   const printBtn = document.getElementById('sc-view-print');
   printBtn.innerHTML = SRScontrini.ICO_PRINT;
   printBtn.onclick = () => {
@@ -2566,6 +2628,22 @@ SRScontrini.bindFotoZoom({
   wrap: document.getElementById('sc-view-foto'),
   img: document.getElementById('sc-view-img'),
   modal: scViewModal()
+});
+document.getElementById('sc-view-download').addEventListener('click', e => {
+  if (!SRScontrini.needsDownloadChoice(scDownloadCtx.pool)) return;
+  e.preventDefault();
+  apriScDownloadChoice();
+});
+document.getElementById('sc-dl-choice-one').addEventListener('click', () => {
+  chiudiScDownloadChoice();
+  scaricaScCorrente();
+});
+document.getElementById('sc-dl-choice-all').addEventListener('click', () => {
+  chiudiScDownloadChoice();
+  scaricaScTutti();
+});
+document.getElementById('sc-dl-choice-backdrop').addEventListener('click', e => {
+  if (e.target.id === 'sc-dl-choice-backdrop') chiudiScDownloadChoice();
 });
 document.getElementById('btn-archivio').addEventListener('click', apriArchivio);
 document.getElementById('arc-close').addEventListener('click', () => {
