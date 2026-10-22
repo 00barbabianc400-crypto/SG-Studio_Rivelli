@@ -1,5 +1,5 @@
 /**
- * Export Excel (.xlsx) delle transazioni nota spese — senza foto.
+ * Export transazioni: Excel + ZIP (Scontrini / Allegati di trasferta).
  * Richiede ExcelJS locale: assets/vendor/exceljs.min.js
  */
 (function (global) {
@@ -17,6 +17,203 @@
   function neutralizeExcelFormula(s) {
     const str = String(s == null ? '' : s);
     return /^[=+\-@\t\r]/.test(str) ? "'" + str : str;
+  }
+
+  const CRC32_TABLE = (function () {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function crc32(u8) {
+    let c = 0xffffffff;
+    for (let i = 0; i < u8.length; i++) c = CRC32_TABLE[(c ^ u8[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  }
+
+  function u16(n) {
+    return new Uint8Array([n & 0xff, (n >>> 8) & 0xff]);
+  }
+
+  function u32(n) {
+    return new Uint8Array([n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff]);
+  }
+
+  function concatBytes(chunks) {
+    let len = 0;
+    (chunks || []).forEach(c => { len += c.length; });
+    const out = new Uint8Array(len);
+    let o = 0;
+    (chunks || []).forEach(c => { out.set(c, o); o += c.length; });
+    return out;
+  }
+
+  function zipStore(entries) {
+    const enc = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
+    function encStr(s) {
+      if (enc) return enc.encode(s);
+      const a = [];
+      const str = String(s || '');
+      for (let i = 0; i < str.length; i++) a.push(str.charCodeAt(i) & 0xff);
+      return new Uint8Array(a);
+    }
+    const locals = [];
+    const centrals = [];
+    let offset = 0;
+    const list = Array.isArray(entries) ? entries : [];
+    list.forEach(e => {
+      const name = encStr(String(e.path || 'file').replace(/\\/g, '/'));
+      const data = e.bytes instanceof Uint8Array ? e.bytes : new Uint8Array(e.bytes || []);
+      const crc = crc32(data);
+      const local = concatBytes([
+        u32(0x04034b50), u16(20), u16(0x0800), u16(0),
+        u16(0), u16(0), u32(crc), u32(data.length), u32(data.length),
+        u16(name.length), u16(0), name, data
+      ]);
+      locals.push(local);
+      centrals.push(concatBytes([
+        u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0),
+        u16(0), u16(0), u32(crc), u32(data.length), u32(data.length),
+        u16(name.length), u16(0), u16(0), u16(0), u16(0),
+        u32(0), u32(offset), name
+      ]));
+      offset += local.length;
+    });
+    const cd = concatBytes(centrals);
+    return concatBytes(locals.concat([
+      cd,
+      concatBytes([
+        u32(0x06054b50), u16(0), u16(0),
+        u16(list.length), u16(list.length),
+        u32(cd.length), u32(offset), u16(0)
+      ])
+    ]));
+  }
+
+  function collectPacchettoFiles(tappe) {
+    const S = global.SRScontrini;
+    const ST = global.SRServiziTappa;
+    const N = NS();
+    const used = Object.create(null);
+    const out = [];
+    function takeName(folder, name) {
+      let n = name;
+      let i = 2;
+      while (used[folder + '/' + n]) {
+        const m = name.match(/^(.*)(\.[^.]+)$/);
+        n = m ? (m[1] + '_' + i + m[2]) : (name + '_' + i);
+        i++;
+      }
+      used[folder + '/' + n] = 1;
+      return n;
+    }
+    (Array.isArray(tappe) ? tappe : []).forEach(t => {
+      const tappaNo = String(t && t.tappa_numero != null ? t.tappa_numero : '?');
+      const citta = safeFilenamePart(t && t.citta || 'tappa');
+      const notes = N && typeof N.parseNotaSpeseJson === 'function'
+        ? N.parseNotaSpeseJson(t && t.nota_spese_json)
+        : [];
+      notes.forEach((it, i) => {
+        const hasFoto = S && typeof S.itemsWithFoto === 'function'
+          ? S.itemsWithFoto([it]).length > 0
+          : !!(it && (it.foto_id || it.foto_url || it.fileId));
+        if (!hasFoto) return;
+        const url = S && typeof S.downloadUrl === 'function' ? S.downloadUrl(it) : '';
+        if (!url) return;
+        const tipo = String(it.tipo || '').toLowerCase() === 'fattura' ? 'fattura' : 'scontrino';
+        const ext = /png/i.test(String(it.mime || '')) ? 'png' : 'jpg';
+        const folder = 'Scontrini';
+        out.push({
+          folder,
+          name: takeName(folder, 'Tappa' + tappaNo + '_' + citta + '_' + tipo + '_' + String(i + 1).padStart(2, '0') + '.' + ext),
+          url,
+          kind: 'scontrino'
+        });
+      });
+      const servizi = ST && typeof ST.normalizeServizi === 'function'
+        ? ST.normalizeServizi(t && (t.servizi_json != null ? t.servizi_json : t.servizi))
+        : [];
+      servizi.forEach(sv => {
+        const allegati = ST && typeof ST.normalizeAllegati === 'function'
+          ? ST.normalizeAllegati(sv && sv.allegati)
+          : [];
+        allegati.forEach(a => {
+          const url = ST && typeof ST.driveDownloadUrl === 'function' ? ST.driveDownloadUrl(a) : '';
+          if (!url) return;
+          const orig = String(a.nome || 'allegato');
+          const extM = orig.match(/(\.[a-z0-9]+)$/i);
+          const ext = extM ? extM[1] : (/pdf/i.test(String(a.mime || '')) ? '.pdf' : '');
+          const base = safeFilenamePart(orig.replace(/\.[a-z0-9]+$/i, '')) || 'allegato';
+          const tipoSrv = safeFilenamePart(sv && sv.tipo || 'servizio');
+          const folder = 'Allegati di trasferta';
+          out.push({
+            folder,
+            name: takeName(folder, 'Tappa' + tappaNo + '_' + tipoSrv + '_' + base + ext),
+            url,
+            kind: 'allegato'
+          });
+        });
+      });
+    });
+    return out;
+  }
+
+  function looksLikeBinaryFile(u8) {
+    if (!u8 || !u8.length) return false;
+    if (u8[0] === 0x3c || u8[0] === 0x7b) return false;
+    return true;
+  }
+
+  async function defaultFetchBytes(url) {
+    const resp = await fetch(url, { mode: 'cors', credentials: 'omit' });
+    if (!resp.ok) throw new Error(String(resp.status));
+    const u8 = new Uint8Array(await resp.arrayBuffer());
+    if (!looksLikeBinaryFile(u8)) throw new Error('not a file');
+    return u8;
+  }
+
+  async function downloadTransazioniPacchetto(tappe, opts) {
+    const fetchBytes = (opts && opts.fetchBytes) || defaultFetchBytes;
+    const { sheet, buffer } = await buildWorkbookBuffer(tappe);
+    const xlsx = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    const entries = [{ path: 'Transazioni.xlsx', bytes: xlsx }];
+    const skipped = [];
+    const files = collectPacchettoFiles(tappe);
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      const zipPath = f.folder + '/' + f.name;
+      try {
+        entries.push({ path: zipPath, bytes: await fetchBytes(f.url) });
+      } catch {
+        skipped.push(zipPath + '\n' + f.url);
+      }
+    }
+    if (skipped.length) {
+      const txt = 'File non scaricabili dal browser (apri il link):\n\n' + skipped.join('\n\n');
+      entries.push({
+        path: 'Collegamenti_non_scaricati.txt',
+        bytes: new TextEncoder().encode(txt)
+      });
+    }
+    const zip = zipStore(entries);
+    const tid = (tappe && tappe[0] && tappe[0].trasferta_id) || 'trasferta';
+    const filename = 'pacchetto_' + safeFilenamePart(tid) + '.zip';
+    if (typeof document !== 'undefined') {
+      const blob = new Blob([zip], { type: 'application/zip' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }
+    return { filename, skipped: skipped.length, files, sheet };
   }
 
   function NS() {
@@ -424,6 +621,9 @@
     styleForKind,
     buildWorkbookBuffer,
     downloadTransazioniExcel,
+    collectPacchettoFiles,
+    zipStore,
+    downloadTransazioniPacchetto,
     buildArchivioSheets,
     downloadArchivioExcel,
     fmtTimestamp,
