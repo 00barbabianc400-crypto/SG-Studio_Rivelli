@@ -123,7 +123,10 @@
           : !!(it && (it.foto_id || it.foto_url || it.fileId));
         if (!hasFoto) return;
         const url = S && typeof S.downloadUrl === 'function' ? S.downloadUrl(it) : '';
-        if (!url) return;
+        const fileId = S && typeof S.fileIdFrom === 'function'
+          ? S.fileIdFrom(it)
+          : String((it && (it.foto_id || it.fileId)) || '');
+        if (!url && !fileId) return;
         const tipo = String(it.tipo || '').toLowerCase() === 'fattura' ? 'fattura' : 'scontrino';
         const ext = /png/i.test(String(it.mime || '')) ? 'png' : 'jpg';
         const folder = 'Scontrini';
@@ -131,6 +134,7 @@
           folder,
           name: takeName(folder, 'Tappa' + tappaNo + '_' + citta + '_' + tipo + '_' + String(i + 1).padStart(2, '0') + '.' + ext),
           url,
+          fileId,
           kind: 'scontrino'
         });
       });
@@ -143,7 +147,10 @@
           : [];
         allegati.forEach(a => {
           const url = ST && typeof ST.driveDownloadUrl === 'function' ? ST.driveDownloadUrl(a) : '';
-          if (!url) return;
+          const fileId = ST && typeof ST.driveFileId === 'function'
+            ? ST.driveFileId(a)
+            : String((a && (a.fileId || a.foto_id)) || '');
+          if (!url && !fileId) return;
           const orig = String(a.nome || 'allegato');
           const extM = orig.match(/(\.[a-z0-9]+)$/i);
           const ext = extM ? extM[1] : (/pdf/i.test(String(a.mime || '')) ? '.pdf' : '');
@@ -154,6 +161,7 @@
             folder,
             name: takeName(folder, 'Tappa' + tappaNo + '_' + tipoSrv + '_' + base + ext),
             url,
+            fileId,
             kind: 'allegato'
           });
         });
@@ -239,19 +247,125 @@
     return true;
   }
 
+  function b64ToBytes(b64) {
+    const s = String(b64 || '').replace(/\s/g, '');
+    if (!s) return new Uint8Array(0);
+    if (typeof Buffer !== 'undefined') return new Uint8Array(Buffer.from(s, 'base64'));
+    const bin = atob(s);
+    const u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    return u8;
+  }
+
+  function parseGasDownloadResponse(data) {
+    if (!data || data.ok !== true) {
+      throw new Error(String((data && data.message) || 'Download Drive non riuscito'));
+    }
+    const bytes = b64ToBytes(data.b64);
+    if (!bytes.length) throw new Error('File vuoto');
+    return {
+      ok: true,
+      bytes: bytes,
+      mime: String(data.mime || ''),
+      name: String(data.name || 'file')
+    };
+  }
+
+  async function fetchDriveFileViaGas(fileId, opts) {
+    const id = String(fileId || '').trim();
+    if (!id) throw new Error('fileId obbligatorio');
+    const url = String((opts && opts.scriptUrl) || (global.SR_CONFIG || {}).GOOGLE_SCRIPT_URL || '');
+    if (!url || url.indexOf('INSERISCI') >= 0) throw new Error('GOOGLE_SCRIPT_URL non configurato');
+    const fetchFn = (opts && opts.fetch) || global.fetch;
+    if (typeof fetchFn !== 'function') throw new Error('fetch non disponibile');
+    const Guard = global.SRUploadGuard;
+    const Auth = global.SRAuth;
+    const payload = Guard && typeof Guard.withSession === 'function'
+      ? Guard.withSession({ action: 'downloadfile', fileId: id })
+      : { action: 'downloadfile', fileId: id };
+    if (!payload.token && Auth && typeof Auth.getGasToken === 'function') {
+      const t = Auth.getGasToken();
+      if (t) payload.token = t;
+    }
+    if (!payload.email && Auth && typeof Auth.getUser === 'function') {
+      const u = Auth.getUser() || {};
+      if (u.email) payload.email = u.email;
+    }
+    if (!payload.token) throw new Error('Sessione Drive assente: effettua di nuovo l\'accesso');
+    const resp = await fetchFn(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    const text = await resp.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error('Risposta non valida dallo script Google');
+    }
+    return parseGasDownloadResponse(data);
+  }
+
+  async function buildPacchettoZip(tappe, opts) {
+    const files = collectPacchettoFiles(tappe);
+    const downloadFile = opts && opts.downloadFile;
+    if (typeof downloadFile !== 'function') throw new Error('downloadFile mancante');
+    const entries = [];
+    if (opts && opts.xlsxBytes) {
+      entries.push({
+        path: String(opts.xlsxName || 'transazioni.xlsx'),
+        bytes: opts.xlsxBytes instanceof Uint8Array ? opts.xlsxBytes : new Uint8Array(opts.xlsxBytes)
+      });
+    }
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      if (opts && typeof opts.onProgress === 'function') {
+        opts.onProgress('File Drive ' + (i + 1) + '/' + files.length + '…');
+      }
+      const got = await downloadFile(f.fileId);
+      entries.push({
+        path: f.folder + '/' + f.name,
+        bytes: got && got.bytes instanceof Uint8Array ? got.bytes : new Uint8Array((got && got.bytes) || [])
+      });
+    }
+    return zipStore(entries);
+  }
+
+  function triggerZipDownload(bytes, filename) {
+    if (typeof document === 'undefined') return;
+    const blob = new Blob([bytes], { type: 'application/zip' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || 'pacchetto.zip';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+
   async function downloadTransazioniPacchetto(tappe, opts) {
     const onProgress = (opts && opts.onProgress) || function () {};
     onProgress('Excel…');
-    const sheet = await downloadTransazioniExcel(tappe);
-    const printItems = bundlePrintItems(tappe);
-    const allegati = collectPacchettoFiles(tappe).filter(f => f.kind === 'allegato');
-    onProgress('Foto e allegati…');
-    openPrintBundle(printItems);
-    triggerNativeDownloads(allegati);
+    const { sheet, buffer } = await buildWorkbookBuffer(tappe);
+    const xlsxBytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    const files = collectPacchettoFiles(tappe);
+    const zipBytes = await buildPacchettoZip(tappe, {
+      xlsxBytes: xlsxBytes,
+      xlsxName: sheet.filename,
+      onProgress: onProgress,
+      downloadFile: function (id) {
+        return fetchDriveFileViaGas(id, opts);
+      }
+    });
+    if (!(opts && opts.skipDownload)) {
+      triggerZipDownload(zipBytes, safeFilenamePart(sheet.filename.replace(/\.xlsx$/i, '')) + '.zip');
+    }
     return {
-      sheet,
-      photos: printItems.filter(it => it.tipo !== 'allegato').length,
-      allegati: allegati.length
+      sheet: sheet,
+      zipBytes: zipBytes,
+      files: files.length
     };
   }
 
@@ -663,6 +777,9 @@
     collectPacchettoFiles,
     bundlePrintItems,
     zipStore,
+    parseGasDownloadResponse,
+    fetchDriveFileViaGas,
+    buildPacchettoZip,
     downloadTransazioniPacchetto,
     buildArchivioSheets,
     downloadArchivioExcel,
