@@ -805,6 +805,27 @@
         || String(a.data_arrivo || '').localeCompare(String(b.data_arrivo || '')));
   }
 
+  function vociRimborsoKmTrasferta(tappe) {
+    const out = [];
+    (tappe || []).forEach(t => {
+      if (!t) return;
+      const clienteTappa = String(t.cliente_tappa || t.cliente || '').trim();
+      const sedeTappa = String(t.citta || t.sede || '').trim();
+      const dip = String(t.nome_persona || t.dipendente || '').trim();
+      const dataTappa = String(t.data_arrivo || t.data || '').trim();
+      parseNotaSpeseJson(t.nota_spese_json).forEach(it => {
+        if (!isRimborsoKm(it)) return;
+        const row = Object.assign({}, it);
+        if (!String(row.cliente || '').trim()) row.cliente = clienteTappa;
+        if (!String(row.sede || '').trim()) row.sede = sedeTappa;
+        if (!String(row.dipendente || '').trim()) row.dipendente = dip;
+        if (!String(row.data || '').trim()) row.data = dataTappa;
+        out.push(row);
+      });
+    });
+    return out;
+  }
+
   function aggregateTrasferta(tappe) {
     const all = [];
     (tappe || []).forEach(t => {
@@ -881,6 +902,7 @@
     labelSottotipo,
     labelVoce,
     tappeStessaTrasferta,
+    vociRimborsoKmTrasferta,
     aggregateTrasferta,
     addDaysYmd,
     fineTrasfertaYmd,

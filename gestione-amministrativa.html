@@ -751,6 +751,7 @@ body {
     <div class="modal-foot">
       <a class="soft-btn btn-icon" id="sc-view-download" href="#" download title="Scarica" aria-label="Scarica"></a>
       <button type="button" class="soft-btn btn-icon" id="sc-view-print" title="Stampa" aria-label="Stampa"></button>
+      <button type="button" class="soft-btn primary" id="sc-view-verbale" hidden>Stampa verbale</button>
       <button type="button" class="soft-btn btn-chiudi" id="sc-view-chiudi">Chiudi</button>
     </div>
   </div>
@@ -825,7 +826,7 @@ body {
 <script src="js/auth.js"></script>
 <script src="js/upload-file-guard.js?v=82"></script>
 <script src="js/scontrini.js?v=42"></script>
-  <script src="js/nota-spese.js?v=105"></script>
+  <script src="js/nota-spese.js?v=106"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
   <script src="js/nota-spese-export.js?v=95"></script>
   <script src="js/servizi-tappa.js?v=58"></script>
@@ -1912,6 +1913,43 @@ function apriVerbaleViewer(html) {
   document.getElementById('verbale-view-backdrop').classList.add('open');
 }
 
+function stampaVerbaleKmTrasferta() {
+  if (typeof SRNotaSpese === 'undefined' || !detailTappaCtx) return;
+  const tappe = (detailTappaCtx.siblings && detailTappaCtx.siblings.length)
+    ? detailTappaCtx.siblings
+    : [detailTappaCtx.tappa];
+  const voci = SRNotaSpese.vociRimborsoKmTrasferta
+    ? SRNotaSpese.vociRimborsoKmTrasferta(tappe)
+    : [];
+  if (!voci.length) {
+    toast('Nessun rimborso chilometrico in questa trasferta');
+    return;
+  }
+  const first = tappe[0] || detailTappaCtx.tappa || {};
+  const model = SRNotaSpese.buildVerbaleModel({
+    nominativo: first.nome_persona || '',
+    meseYmd: first.data_arrivo || SRNotaSpese.todayYmdRome(),
+    dataPresenteYmd: SRNotaSpese.todayYmdRome(),
+    voci: voci,
+    logoUrl: SRNotaSpese.studioLogoUrl()
+  });
+  apriVerbaleViewer(SRNotaSpese.verbalePrintHtml(model));
+}
+
+function syncScViewVerbale(showKm) {
+  const verbBtn = document.getElementById('sc-view-verbale');
+  const dl = document.getElementById('sc-view-download');
+  const pr = document.getElementById('sc-view-print');
+  const foto = document.getElementById('sc-view-foto');
+  if (verbBtn) {
+    verbBtn.hidden = !showKm;
+    verbBtn.onclick = showKm ? stampaVerbaleKmTrasferta : null;
+  }
+  if (dl) dl.hidden = !!showKm;
+  if (pr) pr.hidden = !!showKm;
+  if (foto) foto.hidden = !!showKm;
+}
+
 function emettiVerbale(voci) {
   if (!detailVerbale || typeof SRNotaSpese === 'undefined') return;
   const model = SRNotaSpese.buildVerbaleModel({
@@ -2163,6 +2201,11 @@ function apriNotaSpesaViewerAmm(it, pool) {
     w.document.close();
     setTimeout(() => w.print(), 400);
   };
+  const isKm = typeof SRNotaSpese !== 'undefined' && SRNotaSpese.isRimborsoKm(it);
+  syncScViewVerbale(!!(isKm && detailTappaCtx));
+  if (isKm) {
+    document.getElementById('sc-view-title').textContent = 'Rimborso chilometrico · trasferta';
+  }
   document.getElementById('scontrino-view-backdrop').classList.add('open');
 }
 
@@ -2204,6 +2247,7 @@ function apriScontrinoViewerAmm(sc, pool) {
   hideCs('sc-view-dt-sede');
   hideCs('sc-view-sede');
   wireScDownload(sc, pool);
+  syncScViewVerbale(false);
   const printBtn = document.getElementById('sc-view-print');
   printBtn.innerHTML = SRScontrini.ICO_PRINT;
   printBtn.onclick = () => {
