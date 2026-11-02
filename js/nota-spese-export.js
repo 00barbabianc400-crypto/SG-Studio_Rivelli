@@ -271,7 +271,17 @@
     };
   }
 
+  function throwIfAborted(opts) {
+    const s = opts && opts.signal;
+    if (s && s.aborted) {
+      const err = new Error('Export interrotto');
+      err.name = 'AbortError';
+      throw err;
+    }
+  }
+
   async function fetchDriveFileViaGas(fileId, opts) {
+    throwIfAborted(opts);
     const id = String(fileId || '').trim();
     if (!id) throw new Error('fileId obbligatorio');
     const url = String((opts && opts.scriptUrl) || (global.SR_CONFIG || {}).GOOGLE_SCRIPT_URL || '');
@@ -295,7 +305,8 @@
     const resp = await fetchFn(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: opts && opts.signal
     });
     const text = await resp.text();
     let data;
@@ -319,6 +330,7 @@
       });
     }
     for (let i = 0; i < files.length; i++) {
+      throwIfAborted(opts);
       const f = files[i];
       if (opts && typeof opts.onProgress === 'function') {
         opts.onProgress('File Drive ' + (i + 1) + '/' + files.length + '…');
@@ -347,18 +359,22 @@
 
   async function downloadTransazioniPacchetto(tappe, opts) {
     const onProgress = (opts && opts.onProgress) || function () {};
+    throwIfAborted(opts);
     onProgress('Excel…');
     const { sheet, buffer } = await buildWorkbookBuffer(tappe);
+    throwIfAborted(opts);
     const xlsxBytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
     const files = collectPacchettoFiles(tappe);
     const zipBytes = await buildPacchettoZip(tappe, {
       xlsxBytes: xlsxBytes,
       xlsxName: sheet.filename,
       onProgress: onProgress,
+      signal: opts && opts.signal,
       downloadFile: function (id) {
         return fetchDriveFileViaGas(id, opts);
       }
     });
+    throwIfAborted(opts);
     if (!(opts && opts.skipDownload)) {
       triggerZipDownload(zipBytes, safeFilenamePart(sheet.filename.replace(/\.xlsx$/i, '')) + '.zip');
     }
@@ -832,6 +848,7 @@
     fmtTimestamp,
     neutralizeExcelFormula,
     cartaUtilizzataOf,
-    sommePerCarta
+    sommePerCarta,
+    throwIfAborted
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

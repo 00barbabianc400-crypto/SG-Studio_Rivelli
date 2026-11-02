@@ -272,6 +272,7 @@ body {
 .app-loader-count {
   font-size: 13px; color: var(--muted); margin: 0; font-variant-numeric: tabular-nums;
 }
+.app-loader-abort { margin-top: 6px; }
 .modal-backdrop.open { display: flex; }
 .modal {
   background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
@@ -841,6 +842,7 @@ body {
     </svg>
     <p class="app-loader-text app-loader-phrase" id="app-loader-phrase">Esportazione in corso…</p>
     <p class="app-loader-count" id="app-loader-count"></p>
+    <button type="button" class="soft-btn app-loader-abort" id="app-loader-abort">Interrompi export</button>
   </div>
 </div>
 
@@ -851,7 +853,7 @@ body {
 <script src="js/scontrini.js?v=42"></script>
   <script src="js/nota-spese.js?v=108"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
-  <script src="js/nota-spese-export.js?v=96"></script>
+  <script src="js/nota-spese-export.js?v=97"></script>
   <script src="js/servizi-tappa.js?v=58"></script>
   <script src="js/slot-auto-trasferta.js?v=75"></script>
 <script>
@@ -902,6 +904,7 @@ const EXPORT_PHRASES = [
 ];
 let exportPhraseTimer = null;
 let exportPhraseIdx = 0;
+let exportAbortCtrl = null;
 
 function formatExportCount(text) {
   const s = String(text || '').trim();
@@ -943,6 +946,12 @@ function hideExportLoader() {
   el.classList.add('is-hidden');
   el.setAttribute('aria-busy', 'false');
 }
+
+function abortExportInCorso() {
+  if (exportAbortCtrl) exportAbortCtrl.abort();
+}
+
+document.getElementById('app-loader-abort')?.addEventListener('click', abortExportInCorso);
 
 function normalizeDateStr(val) {
   if (val == null || val === '') return '';
@@ -2139,6 +2148,7 @@ function renderDettaglioTappaBody() {
     if (!detailTappaCtx || typeof SRNotaSpeseExport === 'undefined') return;
     const btn = document.getElementById('btn-export-ns');
     if (btn) btn.disabled = true;
+    exportAbortCtrl = (typeof AbortController === 'function') ? new AbortController() : { aborted: false, abort: function () { this.aborted = true; } };
     showExportLoader('Esportazione in corso…');
     try {
       const base = detailTappaCtx.siblings.length ? detailTappaCtx.siblings : [detailTappaCtx.tappa];
@@ -2151,12 +2161,19 @@ function renderDettaglioTappaBody() {
         return { ...t, nota_spese_json: JSON.stringify(notes) };
       });
       await SRNotaSpeseExport.downloadTransazioniPacchetto(rows, {
-        onProgress: showExportLoader
+        onProgress: showExportLoader,
+        signal: exportAbortCtrl.signal || exportAbortCtrl
       });
     } catch (e) {
-      console.error('export transazioni:', e);
-      alert('Export non riuscito: ' + (e.message || e));
+      const aborted = e && (e.name === 'AbortError' || /interrotto/i.test(String(e.message || e)));
+      if (aborted) {
+        showToast('Export interrotto');
+      } else {
+        console.error('export transazioni:', e);
+        alert('Export non riuscito: ' + (e.message || e));
+      }
     } finally {
+      exportAbortCtrl = null;
       hideExportLoader();
       if (btn) btn.disabled = false;
     }
