@@ -201,6 +201,58 @@
       && Number(obj.km) > 0);
   }
 
+  const CARTA_AZIENDALE_LAST4 = ['0001', '0002'];
+  const CARTI = [
+    { id: 'aziendale', label: 'Carta aziendale' },
+    { id: 'personale', label: 'Carta personale' }
+  ];
+
+  function normalizeCarta(incoming, opts) {
+    const contesto = opts && opts.contesto;
+    if (!incoming || isRimborsoKm(incoming) || String(incoming.categoria || '') === 'rimborso_km') {
+      return { carta: '', carta_last4: '' };
+    }
+    const raw = String(incoming.carta || '').trim().toLowerCase();
+    let carta = (raw === 'aziendale' || raw === 'personale') ? raw : '';
+    if (!carta) {
+      if (contesto === 'trasferta') carta = 'aziendale';
+      else if (contesto === 'ordinaria') carta = 'personale';
+    }
+    let last4 = String(incoming.carta_last4 || '').replace(/\D/g, '');
+    if (last4.length > 4) last4 = last4.slice(-4);
+    if (carta !== 'aziendale' || last4.length !== 4) last4 = '';
+    else if (CARTA_AZIENDALE_LAST4.length && CARTA_AZIENDALE_LAST4.indexOf(last4) < 0) last4 = '';
+    return { carta: carta, carta_last4: last4 };
+  }
+
+  function isCartaAziendale(it, contesto) {
+    if (!it || isRimborsoKm(it)) return false;
+    const raw = String(it.carta || '').trim().toLowerCase();
+    if (raw === 'aziendale') return true;
+    if (raw === 'personale') return false;
+    return contesto === 'trasferta';
+  }
+
+  function filterVociVerbale(voci, opts) {
+    const contesto = opts && opts.contesto;
+    return (voci || []).filter(it => {
+      if (!it) return false;
+      if (isRimborsoKm(it)) return true;
+      if (contesto === 'ordinaria' && isCartaAziendale(it, 'ordinaria')) return false;
+      return true;
+    });
+  }
+
+  function labelCarta(it) {
+    const c = String(it && it.carta || '').trim().toLowerCase();
+    if (c === 'aziendale') {
+      const t = String(it.carta_last4 || '').replace(/\D/g, '');
+      return t.length === 4 ? ('Carta aziendale · ****' + t) : 'Carta aziendale';
+    }
+    if (c === 'personale') return 'Carta personale';
+    return '';
+  }
+
   function isNotaItem(obj) {
     if (!obj || typeof obj !== 'object') return false;
     if (isRimborsoKm(obj)) return true;
@@ -471,7 +523,9 @@
         importo: 0,
         foto_url: '',
         foto_id: '',
-        mime: ''
+        mime: '',
+        carta: '',
+        carta_last4: ''
       });
       return list;
     }
@@ -480,6 +534,17 @@
     if (tipo !== 'scontrino' && tipo !== 'fattura') {
       throw new Error('Tipo documento non valido');
     }
+    const rawCarta = String(incoming.carta || '').trim().toLowerCase();
+    if (rawCarta && rawCarta !== 'aziendale' && rawCarta !== 'personale') {
+      throw new Error('Carta non valida');
+    }
+    if (rawCarta === 'aziendale') {
+      const t = String(incoming.carta_last4 || '').replace(/\D/g, '');
+      if (CARTA_AZIENDALE_LAST4.length && CARTA_AZIENDALE_LAST4.indexOf(t) < 0) {
+        throw new Error('Ultime 4 cifre non valide');
+      }
+    }
+    const cartaNorm = normalizeCarta(incoming, {});
 
     let pasto = incoming.pasto ? String(incoming.pasto).trim() : null;
     let mezzo = incoming.mezzo ? String(incoming.mezzo).trim() : null;
@@ -511,7 +576,9 @@
       importo: parseImporto(incoming.importo),
       foto_url: String(incoming.foto_url || incoming.url || '').trim(),
       foto_id: String(incoming.foto_id || incoming.fileId || '').trim(),
-      mime: String(incoming.mime || 'image/jpeg')
+      mime: String(incoming.mime || 'image/jpeg'),
+      carta: cartaNorm.carta,
+      carta_last4: cartaNorm.carta_last4
     };
     if (!item.foto_id && !item.foto_url) {
       throw new Error('Giustificativo senza file Drive');
@@ -659,7 +726,8 @@
 
   function buildVerbaleModel(opts) {
     const o = opts || {};
-    const voci = o.voci || [];
+    const contesto = o.contesto === 'trasferta' ? 'trasferta' : 'ordinaria';
+    const voci = filterVociVerbale(o.voci || [], { contesto: contesto });
     const names = nominativiUnici(voci);
     const nominativo = String(o.nominativo || '').trim() || names.join(' · ');
     const meseYmd = o.meseYmd
@@ -670,10 +738,15 @@
     const logoUrl = o.logoUrl || studioLogoUrl();
     const mapped = voci.map(it => {
       const km = isRimborsoKm(it);
+      const az = !km && isCartaAziendale(it, contesto);
       let descr = labelVoce(it);
       if (km) descr += ' × 0,31 €/km';
+      else if (az) {
+        const lab = labelCarta(it);
+        if (lab && descr.indexOf(lab) < 0) descr += ' · ' + lab;
+      }
       return {
-        kind: km ? 'km' : 'spesa',
+        kind: km ? 'km' : (az ? 'aziendale' : 'spesa'),
         data: fmtDateIt(dayYmdRomeOf(it.data || it.created_at) || meseYmd),
         nominativo: String(it.dipendente || nominativo || '').trim(),
         descrizione: descr,
@@ -684,16 +757,22 @@
     });
     const rowsKm = mapped.filter(r => r.kind === 'km');
     const rowsSpesa = mapped.filter(r => r.kind === 'spesa');
+    const rowsAziendale = mapped.filter(r => r.kind === 'aziendale');
+    const vociSpesa = voci.filter(it => !isRimborsoKm(it) && !isCartaAziendale(it, contesto));
+    const vociAz = voci.filter(it => !isRimborsoKm(it) && isCartaAziendale(it, contesto));
     return {
       titolo: 'Verbale di rimborso nota spese',
       mese: meseEstesoFromYmd(meseYmd),
       nominativo,
       dataPresente: fmtDateIt(dataPresenteYmd),
+      contesto: contesto,
       rows: mapped,
       rowsKm,
       rowsSpesa,
+      rowsAziendale,
       blankRows,
-      totale: totaleVoci(voci.filter(it => !isRimborsoKm(it))),
+      totale: totaleVoci(vociSpesa),
+      totaleAziendale: totaleVoci(vociAz),
       totaleCartaCarburante: totaleVoci(voci.filter(it => isRimborsoKm(it))),
       vistoDirezione: 'Visto dalla direzione',
       vistoContabilita: 'Visto dalla contabilità',
@@ -704,7 +783,8 @@
   function verbalePrintHtml(model) {
     const m = model || {};
     const rowsKm = m.rowsKm || (m.rows || []).filter(r => r && r.kind === 'km');
-    const rowsSpesa = m.rowsSpesa || (m.rows || []).filter(r => r && r.kind !== 'km');
+    const rowsSpesa = m.rowsSpesa || (m.rows || []).filter(r => r && r.kind === 'spesa');
+    const rowsAziendale = m.rowsAziendale || (m.rows || []).filter(r => r && r.kind === 'aziendale');
     function trOf(list) {
       return (list || []).map(r => (
         '<tr><td class="d">' + escHtml(r.data) + '</td><td>' + escHtml(r.nominativo) + '</td><td>'
@@ -738,6 +818,13 @@
       m.totale,
       m.blankRows
     );
+    const azBlock = section(
+      'Spese carta aziendale',
+      rowsAziendale,
+      'Totale carta aziendale (non rimborsato)',
+      m.totaleAziendale,
+      0
+    );
     return '<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>'
       + escHtml(m.titolo || 'Verbale') + '</title><style>'
       + 'body{font-family:"DM Sans",Segoe UI,sans-serif;color:#1e293b;margin:0;padding:24px;background:#fff}'
@@ -765,7 +852,7 @@
       + '<p style="margin:4px 0 0;font-size:13px;color:#64748b">Studio Rivelli Consulting</p></div></header>'
       + '<div class="meta"><div><span>Mese di riferimento</span><b>' + escHtml(m.mese) + '</b></div>'
       + '<div><span>Nominativo</span><b>' + escHtml(m.nominativo) + '</b></div></div>'
-      + kmBlock + spBlock
+      + kmBlock + spBlock + azBlock
       + '<div class="signs"><div class="sign-box"><span>Data</span>' + escHtml(m.dataPresente) + '</div>'
       + '<div class="sign-box"><span>Firma</span></div></div>'
       + '<div class="visti"><div class="sign-box"><span>' + escHtml(m.vistoDirezione) + '</span></div>'
@@ -805,25 +892,36 @@
         || String(a.data_arrivo || '').localeCompare(String(b.data_arrivo || '')));
   }
 
-  function vociRimborsoKmTrasferta(tappe) {
+  function hydrateNotaDaTappa(it, t) {
+    const row = Object.assign({}, it);
+    const clienteTappa = String((t && t.cliente_tappa) || (t && t.cliente) || '').trim();
+    const sedeTappa = String((t && t.citta) || (t && t.sede) || '').trim();
+    const dip = String((t && t.nome_persona) || (t && t.dipendente) || '').trim();
+    const dataTappa = String((t && t.data_arrivo) || (t && t.data) || '').trim();
+    if (!String(row.cliente || '').trim()) row.cliente = clienteTappa;
+    if (!String(row.sede || '').trim()) row.sede = sedeTappa;
+    if (!String(row.dipendente || '').trim()) row.dipendente = dip;
+    if (!String(row.data || '').trim()) row.data = dataTappa;
+    return row;
+  }
+
+  function vociDaTappe(tappe) {
     const out = [];
     (tappe || []).forEach(t => {
       if (!t) return;
-      const clienteTappa = String(t.cliente_tappa || t.cliente || '').trim();
-      const sedeTappa = String(t.citta || t.sede || '').trim();
-      const dip = String(t.nome_persona || t.dipendente || '').trim();
-      const dataTappa = String(t.data_arrivo || t.data || '').trim();
       parseNotaSpeseJson(t.nota_spese_json).forEach(it => {
-        if (!isRimborsoKm(it)) return;
-        const row = Object.assign({}, it);
-        if (!String(row.cliente || '').trim()) row.cliente = clienteTappa;
-        if (!String(row.sede || '').trim()) row.sede = sedeTappa;
-        if (!String(row.dipendente || '').trim()) row.dipendente = dip;
-        if (!String(row.data || '').trim()) row.data = dataTappa;
-        out.push(row);
+        out.push(hydrateNotaDaTappa(it, t));
       });
     });
     return out;
+  }
+
+  function vociRimborsoKmTrasferta(tappe) {
+    return vociDaTappe(tappe).filter(isRimborsoKm);
+  }
+
+  function vociVerbaleTrasferta(tappe) {
+    return vociDaTappe(tappe);
   }
 
   function aggregateTrasferta(tappe) {
@@ -870,6 +968,12 @@
     showDestTabs,
     parseKm,
     isRimborsoKm,
+    CARTA_AZIENDALE_LAST4,
+    CARTI,
+    normalizeCarta,
+    isCartaAziendale,
+    filterVociVerbale,
+    labelCarta,
     KM_EURO_RATE,
     roundEuro,
     importoVoce,
@@ -903,6 +1007,7 @@
     labelVoce,
     tappeStessaTrasferta,
     vociRimborsoKmTrasferta,
+    vociVerbaleTrasferta,
     aggregateTrasferta,
     addDaysYmd,
     fineTrasfertaYmd,

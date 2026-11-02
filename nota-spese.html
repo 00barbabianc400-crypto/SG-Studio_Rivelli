@@ -323,6 +323,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
         <dd id="ns-view-cliente" class="hidden">—</dd>
         <dt id="ns-view-sede-dt" class="hidden">Sede di riferimento</dt>
         <dd id="ns-view-sede" class="hidden">—</dd>
+        <dt id="ns-view-carta-dt" class="hidden">Carta</dt>
+        <dd id="ns-view-carta" class="hidden">—</dd>
         <dt id="ns-view-importo-dt">Importo</dt>
         <dd id="ns-view-importo">—</dd>
         <dt id="ns-view-note-dt" class="hidden">Note</dt>
@@ -344,19 +346,21 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js?v=86"></script>
-<script src="js/nota-spese.js?v=106"></script>
+<script src="js/nota-spese.js?v=107"></script>
 <script src="js/upload-file-guard.js?v=82"></script>
 <script src="js/scontrini.js?v=42"></script>
 <script src="js/auth.js?v=85"></script>
 <script>
 const state = {
-  phase: 'tipo', // tipo | dettaglio | km | km-confirm
+  phase: 'tipo', // tipo | carta | carta-last4 | dettaglio | km | km-confirm
   dest: 'ordinaria', // ordinaria | tappa
   categoria: null,
   pasto: null,
   mezzo: null,
   dettaglio: null,
   tipo: null,
+  carta: null,
+  cartaLast4: '',
   importo: '',
   km: '',
   cliente: '',
@@ -415,7 +419,9 @@ const CHOICE_ICONS = {
   rimborso_km: svgIcon('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
   importo: svgIcon('<circle cx="12" cy="12" r="9"/><path d="M12 6v12"/><path d="M15.5 9.5c-.6-1.2-1.8-2-3.5-2-2 0-3.5 1.2-3.5 2.8S10 13 12 13s3.5 1 3.5 2.7c0 1.6-1.5 2.8-3.5 2.8-1.7 0-2.9-.8-3.5-2"/>'),
   camera: svgIcon('<path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'),
-  gallery: svgIcon('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M3 16l5-4 4 3 3-2 6 3"/>')
+  gallery: svgIcon('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M3 16l5-4 4 3 3-2 6 3"/>'),
+  aziendale: svgIcon('<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/><path d="M7 14h4"/>'),
+  personale: svgIcon('<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/><circle cx="16" cy="14" r="1.4"/>')
 };
 
 const ICO_INFO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
@@ -433,6 +439,8 @@ function closeBackdrop(id) {
 
 function resetComposeFields() {
   state.tipo = null;
+  state.carta = null;
+  state.cartaLast4 = '';
   state.importo = '';
   state.km = '';
   state.cliente = '';
@@ -640,6 +648,45 @@ function renderCompose() {
     body.querySelectorAll('.choice-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         state.tipo = btn.dataset.id;
+        state.phase = 'carta';
+        renderCompose();
+      });
+    });
+    return;
+  }
+
+  if (state.phase === 'carta') {
+    document.getElementById('compose-title').textContent = 'Come hai pagato?';
+    back.textContent = 'Indietro';
+    next.style.display = 'none';
+    const carti = (SRNotaSpese && SRNotaSpese.CARTI) || [
+      { id: 'aziendale', label: 'Carta aziendale' },
+      { id: 'personale', label: 'Carta personale' }
+    ];
+    body.innerHTML = '<div class="choice-grid">' + renderChoices(carti, state.carta) + '</div>';
+    body.querySelectorAll('.choice-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.carta = btn.dataset.id;
+        state.cartaLast4 = '';
+        state.phase = state.carta === 'aziendale' ? 'carta-last4' : 'dettaglio';
+        renderCompose();
+      });
+    });
+    return;
+  }
+
+  if (state.phase === 'carta-last4') {
+    document.getElementById('compose-title').textContent = 'Carta aziendale: finisce con…';
+    back.textContent = 'Indietro';
+    next.style.display = 'none';
+    const tails = ((SRNotaSpese && SRNotaSpese.CARTA_AZIENDALE_LAST4) || []).map(d => ({
+      id: d,
+      label: 'Finisce con ' + d
+    }));
+    body.innerHTML = '<div class="choice-grid">' + renderChoices(tails, state.cartaLast4) + '</div>';
+    body.querySelectorAll('.choice-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.cartaLast4 = btn.dataset.id;
         state.phase = 'dettaglio';
         renderCompose();
       });
@@ -710,7 +757,7 @@ function renderCompose() {
   const noteMax = (SRNotaSpese && SRNotaSpese.DETTAGLIO_MAX) || 120;
   const noteHtml = showNote
     ? '<div class="field" style="margin-top:14px"><label for="ns-note">Note <span style="font-weight:500;text-transform:none;color:var(--text-3)">(facoltative)</span></label>'
-      + '<textarea id="ns-note" maxlength="' + noteMax + '" placeholder="es. Pagato con carta personale…"></textarea></div>'
+      + '<textarea id="ns-note" maxlength="' + noteMax + '" placeholder="es. Scontrino pranzo cliente…"></textarea></div>'
     : '';
   body.innerHTML =
     '<div class="field-with-ico">'
@@ -829,6 +876,8 @@ function apriNotaViewer(it, pool) {
   }
   nsMetaRow('ns-view-cliente-dt', 'ns-view-cliente', cs.cliente);
   nsMetaRow('ns-view-sede-dt', 'ns-view-sede', cs.sede);
+  nsMetaRow('ns-view-carta-dt', 'ns-view-carta',
+    (SRNotaSpese.labelCarta && SRNotaSpese.labelCarta(it)) || '');
   const impDt = document.getElementById('ns-view-importo-dt');
   if (impDt) impDt.textContent = isKm ? 'Rimborso' : 'Importo';
   document.getElementById('ns-view-importo').textContent = SRNotaSpese.displayImporto
@@ -1023,6 +1072,8 @@ async function salva() {
     if (!body.ok) return toast(body.message || 'Immagine non valida', 'err');
   }
   if (!state.tipo) return toast('Scegli scontrino o fattura', 'err');
+  if (!state.carta) return toast('Scegli carta aziendale o personale', 'err');
+  if (state.carta === 'aziendale' && !state.cartaLast4) return toast('Scegli le ultime 4 cifre', 'err');
   if (!readClienteSedeOrToast()) return;
 
   const u = SRAuth.getUser() || {};
@@ -1054,6 +1105,8 @@ async function salva() {
         : SRNotaSpese.normalizeDettaglio(state.categoria, state.dettaglio),
       cliente: state.cliente,
       sede: state.sede,
+      carta: state.carta,
+      carta_last4: state.carta === 'aziendale' ? state.cartaLast4 : '',
       importo: SRNotaSpese.parseImporto(state.importo),
       foto_url: up.url,
       foto_id: up.fileId,
@@ -1115,9 +1168,21 @@ document.getElementById('compose-back').addEventListener('click', () => {
     return;
   }
   if (state.phase === 'dettaglio') {
-    state.phase = 'tipo';
+    state.phase = state.carta === 'aziendale' ? 'carta-last4' : 'carta';
     state.importo = '';
     state.photo = null;
+    renderCompose();
+    return;
+  }
+  if (state.phase === 'carta-last4') {
+    state.phase = 'carta';
+    state.cartaLast4 = '';
+    renderCompose();
+    return;
+  }
+  if (state.phase === 'carta') {
+    state.phase = 'tipo';
+    state.carta = null;
     renderCompose();
     return;
   }

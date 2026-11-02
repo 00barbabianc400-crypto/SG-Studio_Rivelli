@@ -740,6 +740,8 @@ body {
         <dd id="sc-view-cliente" class="hidden">—</dd>
         <dt id="sc-view-dt-sede" class="hidden">Sede di riferimento</dt>
         <dd id="sc-view-sede" class="hidden">—</dd>
+        <dt id="sc-view-dt-carta" class="hidden">Carta</dt>
+        <dd id="sc-view-carta" class="hidden">—</dd>
         <dt id="sc-view-dt2">Orario</dt>
         <dd id="sc-view-orario">—</dd>
         <dt id="sc-view-dt3" class="hidden">Importo</dt>
@@ -826,7 +828,7 @@ body {
 <script src="js/auth.js"></script>
 <script src="js/upload-file-guard.js?v=82"></script>
 <script src="js/scontrini.js?v=42"></script>
-  <script src="js/nota-spese.js?v=106"></script>
+  <script src="js/nota-spese.js?v=107"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
   <script src="js/nota-spese-export.js?v=95"></script>
   <script src="js/servizi-tappa.js?v=58"></script>
@@ -1918,11 +1920,11 @@ function stampaVerbaleKmTrasferta() {
   const tappe = (detailTappaCtx.siblings && detailTappaCtx.siblings.length)
     ? detailTappaCtx.siblings
     : [detailTappaCtx.tappa];
-  const voci = SRNotaSpese.vociRimborsoKmTrasferta
-    ? SRNotaSpese.vociRimborsoKmTrasferta(tappe)
-    : [];
+  const voci = SRNotaSpese.vociVerbaleTrasferta
+    ? SRNotaSpese.vociVerbaleTrasferta(tappe)
+    : (SRNotaSpese.vociRimborsoKmTrasferta ? SRNotaSpese.vociRimborsoKmTrasferta(tappe) : []);
   if (!voci.length) {
-    toast('Nessun rimborso chilometrico in questa trasferta');
+    toast('Nessuna voce da stampare in questa trasferta');
     return;
   }
   const first = tappe[0] || detailTappaCtx.tappa || {};
@@ -1930,6 +1932,7 @@ function stampaVerbaleKmTrasferta() {
     nominativo: first.nome_persona || '',
     meseYmd: first.data_arrivo || SRNotaSpese.todayYmdRome(),
     dataPresenteYmd: SRNotaSpese.todayYmdRome(),
+    contesto: 'trasferta',
     voci: voci,
     logoUrl: SRNotaSpese.studioLogoUrl()
   });
@@ -1956,6 +1959,7 @@ function emettiVerbale(voci) {
     nominativo: detailVerbale.nominativo,
     meseYmd: detailVerbale.meseYmd,
     dataPresenteYmd: SRNotaSpese.todayYmdRome(),
+    contesto: 'ordinaria',
     voci: voci || detailVerbale.voci,
     logoUrl: SRNotaSpese.studioLogoUrl()
   });
@@ -2167,6 +2171,8 @@ function apriNotaSpesaViewerAmm(it, pool) {
   }
   scMetaRow('sc-view-dt-cliente', 'sc-view-cliente', cs.cliente);
   scMetaRow('sc-view-dt-sede', 'sc-view-sede', cs.sede);
+  scMetaRow('sc-view-dt-carta', 'sc-view-carta',
+    (SRNotaSpese.labelCarta && SRNotaSpese.labelCarta(it)) || '');
   document.getElementById('sc-view-dt2').textContent = 'Orario';
   document.getElementById('sc-view-orario').textContent = it.created_at
     ? new Date(it.created_at).toLocaleString('it-IT')
@@ -2246,6 +2252,8 @@ function apriScontrinoViewerAmm(sc, pool) {
   hideCs('sc-view-cliente');
   hideCs('sc-view-dt-sede');
   hideCs('sc-view-sede');
+  hideCs('sc-view-dt-carta');
+  hideCs('sc-view-carta');
   wireScDownload(sc, pool);
   syncScViewVerbale(false);
   const printBtn = document.getElementById('sc-view-print');
