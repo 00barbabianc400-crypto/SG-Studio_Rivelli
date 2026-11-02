@@ -373,10 +373,43 @@
     return global.SRNotaSpese || null;
   }
 
+  function cartaUtilizzataOf(it) {
+    const N = NS();
+    if (N && typeof N.isRimborsoKm === 'function' && N.isRimborsoKm(it)) return '';
+    const c = String(it && it.carta || '').trim().toLowerCase();
+    if (c === 'personale') return '';
+    const d = String(it && it.carta_last4 || '').replace(/\D/g, '');
+    return c === 'aziendale' && d ? d : '';
+  }
+
+  function sommePerCarta(tappe) {
+    const N = NS();
+    const map = new Map();
+    (Array.isArray(tappe) ? tappe : []).forEach(t => {
+      const notes = N && typeof N.parseNotaSpeseJson === 'function'
+        ? N.parseNotaSpeseJson(t && t.nota_spese_json)
+        : [];
+      notes.forEach(it => {
+        const key = cartaUtilizzataOf(it);
+        if (!key) return;
+        let importo = 0;
+        try {
+          importo = N && typeof N.parseImporto === 'function'
+            ? N.parseImporto(it && it.importo)
+            : Number(it && it.importo) || 0;
+        } catch {
+          importo = 0;
+        }
+        map.set(key, (map.get(key) || 0) + importo);
+      });
+    });
+    return [...map.entries()].sort((a, b) => String(a[0]).localeCompare(String(b[0]), 'it'));
+  }
+
   /**
    * Righe tipizzate per lo stile Excel.
-   * kind: header | tx | tappa | trasferta
-   * values: [Timestamp, Tappa, Categoria, Tipo, Voce, Importo]
+   * kind: header | tx | tappa | trasferta | stat
+   * values: [Timestamp, Tappa, Categoria, Tipo, Voce, Carta utilizzata, Importo]
    * Importo numerico sulle tx e sui totali (i totali non vanno sommati alle tx).
    */
   function buildTransazioniRows(tappe) {
@@ -384,7 +417,7 @@
     const N = NS();
     const rows = [{
       kind: 'header',
-      values: ['Timestamp', 'Tappa', 'Categoria', 'Tipo', 'Voce', 'Importo']
+      values: ['Timestamp', 'Tappa', 'Categoria', 'Tipo', 'Voce', 'Carta utilizzata', 'Importo']
     }];
     const tid = list[0] && list[0].trasferta_id ? String(list[0].trasferta_id) : 'trasferta';
 
@@ -419,6 +452,7 @@
             neutralizeExcelFormula(cat),
             tipo,
             neutralizeExcelFormula(voce),
+            neutralizeExcelFormula(cartaUtilizzataOf(it)),
             importo
           ]
         });
@@ -429,24 +463,30 @@
         : { scontrino: 0, fattura: 0, totale: 0 };
       rows.push({
         kind: 'tappa',
-        values: ['', neutralizeExcelFormula('Totale tappa · ' + tappaLabel), '', 'Σ Scontrini', '', sums.scontrino]
+        values: ['', neutralizeExcelFormula('Totale tappa · ' + tappaLabel), '', 'Σ Scontrini', '', '', sums.scontrino]
       });
       rows.push({
         kind: 'tappa',
-        values: ['', neutralizeExcelFormula('Totale tappa · ' + tappaLabel), '', 'Σ Fatture', '', sums.fattura]
+        values: ['', neutralizeExcelFormula('Totale tappa · ' + tappaLabel), '', 'Σ Fatture', '', '', sums.fattura]
       });
       rows.push({
         kind: 'tappa',
-        values: ['', neutralizeExcelFormula('Totale tappa · ' + tappaLabel), '', 'Totale', '', sums.totale]
+        values: ['', neutralizeExcelFormula('Totale tappa · ' + tappaLabel), '', 'Totale', '', '', sums.totale]
       });
     });
 
     const grand = N && typeof N.aggregateTrasferta === 'function'
       ? N.aggregateTrasferta(list)
       : { scontrino: 0, fattura: 0, totale: 0 };
-    rows.push({ kind: 'trasferta', values: ['', 'Totale trasferta', '', 'Σ Scontrini', '', grand.scontrino] });
-    rows.push({ kind: 'trasferta', values: ['', 'Totale trasferta', '', 'Σ Fatture', '', grand.fattura] });
-    rows.push({ kind: 'trasferta', values: ['', 'Totale trasferta', '', 'Totale speso', '', grand.totale] });
+    rows.push({ kind: 'trasferta', values: ['', 'Totale trasferta', '', 'Σ Scontrini', '', '', grand.scontrino] });
+    rows.push({ kind: 'trasferta', values: ['', 'Totale trasferta', '', 'Σ Fatture', '', '', grand.fattura] });
+    rows.push({ kind: 'trasferta', values: ['', 'Totale trasferta', '', 'Totale speso', '', '', grand.totale] });
+    sommePerCarta(list).forEach(pair => {
+      rows.push({
+        kind: 'stat',
+        values: ['', 'Totale carta · ' + pair[0], '', 'Σ Carta aziendale', '', pair[0], pair[1]]
+      });
+    });
 
     return {
       filename: 'transazioni_' + safeFilenamePart(tid) + '.xlsx',
@@ -500,6 +540,12 @@
         fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } }
       };
     }
+    if (kind === 'stat') {
+      return {
+        font: { bold: true, name: 'Calibri', size: 10, color: { argb: 'FF1E3050' } },
+        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EEF7' } }
+      };
+    }
     return {
       font: { name: 'Calibri', size: 10, color: { argb: 'FF111827' } },
       fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }
@@ -533,7 +579,7 @@
         cell.fill = style.fill;
         if (style.alignment) cell.alignment = style.alignment;
         if (style.border) cell.border = Object.assign({}, cell.border, style.border);
-        if (colNumber === 6 && typeof row.values[5] === 'number') {
+        if (colNumber === 7 && typeof row.values[6] === 'number') {
           cell.numFmt = '#,##0.00';
           cell.alignment = { horizontal: 'right', vertical: 'middle' };
         }
@@ -559,7 +605,7 @@
     });
     ws.autoFilter = {
       from: { row: 1, column: 1 },
-      to: { row: 1, column: 6 }
+      to: { row: 1, column: 7 }
     };
 
     const buffer = await wb.xlsx.writeBuffer();
@@ -784,6 +830,8 @@
     buildArchivioSheets,
     downloadArchivioExcel,
     fmtTimestamp,
-    neutralizeExcelFormula
+    neutralizeExcelFormula,
+    cartaUtilizzataOf,
+    sommePerCarta
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

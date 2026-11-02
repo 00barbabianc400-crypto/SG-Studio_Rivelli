@@ -260,13 +260,18 @@ body {
   transition: opacity .35s ease, visibility .35s ease;
 }
 .app-loader.is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-.app-loader-spinner {
-  width: 46px; height: 46px; border-radius: 50%;
-  border: 3px solid var(--border); border-top-color: var(--accent);
-  animation: app-spin .7s linear infinite;
+.app-loader-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 28px 32px 24px; min-width: min(280px, calc(100vw - 48px));
+  display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;
 }
-.app-loader-text { font-size: 14px; color: var(--muted); margin: 0; }
-@keyframes app-spin { to { transform: rotate(360deg); } }
+.app-loader-orbit { width: 72px; height: 72px; color: #1e4fa3; display: block; }
+.app-loader-text, .app-loader-phrase {
+  font-size: 14px; font-weight: 600; color: var(--text); margin: 0; min-height: 1.35em;
+}
+.app-loader-count {
+  font-size: 13px; color: var(--muted); margin: 0; font-variant-numeric: tabular-nums;
+}
 .modal-backdrop.open { display: flex; }
 .modal {
   background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
@@ -819,8 +824,24 @@ body {
 
 <div class="toast" id="toast"></div>
 <div class="app-loader is-hidden" id="app-loader" aria-live="polite" aria-busy="false">
-  <div class="app-loader-spinner" role="status" aria-label="Esportazione in corso"></div>
-  <p class="app-loader-text">Esportazione in corso…</p>
+  <div class="app-loader-card">
+    <svg class="app-loader-orbit" width="72" height="72" viewBox="0 0 50 50" role="status" aria-label="Esportazione in corso">
+      <circle cx="25" cy="25" r="1" fill="#1E4FA3"><animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="3s" repeatCount="indefinite"/></circle>
+      <circle cx="26.3" cy="25.75" r="1" fill="#2563EB"><animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="2.8s" repeatCount="indefinite"/></circle>
+      <circle cx="26.5" cy="27.6" r="1" fill="#1E4FA3"><animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="2.6s" repeatCount="indefinite"/></circle>
+      <circle cx="25" cy="29.5" r="1" fill="#2563EB"><animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="2.4s" repeatCount="indefinite"/></circle>
+      <circle cx="22" cy="30.2" r="1" fill="#1E4FA3"><animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="2.2s" repeatCount="indefinite"/></circle>
+      <circle cx="18.5" cy="28.75" r="1" fill="#2563EB"><animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="2s" repeatCount="indefinite"/></circle>
+      <circle cx="16" cy="25" r="1" fill="#1E4FA3"><animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1.8s" repeatCount="indefinite"/></circle>
+      <circle cx="15.91" cy="19.75" r="1" fill="#2563EB"><animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1.6s" repeatCount="indefinite"/></circle>
+      <circle cx="19" cy="14.61" r="1" fill="#1E4FA3"><animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1.4s" repeatCount="indefinite"/></circle>
+      <circle cx="25" cy="11.5" r="1" fill="#2563EB"><animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1.2s" repeatCount="indefinite"/></circle>
+      <circle cx="32.5" cy="12.01" r="1" fill="#1E4FA3"><animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s" repeatCount="indefinite"/></circle>
+      <circle cx="39.29" cy="16.75" r="1" fill="#2563EB"><animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="0.8s" repeatCount="indefinite"/></circle>
+    </svg>
+    <p class="app-loader-text app-loader-phrase" id="app-loader-phrase">Esportazione in corso…</p>
+    <p class="app-loader-count" id="app-loader-count"></p>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
@@ -830,7 +851,7 @@ body {
 <script src="js/scontrini.js?v=42"></script>
   <script src="js/nota-spese.js?v=108"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
-  <script src="js/nota-spese-export.js?v=95"></script>
+  <script src="js/nota-spese-export.js?v=96"></script>
   <script src="js/servizi-tappa.js?v=58"></script>
   <script src="js/slot-auto-trasferta.js?v=75"></script>
 <script>
@@ -872,11 +893,40 @@ function showToast(msg, type) {
   t._h = setTimeout(() => t.classList.remove('show'), 3200);
 }
 
+const EXPORT_PHRASES = [
+  'Prepariamo il pacchetto…',
+  'Raccogliamo gli scontrini…',
+  'Scarichiamo i file da Drive…',
+  'Comprimiamo l’archivio…',
+  'Quasi pronto…'
+];
+let exportPhraseTimer = null;
+let exportPhraseIdx = 0;
+
+function formatExportCount(text) {
+  const s = String(text || '').trim();
+  const m = s.match(/File Drive\s+(\d+)\s*\/\s*(\d+)/i);
+  if (m) return m[1] + ' / ' + m[2];
+  if (/^excel/i.test(s)) return 'Excel';
+  if (/esportazione in corso/i.test(s)) return '';
+  return s;
+}
+
 function showExportLoader(text) {
   const el = document.getElementById('app-loader');
   if (!el) return;
-  const t = el.querySelector('.app-loader-text');
-  if (t && text) t.textContent = text;
+  const phrase = document.getElementById('app-loader-phrase');
+  const count = document.getElementById('app-loader-count');
+  if (count) count.textContent = formatExportCount(text);
+  if (!exportPhraseTimer) {
+    exportPhraseIdx = 0;
+    if (phrase) phrase.textContent = EXPORT_PHRASES[0];
+    exportPhraseTimer = setInterval(() => {
+      exportPhraseIdx = (exportPhraseIdx + 1) % EXPORT_PHRASES.length;
+      const p = document.getElementById('app-loader-phrase');
+      if (p) p.textContent = EXPORT_PHRASES[exportPhraseIdx];
+    }, 2200);
+  }
   el.classList.remove('is-hidden');
   el.setAttribute('aria-busy', 'true');
 }
@@ -884,6 +934,12 @@ function showExportLoader(text) {
 function hideExportLoader() {
   const el = document.getElementById('app-loader');
   if (!el) return;
+  if (exportPhraseTimer) {
+    clearInterval(exportPhraseTimer);
+    exportPhraseTimer = null;
+  }
+  const count = document.getElementById('app-loader-count');
+  if (count) count.textContent = '';
   el.classList.add('is-hidden');
   el.setAttribute('aria-busy', 'false');
 }
