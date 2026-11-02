@@ -201,7 +201,7 @@
       && Number(obj.km) > 0);
   }
 
-  const CARTA_AZIENDALE_LAST4 = ['0001', '0002'];
+  const CARTA_AZIENDALE_LAST4 = ['106', '304'];
   const CARTI = [
     { id: 'aziendale', label: 'Carta aziendale' },
     { id: 'personale', label: 'Carta personale' }
@@ -219,9 +219,7 @@
       else if (contesto === 'ordinaria') carta = 'personale';
     }
     let last4 = String(incoming.carta_last4 || '').replace(/\D/g, '');
-    if (last4.length > 4) last4 = last4.slice(-4);
-    if (carta !== 'aziendale' || last4.length !== 4) last4 = '';
-    else if (CARTA_AZIENDALE_LAST4.length && CARTA_AZIENDALE_LAST4.indexOf(last4) < 0) last4 = '';
+    if (carta !== 'aziendale' || CARTA_AZIENDALE_LAST4.indexOf(last4) < 0) last4 = '';
     return { carta: carta, carta_last4: last4 };
   }
 
@@ -247,7 +245,7 @@
     const c = String(it && it.carta || '').trim().toLowerCase();
     if (c === 'aziendale') {
       const t = String(it.carta_last4 || '').replace(/\D/g, '');
-      return t.length === 4 ? ('Carta aziendale · ****' + t) : 'Carta aziendale';
+      return t ? ('Carta aziendale · ****' + t) : 'Carta aziendale';
     }
     if (c === 'personale') return 'Carta personale';
     return '';
