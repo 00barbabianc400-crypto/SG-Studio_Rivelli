@@ -201,7 +201,12 @@
       && Number(obj.km) > 0);
   }
 
-  const CARTA_AZIENDALE_LAST4 = ['106', '304'];
+  const CARTA_AZIENDALE_OPZIONI = [
+    { id: '106', label: 'Finisce con 106' },
+    { id: '304', label: 'Finisce con 304' },
+    { id: '2659', label: 'Bancomat · 2659', kind: 'bancomat' }
+  ];
+  const CARTA_AZIENDALE_LAST4 = CARTA_AZIENDALE_OPZIONI.map(o => o.id);
   const CARTI = [
     { id: 'aziendale', label: 'Carta aziendale' },
     { id: 'personale', label: 'Carta personale' }
@@ -241,10 +246,21 @@
     });
   }
 
+  function opzioneCartaAziendale(digits) {
+    const d = String(digits || '').replace(/\D/g, '');
+    let i = 0;
+    for (; i < CARTA_AZIENDALE_OPZIONI.length; i++) {
+      if (CARTA_AZIENDALE_OPZIONI[i].id === d) return CARTA_AZIENDALE_OPZIONI[i];
+    }
+    return null;
+  }
+
   function labelCarta(it) {
     const c = String(it && it.carta || '').trim().toLowerCase();
     if (c === 'aziendale') {
       const t = String(it.carta_last4 || '').replace(/\D/g, '');
+      const opt = opzioneCartaAziendale(t);
+      if (opt && opt.kind === 'bancomat') return opt.label;
       return t ? ('Carta aziendale · ****' + t) : 'Carta aziendale';
     }
     if (c === 'personale') return 'Carta personale';
@@ -967,10 +983,12 @@
     parseKm,
     isRimborsoKm,
     CARTA_AZIENDALE_LAST4,
+    CARTA_AZIENDALE_OPZIONI,
     CARTI,
     normalizeCarta,
     isCartaAziendale,
     filterVociVerbale,
+    opzioneCartaAziendale,
     labelCarta,
     KM_EURO_RATE,
     roundEuro,

@@ -498,9 +498,15 @@
     rows.push({ kind: 'trasferta', values: ['', 'Totale trasferta', '', 'Σ Fatture', '', '', grand.fattura] });
     rows.push({ kind: 'trasferta', values: ['', 'Totale trasferta', '', 'Totale speso', '', '', grand.totale] });
     sommePerCarta(list).forEach(pair => {
+      const Nlab = N && typeof N.opzioneCartaAziendale === 'function'
+        ? N.opzioneCartaAziendale(pair[0])
+        : null;
+      const titolo = (Nlab && Nlab.kind === 'bancomat')
+        ? ('Totale Bancomat · ' + pair[0])
+        : ('Totale carta · ' + pair[0]);
       rows.push({
         kind: 'stat',
-        values: ['', 'Totale carta · ' + pair[0], '', 'Σ Carta aziendale', '', pair[0], pair[1]]
+        values: ['', titolo, '', 'Σ Carta aziendale', '', pair[0], pair[1]]
       });
     });
 
