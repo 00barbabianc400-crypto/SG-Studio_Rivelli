@@ -85,7 +85,8 @@
 
   function itemsWithFoto(list) {
     return (Array.isArray(list) ? list : []).filter(it =>
-      !!(fileIdFrom(it) || String((it && (it.foto_url || it.url)) || '').trim())
+      !!(fileIdFrom(it)
+        || String((it && (it.foto_url || it.url || it.printSrc)) || '').trim())
     );
   }
 
@@ -133,7 +134,7 @@
 
   function printBundleHtml(items) {
     const figs = itemsWithFoto(items).map(it => {
-      const src = String(thumbnailUrl(it) || '').replace(/"/g, '');
+      const src = String((it && it.printSrc) || thumbnailUrl(it) || '').replace(/"/g, '');
       return '<figure>'
         + '<img src="' + src + '" alt="" decoding="async">'
         + bundleCaption(it)

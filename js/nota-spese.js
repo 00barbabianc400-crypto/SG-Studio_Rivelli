@@ -246,6 +246,19 @@
     });
   }
 
+  function haVociVerbale(voci, opts) {
+    return filterVociVerbale(voci, opts).length > 0;
+  }
+
+  function vociConFoto(voci, opts) {
+    return filterVociVerbale(voci, opts).filter(it => {
+      if (!it || isRimborsoKm(it)) return false;
+      const id = String(it.foto_id || it.fileId || '').trim();
+      const url = String(it.foto_url || it.url || '').trim();
+      return !!(id || url);
+    });
+  }
+
   function opzioneCartaAziendale(digits) {
     const d = String(digits || '').replace(/\D/g, '');
     let i = 0;
@@ -988,6 +1001,8 @@
     normalizeCarta,
     isCartaAziendale,
     filterVociVerbale,
+    haVociVerbale,
+    vociConFoto,
     opzioneCartaAziendale,
     labelCarta,
     KM_EURO_RATE,

@@ -253,6 +253,47 @@ body {
 }
 #verbale-view-backdrop { z-index: 1100; }
 #verbale-scope-backdrop { z-index: 1120; }
+#verbale-print-backdrop { z-index: 1121; }
+#verbale-scope-modal.modal-verb-print {
+  width: min(720px, calc(100vw - 32px));
+}
+.verb-print-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.verb-print-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.verb-print-card h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.verb-print-card p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.45;
+  flex: 1;
+}
+.verb-print-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 640px) {
+  .verb-print-grid { grid-template-columns: 1fr; }
+}
 .app-loader {
   position: fixed; inset: 0; z-index: 9999;
   background: rgba(243, 244, 246, .94); backdrop-filter: blur(6px);
@@ -803,7 +844,7 @@ body {
     <div class="modal-head"><h2 id="detail-title">Dettaglio prenotazione</h2></div>
     <div class="modal-body detail-card" id="detail-body"></div>
     <div class="modal-foot">
-      <button type="button" class="soft-btn primary" id="detail-print-verbale" hidden>Stampa verbale</button>
+      <button type="button" class="soft-btn primary" id="detail-print-verbale" hidden>Stampa verbale e scontrini</button>
       <button type="button" class="soft-btn" id="detail-close">Chiudi</button>
     </div>
   </div>
@@ -811,13 +852,42 @@ body {
 
 <div class="modal-backdrop" id="verbale-scope-backdrop" role="dialog" aria-modal="true" aria-labelledby="verbale-scope-title">
   <div class="modal" id="verbale-scope-modal">
-    <div class="modal-head"><h2 id="verbale-scope-title">Ambito verbale</h2></div>
+    <div class="modal-head"><h2 id="verbale-scope-title">Ambito stampa</h2></div>
     <div class="modal-body">
       <p id="verbale-scope-body" style="font-size:14px;color:var(--text);line-height:1.5;margin:0"></p>
     </div>
     <div class="modal-foot">
       <button type="button" class="soft-btn" id="verbale-scope-day">Solo questa giornata</button>
       <button type="button" class="soft-btn primary" id="verbale-scope-month">Tutto il mese</button>
+      <button type="button" class="soft-btn" id="verbale-scope-close">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="verbale-print-backdrop" role="dialog" aria-modal="true" aria-labelledby="verbale-print-title">
+  <div class="modal modal-verb-print" id="verbale-print-modal">
+    <div class="modal-head"><h2 id="verbale-print-title">Stampa verbale e scontrini</h2></div>
+    <div class="modal-body">
+      <p id="verbale-print-ambito" style="font-size:13px;color:var(--muted);line-height:1.45;margin:0 0 12px"></p>
+      <div class="verb-print-grid">
+        <section class="verb-print-card" id="verbale-scope-verbale">
+          <h3>Stampa verbale</h3>
+          <p id="verbale-print-verbale-copy">Apre l’anteprima del verbale di rimborso per l’ambito scelto.</p>
+          <div class="verb-print-actions">
+            <button type="button" class="soft-btn primary" id="verbale-print-verbale">Stampa verbale</button>
+          </div>
+        </section>
+        <section class="verb-print-card" id="verbale-scope-scontrini">
+          <h3>Stampa scontrini</h3>
+          <p id="verbale-print-scontrini-copy">Le foto dei giustificativi di rimborso, una per pagina. Si apre il dialogo di stampa.</p>
+          <div class="verb-print-actions">
+            <button type="button" class="soft-btn primary" id="verbale-scope-print-scontrini">Stampa</button>
+          </div>
+        </section>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="soft-btn" id="verbale-print-close">Chiudi</button>
     </div>
   </div>
 </div>
@@ -961,8 +1031,8 @@ body {
 <script src="js/config.js?v=84"></script>
 <script src="js/auth.js"></script>
 <script src="js/upload-file-guard.js?v=82"></script>
-<script src="js/scontrini.js?v=42"></script>
-  <script src="js/nota-spese.js?v=109"></script>
+<script src="js/scontrini.js?v=43"></script>
+  <script src="js/nota-spese.js?v=111"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
   <script src="js/nota-spese-export.js?v=98"></script>
   <script src="js/servizi-tappa.js?v=58"></script>
@@ -2054,9 +2124,16 @@ function renderScontriniTrasfertaBoard(tappe) {
 
 let detailTappaCtx = null;
 let detailVerbale = null;
+let verbalePrintCtx = null;
+const PRINT_SCONTRINI_LOADER_MS = 1000;
 
 function setDetailVerbale(ctx) {
-  detailVerbale = ctx && ctx.voci && ctx.voci.length ? ctx : null;
+  let next = ctx;
+  if (ctx && ctx.fonte === 'ordinaria' && typeof SRNotaSpese !== 'undefined' && SRNotaSpese.filterVociVerbale) {
+    const voci = SRNotaSpese.filterVociVerbale(ctx.voci || [], { contesto: 'ordinaria' });
+    next = voci.length ? Object.assign({}, ctx, { voci: voci }) : null;
+  }
+  detailVerbale = next && next.voci && next.voci.length ? next : null;
   const btn = document.getElementById('detail-print-verbale');
   if (btn) btn.hidden = !detailVerbale;
 }
@@ -2147,44 +2224,173 @@ function chiudiVerbaleScope() {
   if (el) el.classList.remove('open');
 }
 
+function chiudiVerbalePrint() {
+  const el = document.getElementById('verbale-print-backdrop');
+  if (el) el.classList.remove('open');
+}
+
+function poolNoteOrdinariePerStampa(person) {
+  return (rawNoteOrdinarie || []).filter(n => !person || namesMatch(n.dipendente, person));
+}
+
+function apriVerbalePrintModal(ctx) {
+  verbalePrintCtx = ctx || null;
+  chiudiVerbaleScope();
+  if (!verbalePrintCtx || !(verbalePrintCtx.voci || []).length) {
+    showToast('Nessuna voce da stampare', 'error');
+    return;
+  }
+  const label = verbalePrintCtx.scope === 'month'
+    ? (verbalePrintCtx.meseLabel || 'tutto il mese')
+    : (verbalePrintCtx.dayLabel || 'questa giornata');
+  const ambitoEl = document.getElementById('verbale-print-ambito');
+  if (ambitoEl) {
+    ambitoEl.textContent = 'Ambito: ' + label
+      + (verbalePrintCtx.nominativo ? (' · ' + verbalePrintCtx.nominativo) : '');
+  }
+  const scCopy = document.getElementById('verbale-print-scontrini-copy');
+  if (scCopy) {
+    scCopy.textContent = verbalePrintCtx.scope === 'month'
+      ? 'Le foto dei giustificativi di rimborso di tutto il mese, una per pagina. Si apre il dialogo di stampa.'
+      : 'Le foto dei giustificativi di rimborso di questa giornata, una per pagina. Si apre il dialogo di stampa.';
+  }
+  const bd = document.getElementById('verbale-print-backdrop');
+  if (bd) bd.classList.add('open');
+}
+
 function stampaVerbaleDettaglio() {
   if (!detailVerbale || typeof SRNotaSpese === 'undefined') return;
-  if (detailVerbale.fonte === 'ordinaria' && SRNotaSpese.noteOrdinarieAmbitoVerbale) {
-    const person = detailVerbale.nominativo || '';
-    const day = detailVerbale.dayYmd || detailVerbale.meseYmd;
-    const pool = (rawNoteOrdinarie || []).filter(n => !person || namesMatch(n.dipendente, person));
-    const ambito = SRNotaSpese.noteOrdinarieAmbitoVerbale(pool, day, '');
-    if (ambito.hasOtherDays) {
-      const mese = SRNotaSpese.meseEstesoFromYmd(day) || '';
-      const body = document.getElementById('verbale-scope-body');
-      if (body) {
-        body.textContent = 'Ci sono altre note spese ordinarie di '
-          + (person || 'questo nominativo')
-          + (mese ? (' in ' + mese) : ' nello stesso mese')
-          + '. Vuoi il verbale solo per il '
-          + fmtDay(day)
-          + ' oppure per tutto il mese?';
+  if (detailVerbale.fonte !== 'ordinaria' || !SRNotaSpese.noteOrdinarieAmbitoVerbale) {
+    emettiVerbale(detailVerbale.voci);
+    return;
+  }
+  const person = detailVerbale.nominativo || '';
+  const day = detailVerbale.dayYmd || detailVerbale.meseYmd;
+  const pool = poolNoteOrdinariePerStampa(person);
+  const forVerbale = SRNotaSpese.filterVociVerbale
+    ? SRNotaSpese.filterVociVerbale(pool, { contesto: 'ordinaria' })
+    : pool;
+  const ambito = SRNotaSpese.noteOrdinarieAmbitoVerbale(forVerbale, day, '');
+  const mese = SRNotaSpese.meseEstesoFromYmd(day) || '';
+  const body = document.getElementById('verbale-scope-body');
+  if (body) {
+    body.textContent = 'Vuoi stampare solo per il '
+      + fmtDay(day)
+      + ' oppure per tutto il mese'
+      + (mese ? (' (' + mese + ')') : '')
+      + '?';
+  }
+  const bd = document.getElementById('verbale-scope-backdrop');
+  if (bd) bd.classList.add('open');
+  const dayBtn = document.getElementById('verbale-scope-day');
+  const monthBtn = document.getElementById('verbale-scope-month');
+  const baseCtx = {
+    nominativo: person,
+    dayLabel: fmtDay(day),
+    meseLabel: mese ? ('tutto il mese (' + mese + ')') : 'tutto il mese'
+  };
+  if (dayBtn) {
+    dayBtn.onclick = () => {
+      apriVerbalePrintModal(Object.assign({}, baseCtx, {
+        scope: 'day',
+        voci: ambito.dayNotes.length ? ambito.dayNotes : (detailVerbale.voci || [])
+      }));
+    };
+  }
+  if (monthBtn) {
+    monthBtn.onclick = () => {
+      apriVerbalePrintModal(Object.assign({}, baseCtx, {
+        scope: 'month',
+        voci: ambito.monthNotes.length ? ambito.monthNotes : (detailVerbale.voci || [])
+      }));
+    };
+  }
+}
+
+function stampaVerbaleScelto() {
+  if (!verbalePrintCtx || !detailVerbale) {
+    showToast('Nessun verbale da stampare', 'error');
+    return;
+  }
+  emettiVerbale(verbalePrintCtx.voci);
+}
+
+async function stampaScontriniDettaglio() {
+  if (!verbalePrintCtx || typeof SRScontrini === 'undefined' || !SRScontrini.printBundleHtml) return;
+  if (typeof SRNotaSpese === 'undefined' || !SRNotaSpese.vociConFoto) {
+    showToast('Stampa scontrini non disponibile', 'error');
+    return;
+  }
+  const printBtn = document.getElementById('verbale-scope-print-scontrini');
+  if (printBtn && printBtn.disabled) return;
+  const items = SRNotaSpese.vociConFoto(verbalePrintCtx.voci || [], { contesto: 'ordinaria' });
+  if (!items.length) {
+    showToast(verbalePrintCtx.scope === 'month'
+      ? 'Nessuna foto da stampare in questo mese'
+      : 'Nessuna foto da stampare in questa giornata', 'error');
+    return;
+  }
+  if (printBtn) printBtn.disabled = true;
+  exportAbortCtrl = (typeof AbortController === 'function')
+    ? new AbortController()
+    : { aborted: false, abort: function () { this.aborted = true; } };
+  let loaderTimer = null;
+  let loaderShown = false;
+  const showPrintLoader = (text) => {
+    loaderShown = true;
+    showExportLoader(text || 'Raccogliamo gli scontrini…');
+  };
+  loaderTimer = setTimeout(() => showPrintLoader('Raccogliamo gli scontrini…'), PRINT_SCONTRINI_LOADER_MS);
+  try {
+    const E = (typeof SRNotaSpeseExport !== 'undefined') ? SRNotaSpeseExport : null;
+    const canGas = !!(E && typeof E.fetchDriveFileViaGas === 'function');
+    const withSrc = [];
+    for (let i = 0; i < items.length; i++) {
+      if (exportAbortCtrl && exportAbortCtrl.aborted) {
+        const err = new Error('Export interrotto');
+        err.name = 'AbortError';
+        throw err;
       }
-      const bd = document.getElementById('verbale-scope-backdrop');
-      if (bd) bd.classList.add('open');
-      const dayBtn = document.getElementById('verbale-scope-day');
-      const monthBtn = document.getElementById('verbale-scope-month');
-      if (dayBtn) {
-        dayBtn.onclick = () => {
-          chiudiVerbaleScope();
-          emettiVerbale(ambito.dayNotes.length ? ambito.dayNotes : detailVerbale.voci);
-        };
+      const it = items[i];
+      const id = SRScontrini.fileIdFrom ? SRScontrini.fileIdFrom(it) : String(it.foto_id || it.fileId || '').trim();
+      if (canGas && id) {
+        if (loaderShown) showPrintLoader('File Drive ' + (i + 1) + '/' + items.length + '…');
+        try {
+          const got = await E.fetchDriveFileViaGas(id, { signal: exportAbortCtrl.signal || exportAbortCtrl });
+          const mime = String((got && got.mime) || '');
+          if (got && got.bytes && mime.indexOf('pdf') < 0) {
+            const blob = new Blob([got.bytes], { type: mime || 'image/jpeg' });
+            const url = URL.createObjectURL(blob);
+            withSrc.push(Object.assign({}, it, { printSrc: url }));
+          } else {
+            withSrc.push(it);
+          }
+        } catch (e) {
+          if (e && (e.name === 'AbortError' || /interrotto/i.test(String(e.message || e)))) throw e;
+          withSrc.push(it);
+        }
+      } else {
+        withSrc.push(it);
       }
-      if (monthBtn) {
-        monthBtn.onclick = () => {
-          chiudiVerbaleScope();
-          emettiVerbale(ambito.monthNotes);
-        };
-      }
+    }
+    let w = null;
+    try { w = window.open('', '_blank'); } catch (e) { w = null; }
+    if (!w) {
+      showToast('Consenti i popup per la stampa dei giustificativi', 'error');
       return;
     }
+    w.document.write(SRScontrini.printBundleHtml(withSrc));
+    w.document.close();
+  } catch (e) {
+    const aborted = e && (e.name === 'AbortError' || /interrotto/i.test(String(e.message || e)));
+    if (aborted) showToast('Stampa scontrini interrotta');
+    else showToast('Stampa scontrini non riuscita: ' + (e.message || e), 'error');
+  } finally {
+    if (loaderTimer) clearTimeout(loaderTimer);
+    exportAbortCtrl = null;
+    hideExportLoader();
+    if (printBtn) printBtn.disabled = false;
   }
-  emettiVerbale(detailVerbale.voci);
 }
 
 function apriDettaglioTappa(id) {
@@ -2936,15 +3142,26 @@ document.getElementById('month-close').addEventListener('click', () => {
   renderYearGrid();
 });
 document.getElementById('detail-print-verbale').addEventListener('click', stampaVerbaleDettaglio);
+document.getElementById('verbale-print-verbale').addEventListener('click', stampaVerbaleScelto);
+document.getElementById('verbale-scope-print-scontrini').addEventListener('click', stampaScontriniDettaglio);
+document.getElementById('verbale-scope-close').addEventListener('click', chiudiVerbaleScope);
+document.getElementById('verbale-print-close').addEventListener('click', chiudiVerbalePrint);
 document.getElementById('verbale-scope-backdrop').addEventListener('click', e => {
   if (e.target.id === 'verbale-scope-backdrop') chiudiVerbaleScope();
 });
+document.getElementById('verbale-print-backdrop').addEventListener('click', e => {
+  if (e.target.id === 'verbale-print-backdrop') chiudiVerbalePrint();
+});
 document.getElementById('detail-close').addEventListener('click', () => {
+  chiudiVerbaleScope();
+  chiudiVerbalePrint();
   document.getElementById('detail-backdrop').classList.remove('open');
   document.getElementById('detail-modal').classList.remove('modal-wide', 'modal-org');
 });
 document.getElementById('detail-backdrop').addEventListener('click', e => {
   if (e.target.id === 'detail-backdrop') {
+    chiudiVerbaleScope();
+    chiudiVerbalePrint();
     e.currentTarget.classList.remove('open');
     document.getElementById('detail-modal').classList.remove('modal-wide', 'modal-org');
   }
