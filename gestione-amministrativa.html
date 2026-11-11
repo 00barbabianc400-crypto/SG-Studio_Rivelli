@@ -1315,32 +1315,37 @@ function noteHannoKm(list) {
   return (list || []).some(it => typeof SRNotaSpese !== 'undefined' && SRNotaSpese.isRimborsoKm(it));
 }
 
-function eventoHaKm(ev) {
-  if (!ev || typeof SRNotaSpese === 'undefined') return false;
-  if (ev.kind === 'ordinaria') return noteHannoKm(ev.raw && ev.raw.note);
-  const tappe = ev.tappe && ev.tappe.length ? ev.tappe : (ev.raw ? [ev.raw] : []);
-  return tappe.some(t => noteHannoKm(SRNotaSpese.parseNotaSpeseJson(t.nota_spese_json)));
-}
-
 function toCalEventsOrdinarie(rows) {
   const groups = (typeof SRNotaSpese !== 'undefined' && SRNotaSpese.groupNoteOrdinarieByDay)
     ? SRNotaSpese.groupNoteOrdinarieByDay(rows)
     : [];
-  return groups.map(g => {
+  const out = [];
+  groups.forEach(g => {
     const person = String(g.person || '').trim()
       || String((g.note && g.note[0] && g.note[0].dipendente) || '').trim();
-    return {
-      kind: 'ordinaria',
-      uid: 'ord-' + g.day + '-' + (person || 'roma'),
+    const note = g.note || [];
+    const km = note.filter(n => noteHannoKm([n]));
+    const spese = note.filter(n => !noteHannoKm([n]));
+    const base = {
       id: g.day + '|' + person,
       data_da: g.day,
       data_a: g.day,
       person: person,
       people: person ? [person] : [],
-      label: person ? cognomeOperatore(person) : 'Roma',
-      raw: { data: g.day, person: person, note: g.note }
+      label: person ? cognomeOperatore(person) : 'Roma'
     };
+    if (spese.length) {
+      out.push(Object.assign({ kind: 'ordinaria', uid: 'ord-' + g.day + '-' + (person || 'roma') }, base, {
+        raw: { data: g.day, person: person, note: spese }
+      }));
+    }
+    if (km.length) {
+      out.push(Object.assign({ kind: 'km', uid: 'km-' + g.day + '-' + (person || 'roma') }, base, {
+        raw: { data: g.day, person: person, note: km }
+      }));
+    }
   });
+  return out;
 }
 
 function toCalEventMacchina(p) {
@@ -1636,14 +1641,18 @@ function renderMonthCalendar(month) {
       const top = lane * (barH + barGap);
       const col = colorPerson(ev.person);
       const rCls = (seg.roundL ? ' round-l' : '') + (seg.roundR ? ' round-r' : '');
-      const ico = (ev.kind === 'ordinaria'
-        ? ICON_NS
-        : (ev.kind === 'macchina'
-          ? ICON_CAR
-          : (ev.kind === 'macchina_trasferta' ? ICON_CAR + ICON_ROUTE : ICON_ROUTE)))
-        + (eventoHaKm(ev) ? ICON_KM : '');
+      const ico = ev.kind === 'km'
+        ? ICON_KM
+        : (ev.kind === 'ordinaria'
+          ? ICON_NS
+          : (ev.kind === 'macchina'
+            ? ICON_CAR
+            : (ev.kind === 'macchina_trasferta' ? ICON_CAR + ICON_ROUTE : ICON_ROUTE)));
       let tip;
-      if (ev.kind === 'ordinaria') {
+      if (ev.kind === 'km') {
+        const n = (ev.raw && ev.raw.note && ev.raw.note.length) || 0;
+        tip = (ev.label || 'KM') + ' · rimborso chilometrico · ' + n;
+      } else if (ev.kind === 'ordinaria') {
         const n = (ev.raw && ev.raw.note && ev.raw.note.length) || 0;
         tip = (ev.label || 'Roma') + ' · ' + n + (n === 1 ? ' nota' : ' note');
       } else if (ev.kind === 'macchina') {
@@ -1669,7 +1678,7 @@ function renderMonthCalendar(month) {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       if (btn.dataset.kind === 'macchina') apriDettaglioMacchina(btn.dataset.id);
-      else if (btn.dataset.kind === 'ordinaria') apriDettaglioOrdinaria(btn.dataset.id);
+      else if (btn.dataset.kind === 'ordinaria' || btn.dataset.kind === 'km') apriDettaglioOrdinaria(btn.dataset.id);
       else apriDettaglioTappa(btn.dataset.id);
     });
   });
