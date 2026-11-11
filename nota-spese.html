@@ -277,7 +277,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
     <div class="modal-head"><h2 id="km-pick-title">A quale rimborso?</h2></div>
     <div class="modal-body" id="km-pick-list"></div>
     <div class="modal-foot">
-      <button type="button" class="soft-btn" id="km-pick-close">Chiudi</button>
+      <button type="button" class="btn btn-chiudi" id="km-pick-close">Chiudi</button>
     </div>
   </div>
 </div>
@@ -1014,8 +1014,11 @@ function chiediScontrinoKm() {
   box.innerHTML = aperti.map(it => {
     const km = String(it.km).replace('.', ',');
     const quando = it.created_at ? new Date(it.created_at).toLocaleString('it-IT') : '';
+    const carta = (SRNotaSpese.labelCarta && SRNotaSpese.labelCarta(it)) || '';
     return '<button type="button" class="list-item" data-km-id="' + esc(it.id) + '">'
+      + '<span class="choice-ico" style="width:34px;height:34px;border-radius:9px">' + CHOICE_ICONS.aziendale + '</span>'
       + '<span class="list-item-main">' + esc(km) + ' km'
+      + (carta ? ' · ' + esc(carta) : '')
       + (it.cliente ? ' · ' + esc(it.cliente) : '')
       + (quando ? '<br><span style="font-weight:500;color:var(--text-3)">' + esc(quando) + '</span>' : '')
       + '</span></button>';

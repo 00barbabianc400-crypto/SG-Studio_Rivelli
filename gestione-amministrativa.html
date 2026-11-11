@@ -165,7 +165,7 @@ body {
 .month-panel-head h3 { font-size: 16px; font-weight: 700; }
 
 .oc-cal {
-  --oc-week-min: 110px; --oc-day-num: 14px; --oc-bar-h: 22px; --oc-bar-top: 34px;
+  --oc-week-min: 124px; --oc-day-num: 14px; --oc-bar-h: 30px; --oc-bar-top: 34px;
   border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; background: var(--surface);
 }
 .oc-wd-head {
@@ -204,8 +204,8 @@ body {
 }
 .oc-bar {
   position: absolute; height: var(--oc-bar-h); border: none; cursor: pointer;
-  font-size: 11px; font-weight: 600; color: #fff; font-family: inherit;
-  display: flex; align-items: center; padding: 0 6px 0 7px; overflow: hidden;
+  font-size: 12px; font-weight: 600; color: #fff; font-family: inherit;
+  display: flex; align-items: center; padding: 0 8px 0 8px; overflow: hidden;
   pointer-events: auto;
   box-shadow: 0 2px 5px rgba(17, 24, 39, .16); transition: transform .12s, box-shadow .12s;
 }
@@ -213,9 +213,13 @@ body {
   display: flex; align-items: center; gap: 5px; min-width: 0; width: 100%;
 }
 .oc-bar-ico {
-  width: 14px; height: 14px; flex-shrink: 0;
+  width: 20px; height: 20px; flex-shrink: 0;
   stroke: #fff; fill: none; stroke-width: 1.75;
   stroke-linecap: round; stroke-linejoin: round;
+}
+.oc-bar-ico text {
+  stroke: none; fill: #fff; font-size: 11px; font-weight: 700;
+  font-family: "DM Sans", sans-serif;
 }
 .oc-bar-label {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -232,9 +236,13 @@ body {
   font-size: 13px; color: var(--muted); font-weight: 500;
 }
 .legend-item svg {
-  width: 16px; height: 16px; flex-shrink: 0;
+  width: 20px; height: 20px; flex-shrink: 0;
   stroke: var(--accent); fill: none; stroke-width: 1.75;
   stroke-linecap: round; stroke-linejoin: round;
+}
+.legend-item svg text {
+  stroke: none; fill: var(--accent); font-size: 11px; font-weight: 700;
+  font-family: "DM Sans", sans-serif;
 }
 .oc-bar.round-l { border-radius: 6px 0 0 6px; }
 .oc-bar.round-r { border-radius: 0 6px 6px 0; }
@@ -816,7 +824,7 @@ body {
           Nota spese Roma e dintorni
         </span>
         <span class="legend-item">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><text x="12" y="15.5" text-anchor="middle" font-size="7" font-weight="700" fill="currentColor" stroke="none">KM</text></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><text x="12" y="15.6" text-anchor="middle">KM</text></svg>
           Rimborso chilometrico
         </span>
       </div>
@@ -1052,7 +1060,7 @@ const OP_PALETTE = ['#2563eb','#0d9488','#7c3aed','#b45309','#db2777','#0891b2',
 const ICON_CAR = '<svg class="oc-bar-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16l1.5-6h11L19 16"/><path d="M4 16h16v2a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H10a2 2 0 0 1-4 0H5a1 1 0 0 1-1-1v-2z"/><path d="M7.5 10l1-3h7l1 3"/></svg>';
 const ICON_ROUTE = '<svg class="oc-bar-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8.2 16.2c3.5-2.5 4.1-7.5 7.8-10.2"/></svg>';
 const ICON_NS = '<svg class="oc-bar-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12v17l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3.5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>';
-const ICON_KM = '<svg class="oc-bar-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><text x="12" y="15.5" text-anchor="middle" font-size="7" font-weight="700" fill="currentColor" stroke="none">KM</text></svg>';
+const ICON_KM = '<svg class="oc-bar-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><text x="12" y="15.6" text-anchor="middle">KM</text></svg>';
 
 let rawPrenotazioni = [];
 let rawTappe = [];
@@ -1594,8 +1602,8 @@ function renderMonthCalendar(month) {
   const inMonth = calendarEvents.filter(ev => rangesOverlap(ev.data_da, ev.data_a, monthStart, monthEnd));
   const weeks = buildMonthWeeks(viewYear, month);
   const todayIso = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
-  const barH = 22;
-  const barGap = 4;
+  const barH = 30;
+  const barGap = 6;
 
   let wdHead = WD.map((w, i) => `<span class="${i >= 5 ? 'is-wknd' : ''}">${w}</span>`).join('');
   let weeksHtml = '';
