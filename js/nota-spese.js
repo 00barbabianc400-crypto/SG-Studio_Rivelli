@@ -204,7 +204,9 @@
   const CARTA_AZIENDALE_OPZIONI = [
     { id: '106', label: 'Finisce con 106' },
     { id: '304', label: 'Finisce con 304' },
-    { id: '2659', label: 'Bancomat · 2659', kind: 'bancomat' }
+    { id: '2659', label: 'Bancomat · 2659', kind: 'bancomat' },
+    { id: 'DKV', label: 'Carta benzina · DKV', kind: 'benzina' },
+    { id: 'Q8', label: 'Carta benzina · Q8', kind: 'benzina' }
   ];
   const CARTA_AZIENDALE_LAST4 = CARTA_AZIENDALE_OPZIONI.map(o => o.id);
   const CARTI = [
@@ -212,19 +214,28 @@
     { id: 'personale', label: 'Carta personale' }
   ];
 
+  function tokenCartaAziendale(raw) {
+    const s = String(raw || '').trim().toUpperCase();
+    if (!s) return '';
+    const digits = s.replace(/\D/g, '');
+    if (digits && CARTA_AZIENDALE_LAST4.indexOf(digits) >= 0) return digits;
+    if (CARTA_AZIENDALE_LAST4.indexOf(s) >= 0) return s;
+    return '';
+  }
+
   function normalizeCarta(incoming, opts) {
     const contesto = opts && opts.contesto;
-    if (!incoming || isRimborsoKm(incoming) || String(incoming.categoria || '') === 'rimborso_km') {
-      return { carta: '', carta_last4: '' };
+    if (incoming && (isRimborsoKm(incoming) || String(incoming.categoria || '') === 'rimborso_km')) {
+      const kmToken = tokenCartaAziendale(incoming.carta_last4);
+      return { carta: kmToken ? 'aziendale' : '', carta_last4: kmToken };
     }
-    const raw = String(incoming.carta || '').trim().toLowerCase();
+    const raw = String(incoming && incoming.carta || '').trim().toLowerCase();
     let carta = (raw === 'aziendale' || raw === 'personale') ? raw : '';
     if (!carta) {
       if (contesto === 'trasferta') carta = 'aziendale';
       else if (contesto === 'ordinaria') carta = 'personale';
     }
-    let last4 = String(incoming.carta_last4 || '').replace(/\D/g, '');
-    if (carta !== 'aziendale' || CARTA_AZIENDALE_LAST4.indexOf(last4) < 0) last4 = '';
+    const last4 = carta === 'aziendale' ? tokenCartaAziendale(incoming && incoming.carta_last4) : '';
     return { carta: carta, carta_last4: last4 };
   }
 
@@ -250,9 +261,38 @@
     return filterVociVerbale(voci, opts).length > 0;
   }
 
+  function rimborsoHaFoto(it) {
+    const id = String(it && (it.foto_id || it.fileId) || '').trim();
+    const url = String(it && (it.foto_url || it.url) || '').trim();
+    return !!(id || url);
+  }
+
+  function rimborsiKmAperti(list) {
+    return (list || []).filter(it => isRimborsoKm(it) && !rimborsoHaFoto(it));
+  }
+
+  function attachFotoRimborso(list, notaId, foto) {
+    const id = String(notaId || '').trim();
+    const src = Array.isArray(list) ? list.slice() : [];
+    const idx = src.findIndex(it => String(it && it.id) === id);
+    if (idx < 0) throw new Error('Rimborso non trovato');
+    if (!isRimborsoKm(src[idx])) throw new Error('Non è un rimborso chilometrico');
+    if (rimborsoHaFoto(src[idx])) throw new Error('Scontrino già associato');
+    const fotoId = String(foto && (foto.foto_id || foto.fileId) || '').trim();
+    const fotoUrl = String(foto && (foto.foto_url || foto.url) || '').trim();
+    if (!fotoId && !fotoUrl) throw new Error('Foto mancante');
+    src[idx] = Object.assign({}, src[idx], {
+      foto_id: fotoId,
+      foto_url: fotoUrl,
+      mime: String((foto && foto.mime) || 'image/jpeg')
+    });
+    return src;
+  }
+
   function vociConFoto(voci, opts) {
     return filterVociVerbale(voci, opts).filter(it => {
-      if (!it || isRimborsoKm(it)) return false;
+      if (!it) return false;
+      if (isRimborsoKm(it)) return rimborsoHaFoto(it);
       const id = String(it.foto_id || it.fileId || '').trim();
       const url = String(it.foto_url || it.url || '').trim();
       return !!(id || url);
@@ -260,7 +300,7 @@
   }
 
   function opzioneCartaAziendale(digits) {
-    const d = String(digits || '').replace(/\D/g, '');
+    const d = tokenCartaAziendale(digits);
     let i = 0;
     for (; i < CARTA_AZIENDALE_OPZIONI.length; i++) {
       if (CARTA_AZIENDALE_OPZIONI[i].id === d) return CARTA_AZIENDALE_OPZIONI[i];
@@ -271,9 +311,9 @@
   function labelCarta(it) {
     const c = String(it && it.carta || '').trim().toLowerCase();
     if (c === 'aziendale') {
-      const t = String(it.carta_last4 || '').replace(/\D/g, '');
+      const t = tokenCartaAziendale(it.carta_last4);
       const opt = opzioneCartaAziendale(t);
-      if (opt && opt.kind === 'bancomat') return opt.label;
+      if (opt && (opt.kind === 'bancomat' || opt.kind === 'benzina')) return opt.label;
       return t ? ('Carta aziendale · ****' + t) : 'Carta aziendale';
     }
     if (c === 'personale') return 'Carta personale';
@@ -472,7 +512,7 @@
 
   function requiresCliente(categoria) {
     const cat = String(categoria || '').trim();
-    return cat === 'cibi_bevande' || cat === 'altro' || cat === 'mezzi' || cat === 'rimborso_km' || cat === 'parcheggio';
+    return cat === 'cibi_bevande' || cat === 'altro' || cat === 'mezzi' || cat === 'rimborso_km' || cat === 'parcheggio' || cat === 'pedaggio';
   }
 
   function requiresSede(categoria) {
@@ -536,6 +576,8 @@
 
     if (categoria === 'rimborso_km') {
       const km = parseKm(incoming.km);
+      const kmCarta = tokenCartaAziendale(incoming.carta_last4);
+      if (!kmCarta) throw new Error('Carta aziendale obbligatoria');
       list.push({
         id: incoming.id || uid(),
         created_at: incoming.created_at || new Date().toISOString(),
@@ -551,8 +593,8 @@
         foto_url: '',
         foto_id: '',
         mime: '',
-        carta: '',
-        carta_last4: ''
+        carta: 'aziendale',
+        carta_last4: kmCarta
       });
       return list;
     }
@@ -566,7 +608,7 @@
       throw new Error('Carta non valida');
     }
     if (rawCarta === 'aziendale') {
-      const t = String(incoming.carta_last4 || '').replace(/\D/g, '');
+      const t = tokenCartaAziendale(incoming.carta_last4);
       if (CARTA_AZIENDALE_LAST4.length && CARTA_AZIENDALE_LAST4.indexOf(t) < 0) {
         throw new Error('Ultime 4 cifre non valide');
       }
@@ -583,7 +625,7 @@
     } else if (categoria === 'mezzi') {
       pasto = null;
       if (!mezzo) throw new Error('Mezzo obbligatorio');
-    } else if (categoria === 'altro' || categoria === 'parcheggio') {
+    } else if (categoria === 'altro' || categoria === 'parcheggio' || categoria === 'pedaggio') {
       pasto = null;
       mezzo = null;
     } else {
@@ -963,6 +1005,7 @@
     { id: 'cibi_bevande', label: 'Cibi e bevande' },
     { id: 'mezzi', label: 'Mezzi' },
     { id: 'parcheggio', label: 'Parcheggio' },
+    { id: 'pedaggio', label: 'Pedaggio' },
     { id: 'altro', label: 'Altro' },
     { id: 'rimborso_km', label: 'Rimborso chilometrico' }
   ];
@@ -996,6 +1039,7 @@
     parseKm,
     isRimborsoKm,
     CARTA_AZIENDALE_LAST4,
+    tokenCartaAziendale,
     CARTA_AZIENDALE_OPZIONI,
     CARTI,
     normalizeCarta,
@@ -1003,6 +1047,9 @@
     filterVociVerbale,
     haVociVerbale,
     vociConFoto,
+    rimborsoHaFoto,
+    rimborsiKmAperti,
+    attachFotoRimborso,
     opzioneCartaAziendale,
     labelCarta,
     KM_EURO_RATE,

@@ -239,11 +239,11 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 </div>
 <div class="topbar">
   <a class="topbar-home" href="index.html">← Home</a>
-  <span class="topbar-name">Nota spese</span>
+  <span class="topbar-name" id="ns-topbar-name">Nota spese</span>
 </div>
 
 <main class="shell">
-  <h1 class="page-title">Nota spese</h1>
+  <h1 class="page-title" id="ns-page-title">Nota spese</h1>
   <p class="page-sub" id="ns-page-sub">Giustificativi Roma e dintorni.</p>
 
   <div id="panel">
@@ -271,6 +271,16 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
     </div>
   </div>
 </main>
+
+<div class="modal-backdrop" id="km-pick-backdrop" aria-hidden="true">
+  <div class="modal-sc" role="dialog" aria-modal="true" aria-labelledby="km-pick-title">
+    <div class="modal-head"><h2 id="km-pick-title">A quale rimborso?</h2></div>
+    <div class="modal-body" id="km-pick-list"></div>
+    <div class="modal-foot">
+      <button type="button" class="soft-btn" id="km-pick-close">Chiudi</button>
+    </div>
+  </div>
+</div>
 
 <div class="toast" id="toast" role="status"></div>
 <div class="app-loader is-hidden" id="app-loader" aria-live="polite" aria-busy="false">
@@ -346,11 +356,13 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js?v=86"></script>
-<script src="js/nota-spese.js?v=111"></script>
+<script src="js/nota-spese.js?v=114"></script>
 <script src="js/upload-file-guard.js?v=82"></script>
 <script src="js/scontrini.js?v=43"></script>
 <script src="js/auth.js?v=85"></script>
 <script>
+const vistaKm = new URLSearchParams(location.search).get('vista') === 'km';
+let pendingKmId = null;
 const state = {
   phase: 'tipo', // tipo | carta | carta-last4 | dettaglio | km | km-confirm
   dest: 'ordinaria', // ordinaria | tappa
@@ -414,6 +426,7 @@ const CHOICE_ICONS = {
   autobus: svgIcon('<rect x="4" y="4" width="16" height="12" rx="2"/><path d="M4 10h16M8 16v2M16 16v2"/><circle cx="8" cy="14" r="1"/><circle cx="16" cy="14" r="1"/>'),
   benzina: svgIcon('<path d="M5 21V7l2-4h8l2 4v14"/><path d="M5 11h12"/><path d="M17 11l3 2v5a1.5 1.5 0 0 1-3 0"/><path d="M9 15h4"/>'),
   parcheggio: svgIcon('<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 7h4.2a3.2 3.2 0 0 1 0 6.4H9z"/><path d="M9 7v10"/>'),
+  pedaggio: svgIcon('<path d="M5 21V5"/><path d="M5 8h13"/><path d="M15 8v3.5"/><rect x="8" y="12" width="7" height="9" rx="1"/><path d="M10.5 16h2"/>'),
   scontrino: svgIcon('<path d="M6 3.5h12v17l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3.5z"/><path d="M9 8h6M9 12h6M9 16h4"/>'),
   fattura: svgIcon('<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M10 12h5M10 16h5M10 8h2"/>'),
   rimborso_km: svgIcon('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
@@ -574,6 +587,22 @@ function renderChipBoard() {
     }).join('') + '</div>';
   }
 
+  if (vistaKm) {
+    board.innerHTML =
+      '<div class="chip-section">'
+      + '<div class="chip-title"><span class="choice-ico">' + CHOICE_ICONS.rimborso_km + '</span>Rimborso chilometrico personale</div>'
+      + '<div class="chip-row"><button type="button" class="chip" id="chip-km">'
+      + '<span class="chip-ico">' + CHOICE_ICONS.rimborso_km + '</span>Chilometri</button>'
+      + '<button type="button" class="chip" id="chip-km-foto">'
+      + '<span class="chip-ico">' + CHOICE_ICONS.scontrino + '</span>Allega scontrino</button></div>'
+      + '</div>';
+    document.getElementById('chip-km').addEventListener('click', () => {
+      startCompose({ categoria: 'rimborso_km' });
+    });
+    document.getElementById('chip-km-foto').addEventListener('click', chiediScontrinoKm);
+    return;
+  }
+
   board.innerHTML =
     '<div class="chip-section">'
     + '<div class="chip-title"><span class="choice-ico">' + CHOICE_ICONS.cibi_bevande + '</span>Cibi e bevande</div>'
@@ -589,14 +618,14 @@ function renderChipBoard() {
     + '<span class="chip-ico">' + CHOICE_ICONS.parcheggio + '</span>Parcheggio</button></div>'
     + '</div>'
     + '<div class="chip-section">'
+    + '<div class="chip-title"><span class="choice-ico">' + CHOICE_ICONS.pedaggio + '</span>Pedaggio</div>'
+    + '<div class="chip-row"><button type="button" class="chip" id="chip-pedaggio">'
+    + '<span class="chip-ico">' + CHOICE_ICONS.pedaggio + '</span>Pedaggio</button></div>'
+    + '</div>'
+    + '<div class="chip-section">'
     + '<div class="chip-title"><span class="choice-ico">' + CHOICE_ICONS.altro + '</span>Altro</div>'
     + '<div class="chip-row"><button type="button" class="chip" id="chip-altro">'
     + '<span class="chip-ico">' + CHOICE_ICONS.altro + '</span>Altro</button></div>'
-    + '</div>'
-    + '<div class="chip-section">'
-    + '<div class="chip-title"><span class="choice-ico">' + CHOICE_ICONS.rimborso_km + '</span>Rimborso chilometrico</div>'
-    + '<div class="chip-row"><button type="button" class="chip" id="chip-km">'
-    + '<span class="chip-ico">' + CHOICE_ICONS.rimborso_km + '</span>Chilometri</button></div>'
     + '</div>';
 
   board.querySelectorAll('.chip-section')[0].querySelectorAll('.chip').forEach(btn => {
@@ -614,13 +643,13 @@ function renderChipBoard() {
   document.getElementById('chip-parcheggio').addEventListener('click', () => {
     startCompose({ categoria: 'parcheggio' });
   });
+  document.getElementById('chip-pedaggio').addEventListener('click', () => {
+    startCompose({ categoria: 'pedaggio' });
+  });
   document.getElementById('chip-altro').addEventListener('click', () => {
     document.getElementById('altro-dettaglio').value = '';
     openBackdrop('altro-backdrop');
     setTimeout(() => document.getElementById('altro-dettaglio').focus(), 50);
-  });
-  document.getElementById('chip-km').addEventListener('click', () => {
-    startCompose({ categoria: 'rimborso_km' });
   });
 }
 
@@ -691,6 +720,24 @@ function renderCompose() {
       btn.addEventListener('click', () => {
         state.cartaLast4 = btn.dataset.id;
         state.phase = 'dettaglio';
+        renderCompose();
+      });
+    });
+    return;
+  }
+
+  if (state.phase === 'km-carta') {
+    document.getElementById('compose-title').textContent = 'Carta aziendale';
+    back.textContent = 'Indietro';
+    next.style.display = 'none';
+    state.carta = 'aziendale';
+    const tails = (SRNotaSpese && SRNotaSpese.CARTA_AZIENDALE_OPZIONI) || [];
+    body.innerHTML = '<div class="choice-grid">' + renderChoices(tails, state.cartaLast4) + '</div>';
+    body.querySelectorAll('.choice-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.carta = 'aziendale';
+        state.cartaLast4 = btn.dataset.id;
+        state.phase = 'km-confirm';
         renderCompose();
       });
     });
@@ -833,12 +880,26 @@ function fillLista(boxId, list, emptyMsg) {
   });
 }
 
+function noteDellaVista(list) {
+  return (list || []).filter(it => {
+    const km = SRNotaSpese.isRimborsoKm && SRNotaSpese.isRimborsoKm(it);
+    return vistaKm ? !!km : !km;
+  });
+}
+
+function listaCorrente() {
+  if (isDestTappa() && state.tappa) return SRNotaSpese.parseNotaSpeseJson(state.tappa.nota_spese_json);
+  return state.ordinarie.slice();
+}
+
 function renderLista() {
   const tappaList = state.tappa
-    ? SRNotaSpese.parseNotaSpeseJson(state.tappa.nota_spese_json)
+    ? noteDellaVista(SRNotaSpese.parseNotaSpeseJson(state.tappa.nota_spese_json))
     : [];
-  fillLista('lista-tappa', tappaList, 'Nessun giustificativo su questa tappa.');
-  fillLista('lista-ordinaria', state.ordinarie.slice(), 'Nessun giustificativo su Roma e dintorni.');
+  const vuotoTappa = vistaKm ? 'Nessun rimborso chilometrico su questa tappa.' : 'Nessun giustificativo su questa tappa.';
+  const vuotoRoma = vistaKm ? 'Nessun rimborso chilometrico su Roma e dintorni.' : 'Nessun giustificativo su Roma e dintorni.';
+  fillLista('lista-tappa', tappaList, vuotoTappa);
+  fillLista('lista-ordinaria', noteDellaVista(state.ordinarie.slice()), vuotoRoma);
 }
 
 function apriNotaViewer(it, pool) {
@@ -850,7 +911,7 @@ function apriNotaViewer(it, pool) {
     img.style.display = 'none';
     SRScontrini.syncFotoZoomWrap(document.getElementById('ns-view-foto'), img);
   };
-  if (isKm) {
+  if (isKm && !(SRNotaSpese.rimborsoHaFoto && SRNotaSpese.rimborsoHaFoto(it))) {
     img.style.display = 'none';
     img.removeAttribute('src');
   } else {
@@ -907,7 +968,7 @@ function apriNotaViewer(it, pool) {
     : '—';
   const a = document.getElementById('ns-view-download');
   const printBtn = document.getElementById('ns-view-print');
-  if (isKm) {
+  if (isKm && !(SRNotaSpese.rimborsoHaFoto && SRNotaSpese.rimborsoHaFoto(it))) {
     a.classList.add('hidden');
     printBtn.classList.add('hidden');
   } else {
@@ -938,10 +999,101 @@ function readFile(file) {
   });
 }
 
+function chiediScontrinoKm() {
+  const aperti = SRNotaSpese.rimborsiKmAperti(listaCorrente());
+  if (!aperti.length) {
+    toast('Nessun rimborso aperto senza scontrino', 'err');
+    return;
+  }
+  if (aperti.length === 1) {
+    pendingKmId = String(aperti[0].id);
+    document.getElementById('file-camera').click();
+    return;
+  }
+  const box = document.getElementById('km-pick-list');
+  box.innerHTML = aperti.map(it => {
+    const km = String(it.km).replace('.', ',');
+    const quando = it.created_at ? new Date(it.created_at).toLocaleString('it-IT') : '';
+    return '<button type="button" class="list-item" data-km-id="' + esc(it.id) + '">'
+      + '<span class="list-item-main">' + esc(km) + ' km'
+      + (it.cliente ? ' · ' + esc(it.cliente) : '')
+      + (quando ? '<br><span style="font-weight:500;color:var(--text-3)">' + esc(quando) + '</span>' : '')
+      + '</span></button>';
+  }).join('');
+  box.querySelectorAll('[data-km-id]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      pendingKmId = btn.getAttribute('data-km-id');
+      closeBackdrop('km-pick-backdrop');
+      document.getElementById('file-camera').click();
+    });
+  });
+  openBackdrop('km-pick-backdrop');
+}
+
+async function caricaScontrinoKm(notaId, dataUrl, mime) {
+  const nota = listaCorrente().find(it => String(it.id) === String(notaId));
+  if (!nota) return toast('Rimborso non trovato', 'err');
+  const u = SRAuth.getUser() || {};
+  const ordinaria = !isDestTappa();
+  showLoader('Caricamento foto su Drive…');
+  try {
+    const up = await postGoogleScript(ordinaria
+      ? { action: 'uploadNotaOrdinaria', photo: dataUrl, email: u.email || '' }
+      : {
+        action: 'uploadNotaSpesa',
+        photo: dataUrl,
+        email: u.email || '',
+        trasferta_id: String(state.tappa.trasferta_id || ''),
+        tappa_numero: String(state.tappa.tappa_numero || '')
+      });
+    showLoader('Salvataggio in archivio…');
+    const resp = await SRAuth.fetch(SR_CONFIG.WEBHOOK_APPEND_NOTA_SPESA, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'attach_foto_km',
+        fonte: ordinaria ? 'ordinaria' : 'trasferta',
+        id: ordinaria ? undefined : Number(state.tappa.id),
+        nota_id: String(nota.id),
+        foto_id: up.fileId,
+        foto_url: up.url,
+        mime: up.mime || mime
+      })
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.ok === false || data.action === 'error') {
+      throw new Error(data.message || ('Associazione foto fallita: ' + resp.status));
+    }
+    if (!ordinaria) {
+      const json = data.nota_spese_json || SRNotaSpese.stringify(
+        SRNotaSpese.attachFotoRimborso(SRNotaSpese.parseNotaSpeseJson(state.tappa.nota_spese_json), nota.id, {
+          foto_id: up.fileId,
+          foto_url: up.url,
+          mime: up.mime || mime
+        })
+      );
+      SRAuth.updateTappaNotaSpese(state.tappa.id, json, data.note);
+      const refreshed = SRAuth.getTrasferteTappe().find(r => Number(r.id) === Number(state.tappa.id));
+      if (refreshed) state.tappa = refreshed;
+    } else {
+      await caricaOrdinaria();
+    }
+    renderLista();
+    hideLoader();
+    toast('Scontrino associato al rimborso', 'ok');
+  } catch (e) {
+    hideLoader();
+    toast(e.message || String(e), 'err');
+  }
+}
+
 async function onFile(input) {
   const file = input.files && input.files[0];
   input.value = '';
-  if (!file) return;
+  if (!file) {
+    pendingKmId = null;
+    return;
+  }
   const G = window.SRUploadGuard;
   const meta = G ? G.inspectFile(file, 'image') : null;
   if (meta && !meta.ok) return toast(meta.message || 'Solo immagini', 'err');
@@ -949,7 +1101,14 @@ async function onFile(input) {
   const dataUrl = await readFile(file);
   const body = G && G.inspectDataUrl(dataUrl, 'image');
   if (body && !body.ok) return toast(body.message || 'Immagine non valida', 'err');
-  state.photo = { dataUrl, mime: (body && body.mime) || file.type || 'image/jpeg' };
+  const mime = (body && body.mime) || file.type || 'image/jpeg';
+  if (pendingKmId) {
+    const id = pendingKmId;
+    pendingKmId = null;
+    await caricaScontrinoKm(id, dataUrl, mime);
+    return;
+  }
+  state.photo = { dataUrl, mime };
   if (state.phase === 'dettaglio') renderCompose();
 }
 
@@ -1013,13 +1172,16 @@ async function salvaKm() {
     return toast('Inserisci un numero di km maggiore di 0', 'err');
   }
   if (!readClienteSedeOrToast()) return;
+  if (!state.cartaLast4) return toast('Scegli la carta aziendale', 'err');
   const item = {
     id: SRNotaSpese.uid(),
     categoria: 'rimborso_km',
     km: state.km,
     dettaglio: SRNotaSpese.normalizeDettaglio('rimborso_km', state.dettaglio),
     cliente: state.cliente,
-    sede: state.sede
+    sede: state.sede,
+    carta: 'aziendale',
+    carta_last4: state.cartaLast4
   };
   if (!isDestTappa()) {
     showLoader('Salvataggio in archivio…');
@@ -1150,6 +1312,7 @@ async function salva() {
   }
 }
 
+document.getElementById('km-pick-close').addEventListener('click', () => closeBackdrop('km-pick-backdrop'));
 document.getElementById('file-camera').addEventListener('change', e => onFile(e.target));
 document.getElementById('file-gallery').addEventListener('change', e => onFile(e.target));
 
@@ -1166,7 +1329,13 @@ document.getElementById('altro-backdrop').addEventListener('click', e => {
 
 document.getElementById('compose-back').addEventListener('click', () => {
   if (state.phase === 'km-confirm') {
+    state.phase = 'km-carta';
+    renderCompose();
+    return;
+  }
+  if (state.phase === 'km-carta') {
     state.phase = 'km';
+    state.cartaLast4 = '';
     renderCompose();
     return;
   }
@@ -1195,7 +1364,9 @@ document.getElementById('compose-next').addEventListener('click', () => {
   if (state.phase === 'km') {
     try { SRNotaSpese.parseKm(state.km); }
     catch { return toast('Inserisci i chilometri', 'err'); }
-    state.phase = 'km-confirm';
+    state.carta = 'aziendale';
+    state.cartaLast4 = '';
+    state.phase = 'km-carta';
     renderCompose();
     return;
   }
@@ -1253,6 +1424,18 @@ document.querySelectorAll('#dest-tabs .dest-tab').forEach(btn => {
     if (!SRAuth.canAccessHubApp('nota_spese')) {
       location.replace('index.html');
       return;
+    }
+    if (vistaKm) {
+      document.title = 'Rimborso chilometrico — Studio Rivelli';
+      document.getElementById('ns-topbar-name').textContent = 'Rimborso chilometrico';
+      document.getElementById('ns-page-title').textContent = 'Rimborso chilometrico personale';
+      document.getElementById('ns-page-sub').textContent = 'Chilometri e scontrino benzina, separati dalla nota spese.';
+      const step = document.querySelector('#chip-card .step-label');
+      if (step) step.textContent = 'Nuovo rimborso';
+      const labT = document.querySelector('#card-lista-tappa .step-label');
+      const labO = document.querySelector('#card-lista-ordinaria .step-label');
+      if (labT) labT.textContent = 'Rimborsi · tappa';
+      if (labO) labO.textContent = 'Rimborsi · Roma e dintorni';
     }
     let tappe = SRAuth.getTrasferteTappe();
     let tappa = SRNotaSpese.tappaAttuale(tappe);

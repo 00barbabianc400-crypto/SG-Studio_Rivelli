@@ -391,11 +391,13 @@
 
   function cartaUtilizzataOf(it) {
     const N = NS();
-    if (N && typeof N.isRimborsoKm === 'function' && N.isRimborsoKm(it)) return '';
     const c = String(it && it.carta || '').trim().toLowerCase();
+    const token = N && typeof N.tokenCartaAziendale === 'function'
+      ? N.tokenCartaAziendale(it && it.carta_last4)
+      : String(it && it.carta_last4 || '').replace(/\D/g, '');
+    if (N && typeof N.isRimborsoKm === 'function' && N.isRimborsoKm(it)) return token;
     if (c === 'personale') return '';
-    const d = String(it && it.carta_last4 || '').replace(/\D/g, '');
-    return c === 'aziendale' && d ? d : '';
+    return c === 'aziendale' && token ? token : '';
   }
 
   function sommePerCarta(tappe) {

@@ -815,6 +815,10 @@ body {
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12v17l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3.5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
           Nota spese Roma e dintorni
         </span>
+        <span class="legend-item">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><text x="12" y="15.5" text-anchor="middle" font-size="7" font-weight="700" fill="currentColor" stroke="none">KM</text></svg>
+          Rimborso chilometrico
+        </span>
       </div>
       <div class="year-nav">
         <h2 id="year-label">—</h2>
@@ -1032,9 +1036,9 @@ body {
 <script src="js/auth.js"></script>
 <script src="js/upload-file-guard.js?v=82"></script>
 <script src="js/scontrini.js?v=43"></script>
-  <script src="js/nota-spese.js?v=111"></script>
+  <script src="js/nota-spese.js?v=114"></script>
   <script src="assets/vendor/exceljs.min.js"></script>
-  <script src="js/nota-spese-export.js?v=98"></script>
+  <script src="js/nota-spese-export.js?v=99"></script>
   <script src="js/servizi-tappa.js?v=58"></script>
   <script src="js/slot-auto-trasferta.js?v=75"></script>
 <script>
@@ -1048,6 +1052,7 @@ const OP_PALETTE = ['#2563eb','#0d9488','#7c3aed','#b45309','#db2777','#0891b2',
 const ICON_CAR = '<svg class="oc-bar-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16l1.5-6h11L19 16"/><path d="M4 16h16v2a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H10a2 2 0 0 1-4 0H5a1 1 0 0 1-1-1v-2z"/><path d="M7.5 10l1-3h7l1 3"/></svg>';
 const ICON_ROUTE = '<svg class="oc-bar-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8.2 16.2c3.5-2.5 4.1-7.5 7.8-10.2"/></svg>';
 const ICON_NS = '<svg class="oc-bar-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12v17l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2-2 1.2V3.5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>';
+const ICON_KM = '<svg class="oc-bar-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><text x="12" y="15.5" text-anchor="middle" font-size="7" font-weight="700" fill="currentColor" stroke="none">KM</text></svg>';
 
 let rawPrenotazioni = [];
 let rawTappe = [];
@@ -1296,6 +1301,17 @@ function dayYmdRome(v) {
     return m ? m[1] : '';
   }
   return d.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
+}
+
+function noteHannoKm(list) {
+  return (list || []).some(it => typeof SRNotaSpese !== 'undefined' && SRNotaSpese.isRimborsoKm(it));
+}
+
+function eventoHaKm(ev) {
+  if (!ev || typeof SRNotaSpese === 'undefined') return false;
+  if (ev.kind === 'ordinaria') return noteHannoKm(ev.raw && ev.raw.note);
+  const tappe = ev.tappe && ev.tappe.length ? ev.tappe : (ev.raw ? [ev.raw] : []);
+  return tappe.some(t => noteHannoKm(SRNotaSpese.parseNotaSpeseJson(t.nota_spese_json)));
 }
 
 function toCalEventsOrdinarie(rows) {
@@ -1612,11 +1628,12 @@ function renderMonthCalendar(month) {
       const top = lane * (barH + barGap);
       const col = colorPerson(ev.person);
       const rCls = (seg.roundL ? ' round-l' : '') + (seg.roundR ? ' round-r' : '');
-      const ico = ev.kind === 'ordinaria'
+      const ico = (ev.kind === 'ordinaria'
         ? ICON_NS
         : (ev.kind === 'macchina'
           ? ICON_CAR
-          : (ev.kind === 'macchina_trasferta' ? ICON_CAR + ICON_ROUTE : ICON_ROUTE));
+          : (ev.kind === 'macchina_trasferta' ? ICON_CAR + ICON_ROUTE : ICON_ROUTE)))
+        + (eventoHaKm(ev) ? ICON_KM : '');
       let tip;
       if (ev.kind === 'ordinaria') {
         const n = (ev.raw && ev.raw.note && ev.raw.note.length) || 0;

@@ -285,6 +285,13 @@ body {
         <div class="hub-card-title">Modulo utilizzo 308</div>
         <p class="hub-card-desc">Scheda prelievo/restituzione chiavi, stato carrozzeria e foto danni.</p>
       </a>
+      <a class="hub-card hidden" href="nota-spese.html?vista=km" id="link-rimborso-km" data-hub-app="nota_spese">
+        <div class="hub-card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="M9 15V9h3.2a2 2 0 0 1 0 4H9"/></svg>
+        </div>
+        <div class="hub-card-title">Rimborso chilometrico personale</div>
+        <p class="hub-card-desc">Chilometri e scontrino benzina, anche in trasferta o per Roma e dintorni.</p>
+      </a>
       <a class="hub-card is-nota-spese hidden" href="nota-spese.html" id="link-nota-spese" data-hub-app="nota_spese">
         <span class="hub-card-alert" aria-hidden="true">!</span>
         <div class="hub-card-icon" aria-hidden="true">
@@ -338,7 +345,7 @@ body {
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <script src="js/config.js"></script>
-<script src="js/nota-spese.js?v=111"></script>
+<script src="js/nota-spese.js?v=114"></script>
 <script src="js/auth.js?v=85"></script>
 <script src="js/push.js"></script>
 <script>
@@ -586,7 +593,7 @@ document.getElementById('link-utenti').addEventListener('click', e => {
 });
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js?v=131').then(reg => reg.update()).catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=134').then(reg => reg.update()).catch(() => {});
 }
 </script>
 </body>
