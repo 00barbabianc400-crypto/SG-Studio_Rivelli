@@ -1678,7 +1678,8 @@ function renderMonthCalendar(month) {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       if (btn.dataset.kind === 'macchina') apriDettaglioMacchina(btn.dataset.id);
-      else if (btn.dataset.kind === 'ordinaria' || btn.dataset.kind === 'km') apriDettaglioOrdinaria(btn.dataset.id);
+      else if (btn.dataset.kind === 'km') apriDettaglioOrdinaria(btn.dataset.id, true);
+      else if (btn.dataset.kind === 'ordinaria') apriDettaglioOrdinaria(btn.dataset.id);
       else apriDettaglioTappa(btn.dataset.id);
     });
   });
@@ -1693,7 +1694,7 @@ function tappePerPrenotazione(p) {
       || (a.data_arrivo || '').localeCompare(b.data_arrivo || ''));
 }
 
-function apriDettaglioOrdinaria(id) {
+function apriDettaglioOrdinaria(id, soloKm) {
   const pool = filteredNoteOrdinarie.length ? filteredNoteOrdinarie : rawNoteOrdinarie;
   const groups = (typeof SRNotaSpese !== 'undefined' && SRNotaSpese.groupNoteOrdinarieByDay)
     ? SRNotaSpese.groupNoteOrdinarieByDay(pool)
@@ -1702,10 +1703,11 @@ function apriDettaglioOrdinaria(id) {
   const g = groups.find(x => (x.day + '|' + (x.person || '')) === sid)
     || groups.find(x => x.day === sid)
     || { day: sid.split('|')[0], person: sid.split('|')[1] || '', note: [] };
-  const list = g.note || [];
+  let list = g.note || [];
+  if (soloKm) list = list.filter(n => typeof SRNotaSpese !== 'undefined' && SRNotaSpese.isRimborsoKm(n));
   if (!list.length) return;
   document.getElementById('detail-modal').classList.remove('modal-wide', 'modal-org');
-  document.getElementById('detail-title').textContent = 'Nota spese ordinaria · ' + fmtDay(g.day);
+  document.getElementById('detail-title').textContent = (soloKm ? 'Rimborso chilometrico · ' : 'Nota spese ordinaria · ') + fmtDay(g.day);
   const person = String(g.person || (list[0] && list[0].dipendente) || '').trim();
   const col = colorPerson(person);
   const rows = list.map((n, i) => {
@@ -1741,6 +1743,7 @@ function apriDettaglioOrdinaria(id) {
     nominativo: person,
     meseYmd: g.day,
     dayYmd: g.day,
+    soloKm: !!soloKm,
     voci: list
   });
   if (person) wireDetailFilterOp(person);
@@ -2284,9 +2287,14 @@ function apriVerbalePrintModal(ctx) {
   }
   const scCopy = document.getElementById('verbale-print-scontrini-copy');
   if (scCopy) {
-    scCopy.textContent = verbalePrintCtx.scope === 'month'
-      ? 'Le foto dei giustificativi di rimborso di tutto il mese, una per pagina. Si apre il dialogo di stampa.'
-      : 'Le foto dei giustificativi di rimborso di questa giornata, una per pagina. Si apre il dialogo di stampa.';
+    const soloKm = !!verbalePrintCtx.soloKm;
+    scCopy.textContent = soloKm
+      ? (verbalePrintCtx.scope === 'month'
+        ? 'Solo le foto allegate ai rimborsi chilometrici del mese, una per pagina.'
+        : 'Solo le foto allegate ai rimborsi chilometrici di questa giornata, una per pagina.')
+      : (verbalePrintCtx.scope === 'month'
+        ? 'Le foto dei giustificativi di rimborso di tutto il mese, una per pagina. Si apre il dialogo di stampa.'
+        : 'Le foto dei giustificativi di rimborso di questa giornata, una per pagina. Si apre il dialogo di stampa.');
   }
   const bd = document.getElementById('verbale-print-backdrop');
   if (bd) bd.classList.add('open');
@@ -2300,7 +2308,8 @@ function stampaVerbaleDettaglio() {
   }
   const person = detailVerbale.nominativo || '';
   const day = detailVerbale.dayYmd || detailVerbale.meseYmd;
-  const pool = poolNoteOrdinariePerStampa(person);
+  let pool = poolNoteOrdinariePerStampa(person);
+  if (detailVerbale.soloKm) pool = pool.filter(n => SRNotaSpese.isRimborsoKm(n));
   const forVerbale = SRNotaSpese.filterVociVerbale
     ? SRNotaSpese.filterVociVerbale(pool, { contesto: 'ordinaria' })
     : pool;
@@ -2308,11 +2317,9 @@ function stampaVerbaleDettaglio() {
   const mese = SRNotaSpese.meseEstesoFromYmd(day) || '';
   const body = document.getElementById('verbale-scope-body');
   if (body) {
-    body.textContent = 'Vuoi stampare solo per il '
-      + fmtDay(day)
-      + ' oppure per tutto il mese'
-      + (mese ? (' (' + mese + ')') : '')
-      + '?';
+    body.textContent = detailVerbale.soloKm
+      ? ('Vuoi i rimborsi chilometrici solo del ' + fmtDay(day) + ' oppure di tutto il mese' + (mese ? (' (' + mese + ')') : '') + '?')
+      : ('Vuoi stampare solo per il ' + fmtDay(day) + ' oppure per tutto il mese' + (mese ? (' (' + mese + ')') : '') + '?');
   }
   const bd = document.getElementById('verbale-scope-backdrop');
   if (bd) bd.classList.add('open');
@@ -2321,7 +2328,8 @@ function stampaVerbaleDettaglio() {
   const baseCtx = {
     nominativo: person,
     dayLabel: fmtDay(day),
-    meseLabel: mese ? ('tutto il mese (' + mese + ')') : 'tutto il mese'
+    meseLabel: mese ? ('tutto il mese (' + mese + ')') : 'tutto il mese',
+    soloKm: !!detailVerbale.soloKm
   };
   if (dayBtn) {
     dayBtn.onclick = () => {
