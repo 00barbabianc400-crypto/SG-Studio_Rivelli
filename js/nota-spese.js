@@ -202,11 +202,11 @@
   }
 
   const CARTA_AZIENDALE_OPZIONI = [
-    { id: '106', label: 'Finisce con 106' },
-    { id: '304', label: 'Finisce con 304' },
-    { id: '2659', label: 'Bancomat · 2659', kind: 'bancomat' },
-    { id: 'DKV', label: 'Carta benzina · DKV', kind: 'benzina' },
-    { id: 'Q8', label: 'Carta benzina · Q8', kind: 'benzina' }
+    { id: '106', label: 'Finisce con 106', icon: 'aziendale' },
+    { id: '304', label: 'Finisce con 304', icon: 'aziendale' },
+    { id: '2659', label: 'Bancomat · 2659', kind: 'bancomat', icon: 'aziendale' },
+    { id: 'DKV', label: 'Carta benzina · DKV', kind: 'benzina', icon: 'aziendale' },
+    { id: 'Q8', label: 'Carta benzina · Q8', kind: 'benzina', icon: 'aziendale' }
   ];
   const CARTA_AZIENDALE_LAST4 = CARTA_AZIENDALE_OPZIONI.map(o => o.id);
   const CARTI = [
