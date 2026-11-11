@@ -1719,8 +1719,9 @@ function apriDettaglioOrdinaria(id, soloKm) {
     const amt = (typeof SRNotaSpese !== 'undefined' && SRNotaSpese.displayImporto)
       ? esc(SRNotaSpese.displayImporto(n))
       : (isKm ? (esc(String(n.km)) + ' km') : esc(fmtEuroNota(n.importo)));
-    const open = isKm ? '' : (' data-ord-idx="' + i + '"');
-    return `<button type="button" class="sc-item"${open} ${isKm ? 'style="cursor:default"' : 'title="Apri giustificativo"'}>
+    const haFoto = isKm && typeof SRNotaSpese !== 'undefined' && SRNotaSpese.rimborsoHaFoto && SRNotaSpese.rimborsoHaFoto(n);
+    const open = (!isKm || haFoto) ? (' data-ord-idx="' + i + '"') : '';
+    return `<button type="button" class="sc-item"${open} ${(!isKm || haFoto) ? 'title="Apri giustificativo"' : 'style="cursor:default"'}>
         <span class="sc-ico-wrap">${typeof SRScontrini !== 'undefined' ? SRScontrini.ICO_RECEIPT : ''}</span>
         <span class="ns-item-meta">${esc(n.dipendente || '—')} · ${esc(tipo)}<span>${esc(voce || cat)}</span></span>
         <span class="ns-item-amt">${amt}</span>
@@ -2640,8 +2641,11 @@ function apriNotaSpesaViewerAmm(it, pool) {
     setTimeout(() => w.print(), 400);
   };
   const isKm = typeof SRNotaSpese !== 'undefined' && SRNotaSpese.isRimborsoKm(it);
-  syncScViewVerbale(!!(isKm && detailTappaCtx));
-  if (isKm) {
+  const kmFoto = isKm && SRNotaSpese.rimborsoHaFoto && SRNotaSpese.rimborsoHaFoto(it);
+  syncScViewVerbale(!!(isKm && detailTappaCtx && !kmFoto));
+  if (kmFoto) {
+    document.getElementById('sc-view-title').textContent = 'Scontrino · rimborso chilometrico';
+  } else if (isKm) {
     document.getElementById('sc-view-title').textContent = 'Rimborso chilometrico · trasferta';
   }
   document.getElementById('scontrino-view-backdrop').classList.add('open');
