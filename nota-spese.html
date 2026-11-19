@@ -50,6 +50,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 }
 .dest-tab.is-active { background: #fff; color: var(--blue); box-shadow: var(--shadow-sm); }
 .step-label { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px; }
+.altre-tappe { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+.altre-tappe .step-label { margin-top: 14px; }
 .chip-section { margin-bottom: 18px; }
 .chip-section:last-child { margin-bottom: 0; }
 .chip-title {
@@ -263,6 +265,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
     <div class="card hidden" id="card-lista-tappa">
       <div class="step-label">Già caricati · tappa</div>
       <div id="lista-tappa"></div>
+      <div id="lista-altre-tappe"></div>
     </div>
 
     <div class="card" id="card-lista-ordinaria">
@@ -892,14 +895,78 @@ function listaCorrente() {
   return state.ordinarie.slice();
 }
 
+function noteDelGiorno(list, ymd) {
+  const day = ymd || (SRNotaSpese.todayYmdRome && SRNotaSpese.todayYmdRome()) || '';
+  return (list || []).filter(it => {
+    const d = SRNotaSpese.dayYmdRomeOf
+      ? SRNotaSpese.dayYmdRomeOf(it.data || it.created_at)
+      : String(it.data || it.created_at || '').slice(0, 10);
+    return d === day;
+  });
+}
+
+function renderAltreTappe() {
+  const host = document.getElementById('lista-altre-tappe');
+  if (!host) return;
+  host.innerHTML = '';
+  if (vistaKm || !isDestTappa() || !state.tappa || !SRNotaSpese.tappeStessaTrasferta) return;
+  const tutte = SRNotaSpese.tappeStessaTrasferta(SRAuth.getTrasferteTappe(), state.tappa.trasferta_id);
+  const altre = tutte.filter(t => String(t.id) !== String(state.tappa.id));
+  if (!altre.length) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'altre-tappe';
+  altre.forEach(t => {
+    const title = document.createElement('div');
+    title.className = 'step-label';
+    title.textContent = (SRNotaSpese.labelTappa && SRNotaSpese.labelTappa(t)) || ('Tappa ' + (t.tappa_numero || ''));
+    const box = document.createElement('div');
+    wrap.appendChild(title);
+    wrap.appendChild(box);
+    const list = noteDellaVista(SRNotaSpese.parseNotaSpeseJson(t.nota_spese_json));
+    fillListaNode(box, list, 'Nessun giustificativo su questa tappa.');
+  });
+  host.appendChild(wrap);
+}
+
+function fillListaNode(box, list, emptyMsg) {
+  if (!list.length) {
+    box.innerHTML = '<p class="empty">' + emptyMsg + '</p>';
+    return;
+  }
+  box.innerHTML = list.map((it, i) => {
+    const isKm = SRNotaSpese.isRimborsoKm && SRNotaSpese.isRimborsoKm(it);
+    const amt = SRNotaSpese.displayImporto
+      ? SRNotaSpese.displayImporto(it)
+      : (isKm ? (String(it.km).replace('.', ',') + ' km') : ('€ ' + Number(it.importo).toFixed(2).replace('.', ',')));
+    const icoKey = it.pasto || it.mezzo || it.categoria || 'scontrino';
+    const catIco = CHOICE_ICONS[icoKey] || CHOICE_ICONS.scontrino;
+    const voce = (SRNotaSpese.labelVoce && SRNotaSpese.labelVoce(it)) || (it.categoria || '');
+    const tipoLabel = isKm ? 'Rimborso' : (it.tipo || '');
+    return '<button type="button" class="list-item" data-view-idx="' + i + '">'
+      + '<span class="choice-ico" style="width:34px;height:34px;border-radius:9px">' + catIco + '</span>'
+      + '<span class="list-item-main">' + esc(tipoLabel) + ' · ' + esc(voce) + '</span>'
+      + '<strong class="list-item-amt">' + esc(amt) + '</strong>'
+      + '</button>';
+  }).join('');
+  box.querySelectorAll('[data-view-idx]').forEach(btn => {
+    btn.addEventListener('click', () => apriNotaViewer(list[Number(btn.dataset.viewIdx)], list));
+  });
+}
+
 function renderLista() {
   const tappaList = state.tappa
     ? noteDellaVista(SRNotaSpese.parseNotaSpeseJson(state.tappa.nota_spese_json))
     : [];
   const vuotoTappa = vistaKm ? 'Nessun rimborso chilometrico su questa tappa.' : 'Nessun giustificativo su questa tappa.';
-  const vuotoRoma = vistaKm ? 'Nessun rimborso chilometrico su Roma e dintorni.' : 'Nessun giustificativo su Roma e dintorni.';
+  const vuotoRoma = vistaKm
+    ? 'Nessun rimborso chilometrico su Roma e dintorni.'
+    : 'Nessun giustificativo oggi su Roma e dintorni.';
+  const ordinarie = noteDellaVista(state.ordinarie.slice());
   fillLista('lista-tappa', tappaList, vuotoTappa);
-  fillLista('lista-ordinaria', noteDellaVista(state.ordinarie.slice()), vuotoRoma);
+  fillLista('lista-ordinaria', vistaKm ? ordinarie : noteDelGiorno(ordinarie), vuotoRoma);
+  renderAltreTappe();
+  const labO = document.querySelector('#card-lista-ordinaria .step-label');
+  if (labO && !vistaKm) labO.textContent = 'Già caricati · oggi';
 }
 
 function apriNotaViewer(it, pool) {
