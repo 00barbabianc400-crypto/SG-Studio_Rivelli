@@ -318,6 +318,234 @@
     return parseGasDownloadResponse(data);
   }
 
+  function jpegSize(u8) {
+    if (!u8 || u8[0] !== 0xFF || u8[1] !== 0xD8) return null;
+    let i = 2;
+    while (i + 9 < u8.length) {
+      if (u8[i] !== 0xFF) { i++; continue; }
+      const marker = u8[i + 1];
+      if (marker === 0xD8 || marker === 0xD9 || marker === 0x01) { i += 2; continue; }
+      const len = (u8[i + 2] << 8) | u8[i + 3];
+      if (marker >= 0xC0 && marker <= 0xCF && marker !== 0xC4 && marker !== 0xC8 && marker !== 0xCC) {
+        return {
+          h: (u8[i + 5] << 8) | u8[i + 6],
+          w: (u8[i + 7] << 8) | u8[i + 8],
+          components: u8[i + 9]
+        };
+      }
+      if (!len) break;
+      i += 2 + len;
+    }
+    return null;
+  }
+
+  function readU32(u8, o) {
+    return ((u8[o] << 24) | (u8[o + 1] << 16) | (u8[o + 2] << 8) | u8[o + 3]) >>> 0;
+  }
+
+  async function inflateZlib(u8) {
+    if (typeof require === 'function') {
+      try {
+        return new Uint8Array(require('zlib').inflateSync(Buffer.from(u8)));
+      } catch (_) {}
+    }
+    if (typeof DecompressionStream !== 'function') throw new Error('PNG non decodificabile');
+    const stream = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+
+  async function deflateZlib(u8) {
+    if (typeof require === 'function') {
+      try {
+        return new Uint8Array(require('zlib').deflateSync(Buffer.from(u8)));
+      } catch (_) {}
+    }
+    if (typeof CompressionStream !== 'function') return u8;
+    const stream = new Blob([u8]).stream().pipeThrough(new CompressionStream('deflate'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+
+  function paeth(a, b, c) {
+    const p = a + b - c;
+    const pa = Math.abs(p - a);
+    const pb = Math.abs(p - b);
+    const pc = Math.abs(p - c);
+    if (pa <= pb && pa <= pc) return a;
+    if (pb <= pc) return b;
+    return c;
+  }
+
+  function unfilterPngRow(filter, row, prev, bpp) {
+    const out = new Uint8Array(row.length);
+    for (let i = 0; i < row.length; i++) {
+      const left = i >= bpp ? out[i - bpp] : 0;
+      const up = prev[i] || 0;
+      const ul = i >= bpp ? (prev[i - bpp] || 0) : 0;
+      const v = row[i];
+      let n = v;
+      if (filter === 1) n = v + left;
+      else if (filter === 2) n = v + up;
+      else if (filter === 3) n = v + ((left + up) >> 1);
+      else if (filter === 4) n = v + paeth(left, up, ul);
+      else if (filter !== 0) return null;
+      out[i] = n & 255;
+    }
+    return out;
+  }
+
+  async function pngToRgb(u8) {
+    if (!u8 || u8[0] !== 0x89 || u8[1] !== 0x50) return null;
+    const w = readU32(u8, 16);
+    const h = readU32(u8, 20);
+    const bit = u8[24];
+    const color = u8[25];
+    if (!w || !h || bit !== 8 || (color !== 2 && color !== 6 && color !== 0)) return null;
+    const bpp = color === 6 ? 4 : (color === 2 ? 3 : 1);
+    const idats = [];
+    let p = 8;
+    while (p + 12 <= u8.length) {
+      const len = readU32(u8, p);
+      const type = String.fromCharCode(u8[p + 4], u8[p + 5], u8[p + 6], u8[p + 7]);
+      if (type === 'IDAT') idats.push(u8.subarray(p + 8, p + 8 + len));
+      if (type === 'IEND') break;
+      p += 12 + len;
+    }
+    if (!idats.length) return null;
+    let raw;
+    try { raw = await inflateZlib(concatBytes(idats)); } catch (_) { return null; }
+    const stride = w * bpp;
+    const rgb = new Uint8Array(w * h * 3);
+    let src = 0;
+    let prev = new Uint8Array(stride);
+    for (let y = 0; y < h; y++) {
+      if (src >= raw.length) return null;
+      const filter = raw[src++];
+      const row = raw.subarray(src, src + stride);
+      src += stride;
+      const cur = unfilterPngRow(filter, row, prev, bpp);
+      if (!cur) return null;
+      for (let x = 0; x < w; x++) {
+        const s = x * bpp;
+        const d = (y * w + x) * 3;
+        const g = color === 0 ? cur[s] : 0;
+        rgb[d] = color === 0 ? g : cur[s];
+        rgb[d + 1] = color === 0 ? g : cur[s + 1];
+        rgb[d + 2] = color === 0 ? g : cur[s + 2];
+      }
+      prev = cur;
+    }
+    return { w: w, h: h, data: rgb };
+  }
+
+  function buildPdf(images) {
+    const chunks = [];
+    let size = 0;
+    const offsets = [];
+    function pushStr(s) {
+      const u = new TextEncoder().encode(s);
+      chunks.push(u);
+      size += u.length;
+    }
+    function pushBytes(b) {
+      chunks.push(b);
+      size += b.length;
+    }
+    const pageW = 595;
+    const pageH = 842;
+    const margin = 36;
+    const n = images.length;
+    function objNum(i, kind) { return 3 + i * 3 + kind; }
+    const kids = images.map((_, i) => objNum(i, 0) + ' 0 R').join(' ');
+    pushStr('%PDF-1.4\n');
+    function startObj(num) {
+      offsets[num] = size;
+      pushStr(num + ' 0 obj\n');
+    }
+    function endObj() { pushStr('endobj\n'); }
+    startObj(1);
+    pushStr('<< /Type /Catalog /Pages 2 0 R >>\n');
+    endObj();
+    startObj(2);
+    pushStr('<< /Type /Pages /Count ' + n + ' /Kids [' + kids + '] >>\n');
+    endObj();
+    images.forEach((im, i) => {
+      const maxW = pageW - margin * 2;
+      const maxH = pageH - margin * 2;
+      const scale = Math.min(maxW / im.w, maxH / im.h);
+      const dw = im.w * scale;
+      const dh = im.h * scale;
+      const x = (pageW - dw) / 2;
+      const y = (pageH - dh) / 2;
+      const content = 'q\n' + dw.toFixed(2) + ' 0 0 ' + dh.toFixed(2) + ' ' + x.toFixed(2) + ' ' + y.toFixed(2) + ' cm\n/Im0 Do\nQ\n';
+      const contentBytes = new TextEncoder().encode(content);
+      const pageId = objNum(i, 0);
+      const contentId = objNum(i, 1);
+      const imageId = objNum(i, 2);
+      startObj(pageId);
+      pushStr('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + pageW + ' ' + pageH + '] /Contents ' + contentId + ' 0 R /Resources << /XObject << /Im0 ' + imageId + ' 0 R >> >> >>\n');
+      endObj();
+      startObj(contentId);
+      pushStr('<< /Length ' + contentBytes.length + ' >>\nstream\n');
+      pushBytes(contentBytes);
+      pushStr('\nendstream\n');
+      endObj();
+      startObj(imageId);
+      pushStr('<< /Type /XObject /Subtype /Image /Width ' + im.w + ' /Height ' + im.h
+        + ' /ColorSpace /' + im.cs + ' /BitsPerComponent ' + im.bpc
+        + ' /Filter /' + im.filter + ' /Length ' + im.bytes.length + ' >>\nstream\n');
+      pushBytes(im.bytes);
+      pushStr('\nendstream\n');
+      endObj();
+    });
+    const xrefPos = size;
+    const total = 2 + n * 3;
+    let xref = 'xref\n0 ' + (total + 1) + '\n0000000000 65535 f \n';
+    for (let i = 1; i <= total; i++) {
+      xref += String(offsets[i] || 0).padStart(10, '0') + ' 00000 n \n';
+    }
+    pushStr(xref);
+    pushStr('trailer\n<< /Size ' + (total + 1) + ' /Root 1 0 R >>\nstartxref\n' + xrefPos + '\n%%EOF');
+    return concatBytes(chunks);
+  }
+
+  async function imagesToPdf(pages) {
+    const images = [];
+    const list = Array.isArray(pages) ? pages : [];
+    for (let i = 0; i < list.length; i++) {
+      const bytes = list[i] && list[i].bytes;
+      if (!bytes || !bytes.length) continue;
+      if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) continue;
+      if (bytes[0] === 0xFF && bytes[1] === 0xD8) {
+        const dim = jpegSize(bytes);
+        if (!dim || !dim.w || !dim.h) continue;
+        images.push({
+          w: dim.w,
+          h: dim.h,
+          bytes: bytes,
+          filter: 'DCTDecode',
+          cs: dim.components === 4 ? 'DeviceCMYK' : (dim.components === 1 ? 'DeviceGray' : 'DeviceRGB'),
+          bpc: 8
+        });
+        continue;
+      }
+      if (bytes[0] === 0x89 && bytes[1] === 0x50) {
+        const rgb = await pngToRgb(bytes);
+        if (!rgb) continue;
+        const packed = await deflateZlib(rgb.data);
+        images.push({
+          w: rgb.w,
+          h: rgb.h,
+          bytes: packed,
+          filter: 'FlateDecode',
+          cs: 'DeviceRGB',
+          bpc: 8
+        });
+      }
+    }
+    if (!images.length) return null;
+    return buildPdf(images);
+  }
+
   async function buildPacchettoZip(tappe, opts) {
     const files = collectPacchettoFiles(tappe);
     const downloadFile = opts && opts.downloadFile;
@@ -341,6 +569,12 @@
         bytes: got && got.bytes instanceof Uint8Array ? got.bytes : new Uint8Array((got && got.bytes) || [])
       });
     }
+    const shots = entries.filter(e => String(e.path || '').indexOf('Scontrini/') === 0 && !/\.pdf$/i.test(e.path));
+    if (shots.length && opts && typeof opts.onProgress === 'function') {
+      opts.onProgress('Componiamo il PDF…');
+    }
+    const pdf = shots.length ? await imagesToPdf(shots) : null;
+    if (pdf) entries.push({ path: 'Scontrini/Giustificativi.pdf', bytes: pdf });
     return zipStore(entries);
   }
 
@@ -846,6 +1080,7 @@
     downloadTransazioniExcel,
     collectPacchettoFiles,
     bundlePrintItems,
+    imagesToPdf,
     zipStore,
     parseGasDownloadResponse,
     fetchDriveFileViaGas,
